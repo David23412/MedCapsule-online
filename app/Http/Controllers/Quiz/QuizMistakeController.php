@@ -135,14 +135,14 @@ class QuizMistakeController extends Controller
                     ->get();
 
                 // Get total and skipped counts in single queries
-                $totalCount = DB::table('mistakes')->where('user_id', $userId)->count();
+                $totalCount = DB::table('mistakes')->where('mistakes.user_id', $userId)->count();
                 $skippedCount = DB::table('mistakes')
-                    ->where('user_id', $userId)
+                    ->where('mistakes.user_id', $userId)
                     ->where(function($query) {
-                        $query->where('skipped', true)
-                              ->orWhere('submitted_answer', 'unanswered')
-                              ->orWhere('submitted_answer', '')
-                              ->orWhereNull('submitted_answer');
+                        $query->where('mistakes.skipped', true)
+                              ->orWhere('mistakes.submitted_answer', 'unanswered')
+                              ->orWhere('mistakes.submitted_answer', '')
+                              ->orWhereNull('mistakes.submitted_answer');
                     })
                     ->count();
 

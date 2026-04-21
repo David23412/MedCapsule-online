@@ -216,13 +216,13 @@ use Illuminate\Http\Response;
     {
         return Topic::query()
             ->select([
-                'id',
-                'course_id',
-                'display_order',
-                'is_locked',
-                'locked_by_tutor_id',
-                'lock_reason',
-                'locked_at',
+                'topics.id',
+                'topics.course_id',
+                'topics.display_order',
+                'topics.is_locked',
+                'topics.locked_by_tutor_id',
+                'topics.lock_reason',
+                'topics.locked_at',
             ])
             ->with([
                 'lockedByTutor:id,name',
@@ -239,14 +239,14 @@ use Illuminate\Http\Response;
     {
         return Assignment::query()
             ->select([
-                'id',
-                'topic_id',
-                'deadline',
-                'duration_minutes',
-                'assignment_mode',
-                'assigned_source',
-                'submitted_at',
-                'created_at',
+                'assignments.id',
+                'assignments.topic_id',
+                'assignments.deadline',
+                'assignments.duration_minutes',
+                'assignments.assignment_mode',
+                'assignments.assigned_source',
+                'assignments.submitted_at',
+                'assignments.created_at',
             ])
             ->where('topic_id', $topic->id)
             ->whereExists(function ($query) use ($user) {
@@ -258,13 +258,13 @@ use Illuminate\Http\Response;
             ->with([
                 'attempts' => function ($query) use ($user) {
                     $query->select([
-                        'id',
-                        'assignment_id',
-                        'user_id',
-                        'score',
-                        'total_questions',
-                        'created_at',
-                    ])->where('user_id', $user->id);
+                        'quiz_attempts.id',
+                        'quiz_attempts.assignment_id',
+                        'quiz_attempts.user_id',
+                        'quiz_attempts.score',
+                        'quiz_attempts.total_questions',
+                        'quiz_attempts.created_at',
+                    ])->where('quiz_attempts.user_id', $user->id);
                 }
             ])
             ->orderBy('deadline')
@@ -344,7 +344,7 @@ use Illuminate\Http\Response;
     {
         try {
 
-        $topic = Topic::query()->select('id')->findOrFail($topicId);
+        $topic = Topic::query()->select('topics.id')->findOrFail($topicId);
         $accessResult = $this->checkAccess($topic);
         
         return response()->json($accessResult, $accessResult['status_code']);
@@ -365,7 +365,7 @@ use Illuminate\Http\Response;
     public function getSourcesApi(Request $request, int $topicId)
     {
         try {
-            $topic = Topic::query()->select('id')->findOrFail($topicId);
+            $topic = Topic::query()->select('topics.id')->findOrFail($topicId);
             $accessResult = $this->checkAccess($topic);
             
             if (!$accessResult['can_access']) {

@@ -353,7 +353,7 @@ class OptimizedRandomQuizController extends Controller
         $cacheKey = "user_quiz_count_{$userId}";
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($userId) {
             return \Illuminate\Support\Facades\DB::table('quiz_attempts')
-                ->where('user_id', $userId)
+                ->where('quiz_attempts.user_id', $userId)
                 ->count();
         });
     }

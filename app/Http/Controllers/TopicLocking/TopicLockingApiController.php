@@ -39,7 +39,7 @@ class TopicLockingApiController extends Controller
         }
         try {
             $course = \App\Models\Course::query()
-                ->select('id')
+                ->select('courses.id')
                 ->findOrFail($courseId);
                 
             $lockedTopics = $this->lockingService->getLockedTopics($course);

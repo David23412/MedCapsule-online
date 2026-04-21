@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Tutor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
 
 class TutorReportController extends Controller
 {
@@ -17,166 +17,182 @@ class TutorReportController extends Controller
     }
 
     /**
-     * Generate grade report for a specific student
+     * Generate accountability report for a specific student
      */
-    public function generateStudentReport(Request $request, $studentId): JsonResponse
+    public function generateStudentReport(Request $request, $studentId)
     {
         $user = auth()->user();
-        // LETHAL EAGER LOADING: Load student with all related report data
-        $student = User::select('id', 'name', 'email', 'created_at')
-            ->with([
-                'quizAttempts:id,user_id,topic_id,score,created_at,completed_at',
-                'quizAttempts.topic:id,name,course_id',
-                'quizAttempts.topic.course:id,name',
-                'assignments:id,user_id,topic_id,status,score,created_at,deadline',
-                'assignments.topic:id,name,course_id',
-                'assignments.topic.course:id,name',
-                'mistakes:id,user_id,question_id,mastered,created_at',
-                'mistakes.question:id,topic_id,difficulty',
-                'mistakes.question.topic:id,name,course_id'
-            ])
-            ->findOrFail($studentId);
 
-        if (!$user->isAdmin() && !$this->canAccessStudent($user, $student)) {
-            abort(403, 'You do not have permission to generate reports for this student.');
+        // 1. Permission check
+        if (!$user->isAdmin() && !$this->canAccessStudent($user, (int)$studentId)) {
+            return redirect()->route('tutor.dashboard')->with('error', 'Unauthorized access to student report.');
         }
 
-        try {
-            $reportData = Cache::remember("student_report_{$studentId}", 600, function() use ($student) {
-                return $this->generateGradeReportData($student);
-            });
-            
-            return response()->json([
-                'success' => true,
-                'student_name' => $student->name,
-                'data' => $reportData
-            ]);
+        // 2. Fetch all data needed for the high-fidelity report
+        // We reuse the same logic as the Profile view to ensure consistency
+        $data = $this->getAccountabilityMetrics((int)$studentId);
 
-        } catch (\Exception $e) {
-            Log::error('Error generating student report:', [
-                'tutor_id' => $user->id,
-                'user_id' => $studentId,
-                'error' => $e->getMessage()]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Unable to generate report for this student.'
-            ], 500);
-        }
+        // 3. Return printable view
+        return view('tutor.report', [
+            'student' => $data['student'],
+            'data' => $data['analytics'],
+            'timeline' => $data['timeline'],
+            'discipline' => $data['discipline'],
+            'planner' => $data['planner'],
+            'generated_at' => now(),
+            'tutor' => $user
+        ]);
     }
 
     /**
-     * Export grade reports for all assigned students
+     * Optimized data fetching for accountability reports
      */
-    public function exportAllReports(Request $request)
+    private function getAccountabilityMetrics(int $studentId): array
     {
-        $user = auth()->user();
+        $student = User::with([
+            'quizAttempts' => function ($query) {
+                $query->select([
+                    'quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.topic_id', 
+                    'quiz_attempts.percentage_grade', 'quiz_attempts.created_at',
+                    'quiz_attempts.duration_seconds', 'quiz_attempts.total_questions', 
+                    'quiz_attempts.score', 'quiz_attempts.study_mode'
+                ])
+                ->with('topic:id,name')
+                ->orderBy('quiz_attempts.created_at', 'desc')
+                ->take(100);
+            },
+            'courses:id,name'
+        ])
+        ->select([
+            'users.id', 'users.name', 'users.email', 'users.number', 'users.university', 
+            'users.created_at', 'users.last_active_at', 'users.total_questions_attempted', 
+            'users.correct_answers_count', 'users.study_streak_days', 'users.xp'
+        ])
+        ->findOrFail($studentId);
+
+        $videoProgress = DB::table('video_user_progress')
+            ->where('video_user_progress.user_id', $studentId)
+            ->get(['video_user_progress.topic_id', 'video_user_progress.percentage', 'video_user_progress.last_watched_at'])
+            ->keyBy('topic_id');
+
+        $plannerOutcomes = DB::table('planner_task_outcomes')
+            ->where('planner_task_outcomes.user_id', $studentId)
+            ->where('planner_task_outcomes.plan_date', '>=', now()->subDays(14))
+            ->orderBy('planner_task_outcomes.plan_date', 'desc')
+            ->get();
+
+        // Use calculations from TutorDashboardViewController context
+        $discipline = $this->calculateDisciplineStatus($student, $plannerOutcomes);
+        $timeline = $this->buildTopicTimeline($student->quizAttempts, $videoProgress);
         
-        try {
-            if ($user->isAdmin()) {
-                $students = User::where('role', User::ROLE_STUDENT)
-                    ->with(['quizAttempts' => function($query) {
-                        $query->select('user_id', 'score');
-                    }])
-                    ->get();
-            } else {
-                // Get students enrolled in tutor's courses
-                $tutorCourseIds = $user->courses()->pluck('courses.id');
-                $students = User::where('role', User::ROLE_STUDENT)
-                    ->whereHas('courses', function ($q) use ($tutorCourseIds) {
-                        $q->whereIn('courses.id', $tutorCourseIds)
-                          ->whereNotNull('course_user.enrolled_at');
-                    })
-                    ->with(['quizAttempts' => function($query) {
-                        $query->select('user_id', 'score');
-                    }])
-                    ->get();
+        // Basic analytics summary
+        $avgScore = $student->quizAttempts->count() > 0 ? round($student->quizAttempts->avg('percentage_grade'), 1) : 0;
+        
+        return [
+            'student' => $student,
+            'timeline' => $timeline,
+            'discipline' => $discipline,
+            'planner' => [
+                'completion_rate' => $plannerOutcomes->count() > 0 
+                    ? round(($plannerOutcomes->where('is_completed', true)->count() / $plannerOutcomes->count()) * 100, 1) 
+                    : 100
+            ],
+            'analytics' => [
+                'average_score' => $avgScore,
+                'accuracy_rate' => $student->total_questions_attempted > 0 
+                    ? round(($student->correct_answers_count / $student->total_questions_attempted) * 100, 1) : 0,
+                'total_quizzes' => $student->quizAttempts->count(),
+                'study_streak' => $student->study_streak_days,
+            ]
+        ];
+    }
+
+    private function calculateDisciplineStatus($student, $plannerOutcomes): array
+    {
+        $lastActive = $student->last_active_at;
+        $daysSinceActive = $lastActive ? now()->diffInDays($lastActive) : 99;
+        
+        $recentTasks = $plannerOutcomes->where('plan_date', '>=', now()->subDays(3));
+        $missingTasks = $recentTasks->where('is_completed', false)->count();
+        $totalTasks = $recentTasks->count();
+        
+        $status = 'active';
+        $reason = 'Student is following the plan.';
+        if ($daysSinceActive >= 3 || ($totalTasks > 0 && ($missingTasks / $totalTasks) > 0.5)) {
+            $status = 'inactive';
+            $reason = $daysSinceActive >= 3 ? 'No activity for 3+ days.' : 'Most recent tasks missed.';
+        } elseif ($daysSinceActive >= 1 || $missingTasks > 0) {
+            $status = 'at_risk';
+            $reason = $daysSinceActive >= 1 ? 'No activity in 24h.' : 'Some tasks missed.';
+        }
+
+        return ['status' => $status, 'reason' => $reason];
+    }
+
+    private function buildTopicTimeline($quizAttempts, $videoProgress): array
+    {
+        $topics = [];
+        foreach ($quizAttempts as $attempt) {
+            $topicId = $attempt->topic_id;
+            if (!isset($topics[$topicId])) {
+                $topics[$topicId] = [
+                    'name' => $attempt->topic->name ?? 'Unknown',
+                    'quiz_score' => $attempt->percentage_grade,
+                    'quiz_mode' => $attempt->study_mode ?: 'quiz',
+                    'video_percentage' => 0,
+                    'last_activity' => $attempt->created_at
+                ];
+            } else if ($attempt->percentage_grade > $topics[$topicId]['quiz_score']) {
+                $topics[$topicId]['quiz_score'] = $attempt->percentage_grade;
             }
-
-            $csvData = $this->generateStudentsCSV($students);
-            
-            $filename = 'grade_reports_' . $user->id . '_' . now()->format('Y-m-d_H-i-s') . '.csv';
-            
-            return response($csvData)
-                ->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-                
-        } catch (\Exception $e) {
-            Log::error('Error exporting all reports:', [
-                'tutor_id' => $user->id,
-                'error' => $e->getMessage()]);
-            
-            return redirect()->route('tutor.dashboard')
-                ->with('error', 'Unable to export reports at this time.');
         }
+        foreach ($videoProgress as $topicId => $progress) {
+            if (!isset($topics[$topicId])) {
+                $topics[$topicId] = [
+                    'name' => \App\Models\Topic::where('id', $topicId)->value('name') ?? 'Unknown',
+                    'quiz_score' => null,
+                    'quiz_mode' => null,
+                    'video_percentage' => $progress->percentage,
+                    'last_activity' => $progress->last_watched_at
+                ];
+            } else {
+                $topics[$topicId]['video_percentage'] = $progress->percentage;
+            }
+        }
+        return collect($topics)->sortByDesc('last_activity')->values()->toArray();
     }
 
-    /**
-     * Check if tutor can access specific student
-     * Tutors can only access students enrolled in their courses
-     */
-    private function canAccessStudent(User $tutor, User $student): bool
+    private function canAccessStudent(User $tutor, int $studentId): bool
     {
-        if ($tutor->isAdmin()) {
-            return true;
-        }
-        
-        // Get tutor's course IDs
-        $tutorCourseIds = $tutor->courses()->pluck('courses.id');
-        
-        // Check if student is enrolled in any of the tutor's courses
-        return $student->courses()
-            ->whereIn('courses.id', $tutorCourseIds)
-            ->whereNotNull('course_user.enrolled_at')
+        if ($tutor->isAdmin()) return true;
+
+        return DB::table('tutor_student_relationships')
+            ->where('tutor_student_relationships.tutor_id', $tutor->id)
+            ->where('tutor_student_relationships.user_id', $studentId)
             ->exists();
     }
 
     /**
-     * Generate grade report data for a student - Optimized
+     * CSV Export (Legacy support but kept for tutors)
      */
-    private function generateGradeReportData(User $student)
+    public function exportAllReports(Request $request)
     {
-        $quizAttempts = $student->quizAttempts()
-            ->with('topic:id,name')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return [
-            'student_name' => $student->name,
-            'student_email' => $student->email,
-            'university' => $student->university ?? 'Not specified',
-            'total_quizzes' => $quizAttempts->count(),
-            'average_score' => round($quizAttempts->avg('score') ?? 0, 1),
-            'best_score' => $quizAttempts->max('score') ?? 0,
-            'study_streak' => $student->study_streak_days ?? 0,
-            'total_xp' => $student->xp ?? 0,
-            'last_active' => $student->last_active_at?->format('Y-m-d H:i:s') ?? 'Never',
-            'quiz_history' => $quizAttempts->take(10)->map(function ($attempt) {
-                return [
-                    'topic' => $attempt->topic->name ?? 'Unknown Topic',
-                    'score' => $attempt->score,
-                    'date' => $attempt->created_at->format('Y-m-d H:i:s')];
-            })->toArray()];
-    }
-
-    /**
-     * Generate CSV for students - Optimized
-     */
-    private function generateStudentsCSV($students)
-    {
-        $csv = "Student Name,Email,University,Quiz Average,Total Quizzes,Study Streak,Last Active\n";
-
-        foreach ($students as $student) {
-            // Use eager loaded quizAttempts to avoid N+1 queries
-            $quizAttempts = $student->quizAttempts;
-            $avgScore = $quizAttempts->avg('score') ?? 0;
-            $quizCount = $quizAttempts->count();
-            $lastActive = $student->last_active_at ? $student->last_active_at->format('Y-m-d H:i:s') : 'Never';
-            
-            $csv .= "\"{$student->name}\",\"{$student->email}\",\"{$student->university}\"," . 
-                    number_format($avgScore, 1) . ",{$quizCount},{$student->study_streak_days},\"{$lastActive}\"\n";
+        $user = auth()->user();
+        if (!$user->isAdmin()) {
+            $studentIds = DB::table('tutor_student_relationships')
+                ->where('tutor_student_relationships.tutor_id', $user->id)
+                ->pluck('tutor_student_relationships.user_id');
+            $students = User::whereIn('users.id', $studentIds)->get();
+        } else {
+            $students = User::where('users.role', User::ROLE_STUDENT)->get();
         }
 
-        return $csv;
+        $csv = "Name,Email,Quiz Avg,Total Quizzes,Last Active\n";
+        foreach ($students as $student) {
+            $avg = round($student->quizAttempts()->avg('percentage_grade') ?? 0, 1);
+            $csv .= "\"{$student->name}\",\"{$student->email}\",{$avg},{$student->quizAttempts()->count()},\"{$student->last_active_at}\"\n";
+        }
+        
+        return response($csv)->header('Content-Type', 'text/csv')->header('Content-Disposition', "attachment; filename=reports.csv");
     }
 }

@@ -104,7 +104,7 @@ class TopicController extends Controller
             ]);
             
             // Check if there are any available courses to redirect to
-            $availableCourse = Course::query()->select('id')->first();
+            $availableCourse = Course::query()->select('courses.id')->first();
             if ($availableCourse) {
                 return redirect()->route('topics.forCourse', $availableCourse->id)
                     ->with('warning', "Course {$requestedCourseId} not found. Showing available course instead.");
@@ -147,19 +147,19 @@ class TopicController extends Controller
         
         // Load the course with its topics, user progress, and videos
         $topics = Topic::query()
-            ->where('course_id', $course->id)
+            ->where('topics.course_id', $course->id)
             ->select([
-                'id',
-                'name',
-                'course_id',
-                'display_order',
-                'case_type',
-                'is_locked',
+                'topics.id',
+                'topics.name',
+                'topics.course_id',
+                'topics.display_order',
+                'topics.case_type',
+                'topics.is_locked',
             ])
-            ->orderBy('display_order')
+            ->orderBy('topics.display_order')
             ->with([
                 'userProgress' => function($query) use ($user) {
-                    $query->where('user_id', $user->id);
+                    $query->where('user_topic_progress.user_id', $user->id);
                 },
                 'video:id,topic_id',
             ])
@@ -413,13 +413,13 @@ class TopicController extends Controller
 
             // Get all sources from these courses
             $sources = \App\Models\Question::whereHas('topic', function($query) use ($accessibleCourses) {
-                $query->whereIn('course_id', $accessibleCourses->pluck('id'));
+                $query->whereIn('topics.course_id', $accessibleCourses->pluck('id'));
             })
-            ->whereNotNull('source')
-            ->where('source', '!=', '')
-            ->selectRaw('source, COUNT(*) as question_count')
-            ->groupBy('source')
-            ->orderBy('source')
+            ->whereNotNull('questions.source')
+            ->where('questions.source', '!=', '')
+            ->selectRaw('questions.source, COUNT(*) as question_count')
+            ->groupBy('questions.source')
+            ->orderBy('questions.source')
             ->get()
             ->map(function($source) {
                 return [

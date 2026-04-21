@@ -61,12 +61,11 @@ class TutorDashboardViewController extends Controller
             return redirect()->route('tutor.dashboard')->with('error', 'You do not have permission to view this student\'s profile.');
         }
 
-        // Generate cache key for student profile
-        $cacheKey = "student_profile_ultra_{$studentId}_" . md5($studentId . $user->id);
-        $cacheDuration = 300; // 5 minutes for real-time accuracy
+        // Generate cache key for student profile - invalidated on every quiz attempt
+        $cacheKey = "student_profile_v2_{$studentId}";
+        $cacheDuration = 600; // 10 minutes
 
-        // ULTRA-OPTIMIZED: Single query with all relationships eagerly loaded
-        $profileData = Cache::remember($cacheKey, $cacheDuration, function () use ($studentId, $user) {
+        $profileData = Cache::remember($cacheKey, $cacheDuration, function () use ($studentId) {
             return $this->getOptimizedStudentProfile($studentId);
         });
 
@@ -75,6 +74,9 @@ class TutorDashboardViewController extends Controller
             'tutor' => $user,
             'data' => $profileData['analytics'],
             'assignments' => $profileData['assignments'],
+            'timeline' => $profileData['timeline'],
+            'discipline' => $profileData['discipline'],
+            'planner' => $profileData['planner'],
             'currentUserView' => [
                 'is_admin' => $user->isAdmin(),
                 'profile_image_url' => $user->getProfileImageUrl(),
@@ -85,295 +87,163 @@ class TutorDashboardViewController extends Controller
     }
 
     /**
-     * Get students for dashboard - Optimized with single query
-     * Only shows students enrolled in the same courses as the tutor
-     */
-    private function getStudentsForDashboard(User $user)
-    {
-        $cacheKey = "dashboard_students_{$user->id}";
-        
-        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($user) {
-            $quizMetricsSubquery = DB::table('quiz_attempts')
-                ->selectRaw('
-                    user_id,
-                    COALESCE(AVG(percentage_grade), 0) as quiz_average_score,
-                    COUNT(*) as quiz_attempts_total
-                ')
-                ->groupBy('user_id');
-
-            $query = User::query()
-                ->select('users.*')
-                ->leftJoinSub($quizMetricsSubquery, 'quiz_metrics', function ($join) {
-                    $join->on('quiz_metrics.user_id', '=', 'users.id');
-                })
-                ->addSelect([
-                    DB::raw('COALESCE(quiz_metrics.quiz_average_score, 0) as quiz_average_score'),
-                    DB::raw('COALESCE(quiz_metrics.quiz_attempts_total, 0) as quiz_attempts_total'),
-                ])
-                ->where('role', User::ROLE_STUDENT);
-
-            if (!$user->isAdmin()) {
-                $tutorCourseIds = $user->courses()->pluck('courses.id')->map(fn ($id) => (int) $id)->all();
-
-                if ($tutorCourseIds === []) {
-                    return collect();
-                }
-
-                $query->join('course_user as shared_enrollments', function ($join) use ($tutorCourseIds) {
-                    $join->on('shared_enrollments.user_id', '=', 'users.id')
-                        ->where('shared_enrollments.is_enrolled', true)
-                        ->whereIn('shared_enrollments.course_id', $tutorCourseIds);
-                })->distinct();
-            }
-
-            $students = $query->orderBy('users.name')->get();
-            $recentScoresByStudent = $this->getRecentAttemptScoresByStudent($students);
-
-            return $students->map(function ($student) use ($recentScoresByStudent) {
-                return $this->enhanceStudentData(
-                    $student,
-                    $recentScoresByStudent[$student->id] ?? []
-                );
-            });
-        });
-    }
-
-    /**
-     * Enhance student data with calculated metrics - Optimized
-     */
-    private function enhanceStudentData(User $student, array $recentScores = [])
-    {
-        $averageScore = round((float) ($student->quiz_average_score ?? 0), 1);
-        $totalQuizzes = (int) ($student->quiz_attempts_total ?? 0);
-        $trend = $this->calculatePerformanceTrend(collect($recentScores));
-        
-        $student->enhanced_metrics = [
-            'average_score' => $averageScore,
-            'score_class' => $this->resolveScoreClass($averageScore),
-            'total_quizzes' => $totalQuizzes,
-            'performance_trend' => $trend,
-            'last_quiz_date' => null,
-            'is_active' => $student->last_active_at && $student->last_active_at->gte(now()->subDays(3))];
-
-        return $student;
-    }
-
-    /**
-     * Get basic analytics for dashboard - Optimized
-     */
-    private function getBasicAnalytics($students)
-    {
-        $totalStudents = $students->count();
-        $activeStudents = $students->filter(function ($student) {
-            return $student->last_active_at && $student->last_active_at->gte(now()->subDays(7));
-        })->count();
-
-        $totalQuizzes = $students->sum(function ($student) {
-            return $student->enhanced_metrics['total_quizzes'] ?? 0;
-        });
-
-        $averageScore = $students->avg(function ($student) {
-            return $student->enhanced_metrics['average_score'] ?? 0;
-        });
-
-        $strugglingStudents = $students->filter(function ($student) {
-            $avgScore = $student->enhanced_metrics['average_score'] ?? 0;
-            $totalQuizzes = $student->enhanced_metrics['total_quizzes'] ?? 0;
-            return $avgScore < 60 && $totalQuizzes > 0;
-        })->count();
-
-        $highPerformers = $students->filter(function ($student) {
-            $avgScore = $student->enhanced_metrics['average_score'] ?? 0;
-            return $avgScore >= 80;
-        })->count();
-
-        return [
-            'total_students' => $totalStudents,
-            'active_students' => $activeStudents,
-            'struggling_students' => $strugglingStudents,
-            'high_performers' => $highPerformers,
-            'total_quizzes' => $totalQuizzes,
-            'class_average' => round($averageScore, 1),
-            'average_score' => round($averageScore, 1),
-            'engagement_rate' => $totalStudents > 0 ? round(($activeStudents / $totalStudents) * 100, 1) : 0];
-    }
-
-    /**
-     * Calculate performance trend efficiently
-     */
-    private function calculatePerformanceTrend($recentAttempts)
-    {
-        if ($recentAttempts->count() < 2) {
-            return 'stable';
-        }
-
-        $recent = $recentAttempts->take(2)->avg('percentage_grade');
-        $older = $recentAttempts->skip(2)->avg('percentage_grade');
-        $difference = $recent - $older;
-
-        if ($difference > 5) return 'improving';
-        if ($difference < -5) return 'declining';
-        return 'stable';
-    }
-
-    private function getRecentAttemptScoresByStudent($students): array
-    {
-        $studentIds = $students->pluck('id')->filter()->values()->all();
-
-        if (empty($studentIds)) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($studentIds), '?'));
-
-        $recentAttempts = \DB::select("
-            SELECT recent.user_id, recent.percentage_grade
-            FROM (
-                SELECT
-                    qa.user_id,
-                    qa.percentage_grade,
-                    ROW_NUMBER() OVER (PARTITION BY qa.user_id ORDER BY qa.created_at DESC, qa.id DESC) AS row_num
-                FROM quiz_attempts qa
-                WHERE qa.user_id IN ({$placeholders})
-            ) AS recent
-            WHERE recent.row_num <= 5
-            ORDER BY recent.user_id, recent.row_num
-        ", $studentIds);
-
-        $groupedScores = [];
-
-        foreach ($recentAttempts as $attempt) {
-            $groupedScores[$attempt->user_id][] = (float) ($attempt->percentage_grade ?? 0);
-        }
-
-        return $groupedScores;
-    }
-
-    private function resolveScoreClass(float $score): string
-    {
-        if ($score >= 80) {
-            return 'excellent';
-        }
-
-        if ($score >= 70) {
-            return 'good';
-        }
-
-        if ($score >= 60) {
-            return 'average';
-        }
-
-        return 'poor';
-    }
-
-    /**
-     * Check if tutor can access specific student - ULTRA-OPTIMIZED
-     * Tutors can only access students enrolled in their courses
-     */
-    private function canAccessStudent(User $tutor, User $student): bool
-    {
-        if ($tutor->isAdmin()) {
-            return true;
-        }
-
-        // Get tutor's course IDs
-        $tutorCourseIds = $tutor->courses()->pluck('courses.id');
-
-        // Check if student is enrolled in any of the tutor's courses
-        return $student->courses()
-            ->whereIn('courses.id', $tutorCourseIds)
-            ->whereNotNull('course_user.enrolled_at')
-            ->exists();
-    }
-
-    /**
-     * ULTRA-OPTIMIZED: Check tutor access with minimal database queries
-     */
-    private function canAccessStudentOptimized(User $tutor, int $studentId): bool
-    {
-        if ($tutor->isAdmin()) {
-            return true;
-        }
-
-        // Single optimized query to check access
-        return \DB::table('course_user as cu1')
-            ->join('course_user as cu2', 'cu1.course_id', '=', 'cu2.course_id')
-            ->where('cu1.user_id', $tutor->id)
-            ->where('cu2.user_id', $studentId)
-            ->where('cu1.is_enrolled', true)
-            ->where('cu2.is_enrolled', true)
-            ->exists();
-    }
-
-    /**
      * ULTRA-OPTIMIZED: Get complete student profile with single query and eager loading
-     * Eliminates ALL N+1 query issues
      */
     private function getOptimizedStudentProfile(int $studentId): array
     {
         // 🔥 SINGLE QUERY WITH ALL RELATIONSHIPS EAGER LOADED 🔥
         $student = User::with([
-            // Quiz attempts with all related data
             'quizAttempts' => function ($query) {
                 $query->select([
-                    'id', 'user_id', 'topic_id', 'percentage_grade', 'created_at',
-                    'duration_seconds', 'total_questions', 'score'
+                    'quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.topic_id', 
+                    'quiz_attempts.percentage_grade', 'quiz_attempts.created_at',
+                    'quiz_attempts.duration_seconds', 'quiz_attempts.total_questions', 
+                    'quiz_attempts.score', 'quiz_attempts.study_mode'
                 ])
-                ->with([
-                    'topic:id,name,course_id',
-                    'topic.course:id,name'
-                ])
-                ->latest()
-                ->take(50); // Limit for performance
-            },
-
-            // Assignments with relationships
-            'assignments' => function ($query) {
-                $query->select([
-                    'id', 'user_id', 'topic_id', 'course_id', 'tutor_id', 'title',
-                    'status', 'score_percentage', 'deadline', 'created_at', 'completed_at',
-                    'duration_minutes', 'assignment_mode'
-                ])
-                ->with([
-                    'topic:id,name',
-                    'course:id,name',
-                    'tutor:id,name'
-                ])
-                ->latest();
-            },
-
-            // Mistakes for analysis
-            'mistakes' => function ($query) {
-                $query->select(['id', 'user_id', 'question_id', 'mastered', 'created_at'])
-                ->with([
-                    'question:id,topic_id,difficulty',
-                    'question.topic:id,name'
-                ])
-                ->latest()
+                ->with('topic:id,name')
+                ->orderBy('quiz_attempts.created_at', 'desc')
                 ->take(100);
             },
-
-            // Course enrollments
+            'assignments' => fn($q) => $q->orderBy('assignments.created_at', 'desc'),
+            'mistakes' => fn($q) => $q->with('question:id,topic_id,question')->orderBy('mistakes.created_at', 'desc')->take(20),
             'courses:id,name'
         ])
         ->select([
-            'id', 'name', 'email', 'university', 'created_at', 'last_active_at',
-            'total_questions_attempted', 'correct_answers_count', 'study_streak_days', 'xp'
+            'users.id', 'users.name', 'users.email', 'users.number', 'users.university', 
+            'users.created_at', 'users.last_active_at', 'users.total_questions_attempted', 
+            'users.correct_answers_count', 'users.study_streak_days', 'users.xp'
         ])
         ->findOrFail($studentId);
 
-        // Calculate analytics in PHP (no additional queries)
-        $analytics = $this->calculateAnalyticsFromLoadedData($student);
+        // Fetch Video Progress separately
+        $videoProgress = DB::table('video_user_progress')
+            ->where('video_user_progress.user_id', $studentId)
+            ->get(['video_user_progress.topic_id', 'video_user_progress.percentage', 'video_user_progress.last_watched_at'])
+            ->keyBy('topic_id');
 
-        // Format assignments data
-        $assignments = $this->formatAssignmentsData($student->assignments);
+        // Fetch Planner Task Outcomes
+        $plannerOutcomes = DB::table('planner_task_outcomes')
+            ->where('planner_task_outcomes.user_id', $studentId)
+            ->where('planner_task_outcomes.plan_date', '>=', now()->subDays(14))
+            ->orderBy('planner_task_outcomes.plan_date', 'desc')
+            ->get();
+
+        // Calculate Discipline Status
+        $discipline = $this->calculateDisciplineStatus($student, $plannerOutcomes);
+
+        // Build Topic Timeline (Consolidated view of Quizzes + Videos)
+        $timeline = $this->buildTopicTimeline($student->quizAttempts, $videoProgress);
+
+        // Calculate analytics
+        $analytics = $this->calculateAnalyticsFromLoadedData($student);
 
         return [
             'student' => $student,
             'analytics' => $analytics,
-            'assignments' => $assignments
+            'assignments' => $this->formatAssignmentsData($student->assignments),
+            'timeline' => $timeline,
+            'discipline' => $discipline,
+            'planner' => [
+                'recent_outcomes' => $plannerOutcomes,
+                'completion_rate' => $plannerOutcomes->count() > 0 
+                    ? round(($plannerOutcomes->where('is_completed', true)->count() / $plannerOutcomes->count()) * 100, 1) 
+                    : 100
+            ]
         ];
     }
+
+    /**
+     * Calculate Discipline Status (Green/Yellow/Red)
+     */
+    private function calculateDisciplineStatus($student, $plannerOutcomes): array
+    {
+        $lastActive = $student->last_active_at;
+        $daysSinceActive = $lastActive ? now()->diffInDays($lastActive) : 99;
+        
+        $recentTasks = $plannerOutcomes->where('plan_date', '>=', now()->subDays(3));
+        $missingTasks = $recentTasks->where('is_completed', false)->count();
+        $totalTasks = $recentTasks->count();
+        
+        $status = 'active';
+        $reason = 'Student is following the plan.';
+        $color = 'success';
+
+        if ($daysSinceActive >= 3 || ($totalTasks > 0 && ($missingTasks / $totalTasks) > 0.5)) {
+            $status = 'inactive';
+            $reason = $daysSinceActive >= 3 ? 'No activity for 3+ days.' : 'More than 50% of recent tasks missed.';
+            $color = 'danger';
+        } elseif ($daysSinceActive >= 1 || $missingTasks > 0) {
+            $status = 'at_risk';
+            $reason = $daysSinceActive >= 1 ? 'No activity in 24h.' : 'Some tasks were missed recently.';
+            $color = 'warning';
+        }
+
+        // Prepare WhatsApp message
+        $waMessage = "Hi {$student->name}, this is your mentor from MedCapsule. I noticed that [REASON]. Is everything okay? How can I help you get back to your study schedule?";
+        $waMessage = str_replace('[REASON]', str_replace('.', '', strtolower($reason)), $waMessage);
+        
+        return [
+            'status' => $status,
+            'reason' => $reason,
+            'color' => $color,
+            'whatsapp_link' => "https://wa.me/" . preg_replace('/[^0-9]/', '', $student->number) . "?text=" . urlencode($waMessage)
+        ];
+    }
+
+    /**
+     * Build a consolidated topic-by-topic progress view
+     */
+    private function buildTopicTimeline($quizAttempts, $videoProgress): array
+    {
+        $topics = [];
+        
+        // Process Quizzes
+        foreach ($quizAttempts as $attempt) {
+            $topicId = $attempt->topic_id;
+            if (!isset($topics[$topicId])) {
+                $topics[$topicId] = [
+                    'name' => $attempt->topic->name ?? 'Unknown',
+                    'quiz_score' => $attempt->percentage_grade,
+                    'quiz_date' => $attempt->created_at,
+                    'quiz_mode' => $attempt->study_mode ?: 'quiz',
+                    'video_percentage' => 0,
+                    'last_activity' => $attempt->created_at
+                ];
+            } else {
+                // Keep the best score for the summary, but latest date
+                if ($attempt->percentage_grade > $topics[$topicId]['quiz_score']) {
+                    $topics[$topicId]['quiz_score'] = $attempt->percentage_grade;
+                }
+                if ($attempt->created_at > $topics[$topicId]['last_activity']) {
+                    $topics[$topicId]['last_activity'] = $attempt->created_at;
+                }
+            }
+        }
+
+        // Process Videos
+        foreach ($videoProgress as $topicId => $progress) {
+            if (!isset($topics[$topicId])) {
+                // Topic might have video progress but no quiz attempts yet
+                $topicName = \App\Models\Topic::where('id', $topicId)->value('name') ?? 'Unknown';
+                $topics[$topicId] = [
+                    'name' => $topicName,
+                    'quiz_score' => null,
+                    'quiz_date' => null,
+                    'quiz_mode' => null,
+                    'video_percentage' => $progress->percentage,
+                    'last_activity' => $progress->last_watched_at
+                ];
+            } else {
+                $topics[$topicId]['video_percentage'] = $progress->percentage;
+                if ($progress->last_watched_at > $topics[$topicId]['last_activity']) {
+                    $topics[$topicId]['last_activity'] = $progress->last_watched_at;
+                }
+            }
+        }
+
+        return collect($topics)->sortByDesc('last_activity')->values()->toArray();
+    }
+
 
     /**
      * Calculate all analytics from pre-loaded data (NO additional queries)
@@ -514,81 +384,121 @@ class TutorDashboardViewController extends Controller
     }
 
     /**
-     * Get time remaining for assignment
+     * Get students for the dashboard with summary metrics and discipline status.
+     * MEGA-OPTIMIZED: Single query for outcomes + eager loading for students.
      */
-    private function getTimeRemaining($deadline)
+    private function getStudentsForDashboard(User $tutor)
     {
-        if (!$deadline) return 'No deadline';
+        // 1. Fetch Students
+        $query = User::with([
+            'quizAttempts' => function ($q) {
+                $q->select(['quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.percentage_grade', 'quiz_attempts.created_at'])
+                  ->orderBy('quiz_attempts.created_at', 'desc');
+            }
+        ]);
 
-        $now = now();
-        if ($deadline->isPast()) {
-            return 'Overdue';
-        }
-
-        $diff = $now->diff($deadline);
-        if ($diff->days > 0) {
-            return $diff->days . ' days remaining';
-        } elseif ($diff->h > 0) {
-            return $diff->h . ' hours remaining';
+        if ($tutor->isAdmin()) {
+            $students = $query->where('users.role', User::ROLE_STUDENT)->get();
         } else {
-            return $diff->i . ' minutes remaining';
+            $students = $tutor->tutorStudents()->with([
+                'quizAttempts' => function ($q) {
+                    $q->select(['quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.percentage_grade', 'quiz_attempts.created_at'])
+                      ->orderBy('quiz_attempts.created_at', 'desc');
+                }
+            ])->get();
         }
+
+        // 2. Bulk Fetch Planner Outcomes for all students (last 7 days)
+        $studentIds = $students->pluck('id');
+        $allOutcomes = DB::table('planner_task_outcomes')
+            ->whereIn('planner_task_outcomes.user_id', $studentIds)
+            ->where('planner_task_outcomes.plan_date', '>=', now()->subDays(7))
+            ->get()
+            ->groupBy('user_id');
+
+        // 3. Enhance student data with discipline and trend
+        return $students->map(function ($student) use ($allOutcomes) {
+            $outcomes = $allOutcomes->get($student->id, collect());
+            
+            // Calculate discipline for dashboard view
+            $discipline = $this->calculateDisciplineStatus($student, $outcomes);
+            
+            // Calculate basic metrics for the card
+            $recentQuizzes = $student->quizAttempts->take(10);
+            $avgScore = $recentQuizzes->avg('percentage_grade') ?? 0;
+            
+            $student->enhanced_metrics = [
+                'average_score' => $avgScore,
+                'total_quizzes' => $student->quizAttempts->count(),
+                'performance_trend' => $this->calculatePerformanceTrend($recentQuizzes),
+                'score_class' => $avgScore >= 80 ? 'excellent' : ($avgScore >= 65 ? 'good' : 'poor'),
+                'discipline' => $discipline
+            ];
+            
+            return $student;
+        });
     }
 
     /**
-     * Calculate improvement rate from quiz attempts.
-     * Compares average of recent half vs older half of attempts.
+     * Get basic summary analytics for the dashboard header.
      */
-    private function calculateImprovementRate($quizAttempts): float
+    private function getBasicAnalytics($students): array
     {
-        if ($quizAttempts->count() < 4) {
-            return 0;
+        $total = $students->count();
+        if ($total === 0) {
+            return [
+                'total_students' => 0,
+                'active_students' => 0,
+                'average_score' => 0,
+                'struggling_students' => 0
+            ];
         }
 
-        $sorted = $quizAttempts->sortBy('created_at')->values();
-        $midpoint = (int) floor($sorted->count() / 2);
+        $active = $students->filter(fn($s) => $s->last_active_at && $s->last_active_at->gte(now()->subDays(3)))->count();
+        $avgScore = $students->avg('enhanced_metrics.average_score') ?? 0;
+        $struggling = $students->filter(fn($s) => 
+            $s->enhanced_metrics['score_class'] === 'poor' || 
+            $s->enhanced_metrics['discipline']['status'] === 'inactive'
+        )->count();
 
-        $olderAvg = $sorted->take($midpoint)->avg('percentage_grade') ?: 0;
-        $recentAvg = $sorted->skip($midpoint)->avg('percentage_grade') ?: 0;
-
-        return round($recentAvg - $olderAvg, 1);
+        return [
+            'total_students' => $total,
+            'active_students' => $active,
+            'average_score' => $avgScore,
+            'struggling_students' => $struggling
+        ];
     }
 
     /**
-     * Get strength areas (topics with highest average scores).
+     * Verify if a tutor can access a specific student.
      */
-    private function getStrengthAreas($quizAttempts): array
+    private function canAccessStudentOptimized(User $user, int $studentId): bool
     {
-        if ($quizAttempts->isEmpty()) {
-            return [];
-        }
+        if ($user->isAdmin()) return true;
 
-        return $quizAttempts->groupBy(fn($a) => $a->topic->name ?? 'Unknown')
-            ->map(fn($attempts) => round($attempts->avg('percentage_grade'), 1))
-            ->sortDesc()
-            ->take(3)
-            ->map(fn($avg, $topic) => ['topic' => $topic, 'average_score' => $avg])
-            ->values()
-            ->toArray();
+        return DB::table('tutor_student_relationships')
+            ->where('tutor_student_relationships.tutor_id', $user->id)
+            ->where('tutor_student_relationships.user_id', $studentId)
+            ->exists();
     }
 
     /**
-     * Get weakness areas (topics with lowest average scores, min 2 attempts).
+     * Determine performance trend (improving/declining/stable).
      */
-    private function getWeaknessAreas($quizAttempts): array
+    private function calculatePerformanceTrend($recentAttempts)
     {
-        if ($quizAttempts->isEmpty()) {
-            return [];
-        }
+        if ($recentAttempts->count() < 4) return 'stable';
 
-        return $quizAttempts->groupBy(fn($a) => $a->topic->name ?? 'Unknown')
-            ->filter(fn($attempts) => $attempts->count() >= 2)
-            ->map(fn($attempts) => round($attempts->avg('percentage_grade'), 1))
-            ->sort()
-            ->take(3)
-            ->map(fn($avg, $topic) => ['topic' => $topic, 'average_score' => $avg])
-            ->values()
-            ->toArray();
+        $sorted = $recentAttempts->sortBy('created_at')->values();
+        $mid = floor($sorted->count() / 2);
+        
+        $olderAvg = $sorted->take($mid)->avg('percentage_grade') ?? 0;
+        $newerAvg = $sorted->skip($mid)->avg('percentage_grade') ?? 0;
+
+        if ($newerAvg > $olderAvg + 5) return 'improving';
+        if ($newerAvg < $olderAvg - 5) return 'declining';
+        
+        return 'stable';
     }
 
     /**
@@ -596,14 +506,17 @@ class TutorDashboardViewController extends Controller
      */
     private function getMostActiveDay($recentAttempts): string
     {
-        if ($recentAttempts->isEmpty()) {
-            return 'N/A';
-        }
+        if ($recentAttempts->isEmpty()) return 'N/A';
 
-        $dayCounts = $recentAttempts->groupBy(fn($a) => $a->created_at->format('l'))
+        return $recentAttempts->groupBy(fn($a) => $a->created_at->format('l'))
             ->map->count()
-            ->sortDesc();
-
-        return $dayCounts->keys()->first() ?? 'N/A';
+            ->sortDesc()
+            ->keys()
+            ->first() ?? 'N/A';
     }
+
+    /**
+     * Helper to format assignments (already implemented above, but ensuring consistency)
+     */
+    // ... (formatAssignmentsData and others are already there)
 }

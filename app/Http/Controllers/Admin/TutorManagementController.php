@@ -29,15 +29,15 @@ class TutorManagementController extends Controller
             ->take(10)
             ->get();
 
-        $unassignedStudents = User::where('role', User::ROLE_STUDENT)
+        $unassignedStudents = User::where('users.role', User::ROLE_STUDENT)
             ->whereDoesntHave('assignedTutors')
-            ->select('id', 'name', 'email')
-            ->orderBy('name')
+            ->select('users.id', 'users.name', 'users.email')
+            ->orderBy('users.name')
             ->get();
 
         $stats = [
-            'total_tutors'        => User::where('role', User::ROLE_TUTOR)->count(),
-            'total_students'      => User::where('role', User::ROLE_STUDENT)->count(),
+            'total_tutors'        => User::where('users.role', User::ROLE_TUTOR)->count(),
+            'total_students'      => User::where('users.role', User::ROLE_STUDENT)->count(),
             'unassigned_students' => $unassignedStudents->count(),
             'active_relationships'=> DB::table('tutor_student_relationships')->count(),
         ];

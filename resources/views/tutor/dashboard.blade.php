@@ -299,6 +299,51 @@
             color: #475569;
         }
 
+        /* Discipline Badges */
+        .discipline-badge {
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 0.15rem 0.5rem;
+            border-radius: 50px;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .discipline-active { background: #dcfce7; color: #166534; }
+        .discipline-at_risk { background: #fffbeb; color: #92400e; }
+        .discipline-inactive { background: #fee2e2; color: #991b1b; }
+
+        .phone-badge {
+            font-size: 0.65rem;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .whatsapp-mini-btn {
+            background: #25d366;
+            color: white;
+            border: none;
+            padding: 0.35rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .whatsapp-mini-btn:hover {
+            background: #128c7e;
+            color: white;
+            transform: scale(1.05);
+        }
+
         /* Student Actions */
         .student-actions {
             display: flex;
@@ -665,15 +710,21 @@
                         </div>
                         <div class="student-info">
                             <h5 class="student-name">{{ $student->name }}</h5>
-                            <div class="student-status">
+                            <div class="d-flex align-items-center gap-2 mt-1">
                                 @php
-                                    $lastActive = $student->last_active_at;
-                                    $isActive = $lastActive && $lastActive->gte(now()->subDays(3));
+                                    $disc = $student->enhanced_metrics['discipline'];
                                 @endphp
-                                <span class="status-dot {{ $isActive ? 'active' : 'inactive' }}"></span>
-                                {{ $isActive ? 'Active' : 'Inactive' }}
-                                @if($lastActive)
-                                    • {{ $lastActive->diffForHumans() }}
+                                <span class="discipline-badge discipline-{{ $disc['status'] }}" title="{{ $disc['reason'] }}">
+                                    @if($disc['status'] === 'active')
+                                        <i class="fas fa-check-circle"></i> Active
+                                    @elseif($disc['status'] === 'at_risk')
+                                        <i class="fas fa-exclamation-circle"></i> At Risk
+                                    @else
+                                        <i class="fas fa-times-circle"></i> Inactive
+                                    @endif
+                                </span>
+                                @if($student->number)
+                                    <span class="phone-badge">{{ $student->number }}</span>
                                 @endif
                             </div>
                         </div>
@@ -716,11 +767,21 @@
 
                     <div class="student-actions">
                         <button class="btn btn-primary" onclick="event.stopPropagation(); viewStudentProfile({{ $student->id }})">
-                            <i class="fas fa-user"></i> View Profile
+                            <i class="fas fa-user"></i> Profile
                         </button>
-                        <button class="btn btn-outline-primary" onclick="event.stopPropagation(); generateStudentReport({{ $student->id }})">
-                            <i class="fas fa-file-alt"></i> Report
-                        </button>
+                        <a href="{{ $student->enhanced_metrics['discipline']['whatsapp_link'] }}" 
+                           target="_blank" 
+                           class="whatsapp-mini-btn" 
+                           onclick="event.stopPropagation();">
+                            <i class="fab fa-whatsapp"></i> Nudge
+                        </a>
+                        <a href="{{ route('tutor.student.report', $student->id) }}" 
+                           target="_blank" 
+                           class="btn btn-outline-secondary" 
+                           onclick="event.stopPropagation();"
+                           title="Generate Accountability Report">
+                            <i class="fas fa-file-alt"></i>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -776,23 +837,6 @@
             window.location.href = `/tutor/student/${studentId}/profile`;
         }
 
-        function generateStudentReport(studentId) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/tutor/student/' + studentId + '/report';
-            form.target = '_blank';
-            
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = csrfToken;
-            form.appendChild(csrfInput);
-            
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
-        }
 
         function exportGradeReports() {
             const form = document.createElement('form');

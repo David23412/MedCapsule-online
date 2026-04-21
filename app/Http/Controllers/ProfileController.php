@@ -153,16 +153,16 @@ class ProfileController extends Controller
         if (($userXp > 0 || $userCorrect > 0) && $isVisibleOnLeaderboard) {
             $userRank = Cache::remember("user_rank_v2_{$user->id}", 1800, function() use ($user, $userXp, $userCorrect, $hasLeaderboardColumn) {
                 $query = DB::table('users')
-                    ->where('role', User::ROLE_STUDENT)
+                    ->where('users.role', User::ROLE_STUDENT)
                     ->where(function ($q) {
-                        $q->where('xp', '>', 0)
-                          ->orWhere('correct_answers_count', '>', 0);
+                        $q->where('users.xp', '>', 0)
+                          ->orWhere('users.correct_answers_count', '>', 0);
                     })
                     ->where(function ($q) use ($userXp, $userCorrect) {
-                        $q->where('xp', '>', $userXp)
+                        $q->where('users.xp', '>', $userXp)
                           ->orWhere(function ($q2) use ($userXp, $userCorrect) {
-                              $q2->where('xp', '=', $userXp)
-                                 ->where('correct_answers_count', '>', $userCorrect);
+                              $q2->where('users.xp', '=', $userXp)
+                                 ->where('users.correct_answers_count', '>', $userCorrect);
                           });
                     });
 
@@ -342,13 +342,13 @@ class ProfileController extends Controller
     private function calculateStudyTimeBreakdown($user): array
     {
         // PERFORMANCE: Single query with conditional aggregation (4 queries → 1 query)
-        $result = QuizAttempt::where('user_id', $user->id)
+        $result = QuizAttempt::where('quiz_attempts.user_id', $user->id)
             ->selectRaw('
-                SUM(CASE WHEN quiz_type = "normal" AND study_mode = "quiz" AND topic_id IS NOT NULL THEN duration_seconds ELSE 0 END) as quiz,
-                SUM(CASE WHEN study_mode = "tutor" THEN duration_seconds ELSE 0 END) as tutor,
-                SUM(CASE WHEN quiz_type = "random" THEN duration_seconds ELSE 0 END) as random_quiz,
-                SUM(CASE WHEN quiz_type = "mistake_review" OR study_mode = "mistake_review" THEN duration_seconds ELSE 0 END) as mistake_review,
-                SUM(duration_seconds) as total
+                SUM(CASE WHEN quiz_attempts.quiz_type = "normal" AND quiz_attempts.study_mode = "quiz" AND quiz_attempts.topic_id IS NOT NULL THEN quiz_attempts.duration_seconds ELSE 0 END) as quiz,
+                SUM(CASE WHEN quiz_attempts.study_mode = "tutor" THEN quiz_attempts.duration_seconds ELSE 0 END) as tutor,
+                SUM(CASE WHEN quiz_attempts.quiz_type = "random" THEN quiz_attempts.duration_seconds ELSE 0 END) as random_quiz,
+                SUM(CASE WHEN quiz_attempts.quiz_type = "mistake_review" OR quiz_attempts.study_mode = "mistake_review" THEN quiz_attempts.duration_seconds ELSE 0 END) as mistake_review,
+                SUM(quiz_attempts.duration_seconds) as total
             ')
             ->first();
 
