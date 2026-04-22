@@ -1051,9 +1051,20 @@ class WrittenAnswerEvaluationService
 
     private function isEnumerationQuestion(string $correctAnswer): bool
     {
-        if (substr_count($correctAnswer, ',') < 1) { return false; }
-        return preg_match('/\b(and|or)\b/i', $correctAnswer) === 1
-            || preg_match('/\b(includes|consists of|comprises|contains|involves)\b/i', $correctAnswer) === 1;
+        $lower = strtolower($correctAnswer);
+        // Matches lists with numbers: "1) ... 2) ... 3) ..."
+        if (preg_match('/\d[\)\.]\s+.+\d[\)\.]\s+/s', $lower)) {
+            return true;
+        }
+        // Matches lists with bullet points: "- item1 - item2" or "* item1 * item2"
+        if (preg_match('/^[-*•]\s+.+[-*•]\s+/m', $lower)) {
+            return true;
+        }
+        // Matches simple comma-separated lists with at least 3 items
+        if (substr_count($correctAnswer, ',') >= 2 && strlen($correctAnswer) < 300) {
+            return true;
+        }
+        return false;
     }
 
     private function isMatchingQuestion(string $correctAnswer): bool
@@ -1148,7 +1159,9 @@ class WrittenAnswerEvaluationService
             return false;
         }));
         $coverage  = count($matched) / count($correctItems);
-        $isCorrect = $coverage >= 0.75;
+        // Lenient threshold for lists: 70% is usually enough for a pass.
+        // For 4 items, 3/4 = 0.75 (Pass). For 3 items, 2/3 = 0.66 (Close, let's keep 0.70 for 3/4 to be safe).
+        $isCorrect = $coverage >= 0.70;
 
         return [
             'isCorrect'   => $isCorrect,
@@ -1828,17 +1841,34 @@ class WrittenAnswerEvaluationService
 
     private function extractEnumerationItems(string $text): array
     {
-        $listText = $text;
-        if (preg_match('/\b(?:includes|consists of|comprises|contains|involves)\b(.+)$/i', $text, $m)) {
-            $listText = $m[1];
-        }
-        $parts = preg_split('/,\s*|\band\b|\bor\b/i', $listText) ?: [];
         $items = [];
-        foreach ($parts as $part) {
-            $n = trim($this->textProcessor->removeFillerWords($this->normalizeForSemanticComparison($part)));
-            if ($n !== '') { $items[] = $n; }
+        // Try number split: "1) item1 2) item2" or "1. item1 2. item2"
+        if (preg_match_all('/\d[\)\.]\s+([^0-9\n]+)/', $text, $matches)) {
+            $items = array_map('trim', $matches[1]);
         }
-        return array_values(array_unique($items));
+        // Try bullet split
+        elseif (preg_match_all('/^[-*•]\s+(.+)$/m', $text, $matches)) {
+            $items = array_map('trim', $matches[1]);
+        }
+        // Fallback to commas
+        else {
+            // If it's a simple comma list, try to avoid splitting on commas inside parentheses
+            // but for simplicity here we just use the existing logic if no numbers/bullets found
+            $parts = preg_split('/,\s*|\band\b|\bor\b/i', $text) ?: [];
+            foreach ($parts as $part) {
+                $n = trim($part);
+                if ($n !== '') { $items[] = $n; }
+            }
+        }
+
+        // POST-PROCESS: Strip parentheses from items.
+        // determinant of health questions often have examples in parens like "Environmental factors (social, physical)"
+        // The core concept is "Environmental factors"; missing the examples shouldn't fail the match.
+        return array_map(function($item) {
+            $stripped = trim(preg_replace('/\s*\(.*?\)\s*/', ' ', $item));
+            // Remove trailing commas/punctuation
+            return rtrim($stripped, ',.;');
+        }, array_filter($items, fn($i) => strlen(trim($i)) > 1));
     }
 
     // =========================================================================
@@ -1904,6 +1934,11 @@ class WrittenAnswerEvaluationService
         $parts = [];
         $normSub = $this->textProcessor->normalizeText($submitted);
         $normCor = $this->textProcessor->normalizeText($correct);
+        
+        // Strip text in parentheses from the missing-concept check
+        // This prevents flagging examples as "missing key concepts"
+        $normCor = preg_replace('/\s*\(.*?\)\s*/', ' ', $normCor);
+        
         $corWords = explode(' ', $this->textProcessor->removeFillerWords($normCor));
         $subWords = explode(' ', $this->textProcessor->removeFillerWords($normSub));
         $missing  = [];
@@ -1933,6 +1968,12 @@ class WrittenAnswerEvaluationService
         if ($metrics['hasContradictions'] ?? false) {
             $parts[] = 'Your answer contains contradictory statements. Review the material to resolve inconsistencies.';
         }
+        
+        // Special case: Determinants of health
+        if (str_contains($normCor, 'determinant') && str_contains($normCor, 'health')) {
+            $parts[] = "The four main determinants of health: 1) Biological/Genetic, 2) Behavioral/Lifestyle, 3) Environmental, 4) Healthcare system.";
+        }
+
         if (empty($parts)) {
             return 'Your answer differs from the expected answer. Please review the material and try again.';
         }

@@ -1035,6 +1035,38 @@
                 segment.setAttribute('data-topic-id', topic.id);
                 segment.setAttribute('data-index', i);
                 segment.setAttribute('aria-hidden', 'true');
+                segment.style.cursor = 'pointer';
+                
+                segment.addEventListener('click', function() {
+                    const topicId = this.getAttribute('data-topic-id');
+                    const topicCard = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
+                    
+                    if (topicCard) {
+                        // Clear any active filters to ensure the topic is visible
+                        const allFilter = document.querySelector('.case-filter[data-filter="all"]');
+                        if (allFilter && !allFilter.classList.contains('active')) {
+                            allFilter.click();
+                        }
+
+                        // Also clear search if active
+                        const searchInput = document.getElementById('topicSearch');
+                        if (searchInput && searchInput.value) {
+                            searchInput.value = '';
+                            searchInput.dispatchEvent(new Event('input'));
+                        }
+
+                        // Small delay to ensure filter/search transitions complete
+                        setTimeout(() => {
+                            topicCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            
+                            // Temporary highlight pulse
+                            topicCard.classList.add('topic-card-highlight');
+                            setTimeout(() => {
+                                topicCard.classList.remove('topic-card-highlight');
+                            }, 2000);
+                        }, 50);
+                    }
+                });
                 
                 track.appendChild(segment);
             }

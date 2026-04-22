@@ -2586,3 +2586,42 @@ body.topics-sidebar-open {
     border-top: 1px dashed #e2e8f0;
     padding-top: 15px;
 }
+
+/* Highlight animation for topic cards when scrolled into view via progress bar */
+.topic-card.topic-card-highlight {
+    animation: topicCardHighlightPulse 2s ease-out;
+    z-index: 10;
+}
+
+@keyframes topicCardHighlightPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.6);
+        transform: scale(1);
+    }
+    15% {
+        box-shadow: 0 0 0 15px rgba(37, 99, 235, 0);
+        transform: scale(1.02);
+        border-color: #2563eb;
+    }
+    30% {
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+
+/* Interactive hover state for progress segments */
+.topics-progress-segment {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.topics-progress-segment:hover {
+    transform: scale(1.15) translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 5;
+}
+
+.topics-progress-segment.is-mastered:hover {
+    box-shadow: 0 4px 15px rgba(62, 168, 101, 0.35);
+}

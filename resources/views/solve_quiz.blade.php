@@ -1518,7 +1518,7 @@
                         @endif
                     @endforeach
 
-                    <button type="submit" id="submit-btn" class="submit-btn" disabled>Submit Quiz</button>
+                    <button type="submit" id="submit-btn" class="submit-btn">Submit Quiz</button>
                 </form>
             @else
                 <div class="alert alert-warning text-center" style="max-width: 600px; margin: 2rem auto; border-radius: 15px; border: 2px solid #ffc107;">
@@ -1927,7 +1927,7 @@
                     progressFill.style.width = `${progressPercentage}%`;
                     progressText.textContent = `${answeredQuestions} of ${totalQuestions} questions answered`;
                     
-                    submitButton.disabled = answeredQuestions !== totalQuestions;
+                    // submitButton.disabled = answeredQuestions !== totalQuestions;
                 }
 
                 // Add timer functionality
@@ -2289,7 +2289,33 @@
                     @else
                         // For regular quizzes, require all questions to be answered
                         if (answeredQuestions !== totalQuestions) {
-                            alert(`Please answer all questions. You have answered ${answeredQuestions} out of ${totalQuestions} questions.`);
+                            // Find the first unanswered question
+                            const allQuestionBoxes = document.querySelectorAll('.question-box');
+                            let firstUnanswered = null;
+                            for (const box of allQuestionBoxes) {
+                                const qId = box.getAttribute('data-question-id');
+                                if (!selectedAnswers[qId]) {
+                                    firstUnanswered = box;
+                                    break;
+                                }
+                            }
+
+                            if (firstUnanswered) {
+                                firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                
+                                // Temporary highlight effect
+                                const originalBorder = firstUnanswered.style.borderColor;
+                                firstUnanswered.style.transition = 'all 0.3s ease';
+                                firstUnanswered.style.borderColor = '#dc3545';
+                                firstUnanswered.style.boxShadow = '0 0 15px rgba(220, 53, 69, 0.3)';
+                                
+                                setTimeout(() => {
+                                    firstUnanswered.style.borderColor = originalBorder;
+                                    firstUnanswered.style.boxShadow = '';
+                                }, 3000);
+                            }
+
+                            alert(`Please answer all questions. You have answered ${answeredQuestions} out of ${totalQuestions} questions. We've scrolled to the first unanswered question for you.`);
                             submitButton.disabled = false;
                             submitButton.innerHTML = 'Submit Quiz';
                             return;

@@ -406,6 +406,8 @@ class TextProcessingService
             // Nervous
             'parasympatheic'  => 'parasympathetic',
             'sympatheic'      => 'sympathetic',
+            'behavioural'     => 'behavioral',
+            'behaviour'       => 'behavior',
             'parasympathetc'  => 'parasympathetic',
             'sympathetc'      => 'sympathetic',
             'nueron'          => 'neuron',
@@ -525,6 +527,8 @@ class TextProcessingService
             '/\btype\s+ii\b/i'                   => 'type 2',
             '/\btype\s+iii\b/i'                  => 'type 3',
             '/\btype\s+iv\b/i'                   => 'type 4',
+            '/\blifestyle\b/i'                    => 'behavioral',
+            '/\bgenetic\b/i'                      => 'biological',
             '/\bpulse\b/i'                        => 'heart rate',
             '/\bhr\b/i'                           => 'heart rate',
             '/\bgi\b/i'                           => 'digestion',

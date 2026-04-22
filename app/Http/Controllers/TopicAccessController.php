@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 // TODO: Inject services in constructor
     // TODO: Inject services in constructor
