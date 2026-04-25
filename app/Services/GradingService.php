@@ -1315,6 +1315,7 @@ private function getTutorSourceProgress(User $user, Topic $topic, string $source
 
     return [
         'completed' => (int) ($progress['completed'] ?? 0),
+        'attempted' => (int) ($progress['attempted'] ?? $progress['completed'] ?? 0),
         'correct' => (int) ($progress['correct'] ?? 0),
         'total' => (int) ($progress['total'] ?? 0),
         'remaining_count' => (int) ($progress['remaining_count'] ?? 0),

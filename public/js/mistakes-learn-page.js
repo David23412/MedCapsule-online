@@ -1405,10 +1405,6 @@ function initializeMistakesLearnPage() {
 
             function selectDifficulty(mode) {
                 preselectDifficulty(mode);
-                if (selectedMode) {
-                    // Instant start — click Start Learning automatically
-                    startButton.click();
-                }
             }
 
             // Handle difficulty selection
@@ -1463,9 +1459,8 @@ function initializeMistakesLearnPage() {
                 showNextQuestion();
             });
 
-            if (autoStartMode && autoStartMode === selectedMode && !modeNeedsReload(autoStartMode)) {
+            if (autoStartMode) {
                 clearAutoStartFlagFromUrl();
-                startButton.click();
             }
 
             // 💀 LETHAL INSTANT SOUND SYSTEM - F16 RAPTOR SPEED 💀

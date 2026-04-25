@@ -110,19 +110,29 @@
         };
     }
 
+    function getScrollOffsets() {
+        var doc = document.documentElement;
+        var body = document.body;
+
+        return {
+            left: window.pageXOffset ?? doc?.scrollLeft ?? body?.scrollLeft ?? 0,
+            top: window.pageYOffset ?? doc?.scrollTop ?? body?.scrollTop ?? 0
+        };
+    }
+
     /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing + body zoom). */
     function getCanvasPoint(e) {
         var zoom = getBodyZoom();
-        var rect   = canvas.getBoundingClientRect();
-        // On some engines (WebKit) clientX/Y are already in zoomed space,
-        // but getBoundingClientRect returns zoomed values too, so the
-        // subtraction cancels out.  We still need the ratio of canvas
-        // backing-store pixels to the CSS rect size.
-        var scaleX = canvas.width  / rect.width;
-        var scaleY = canvas.height / rect.height;
+        var scroll = getScrollOffsets();
+        var cssSize = getCanvasCssSize();
+        var scaleX = canvas.width  / Math.max(cssSize.width, 1);
+        var scaleY = canvas.height / Math.max(cssSize.height, 1);
+        var docX = (e.clientX / zoom) + scroll.left;
+        var docY = (e.clientY / zoom) + scroll.top;
+
         return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top)  * scaleY,
+            x: docX * scaleX,
+            y: docY * scaleY,
             pressure: e.pressure ?? 0.5
         };
     }
@@ -898,10 +908,29 @@
             resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
         });
 
+        // Keep the document-sized overlay in sync after page scrolling.
+        window.addEventListener('scroll', function () {
+            if (!isOpen) return;
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+        }, { passive: true });
+
         // Orientation change (iPad)
         window.addEventListener('orientationchange', function () {
             setTimeout(resizeCanvas, ORIENTATION_CHANGE_MS);
         });
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', function () {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+            });
+            window.visualViewport.addEventListener('scroll', function () {
+                if (!isOpen) return;
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+            });
+        }
 
         updateUndoRedoBtns();
     }

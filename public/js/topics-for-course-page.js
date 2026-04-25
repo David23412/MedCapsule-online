@@ -854,14 +854,20 @@
 
             data.availableSources.forEach(source => {
                 const progress = data.progress[source] || { completed: 0, total: 0, percentage: 0 };
+                const attemptedCount = Number(progress.attempted_count ?? progress.attempted ?? progress.completed ?? 0);
+                const correctCount = Number(progress.correct ?? progress.completed ?? 0);
+                const totalAvailable = Number(progress.total_questions_available ?? progress.total ?? 0);
+                const remainingCount = Number(progress.remaining_count ?? Math.max(0, totalAvailable - correctCount));
                 const card = document.createElement('div');
                 card.className = 'source-card';
                 card.setAttribute('data-source', source);
-                card.dataset.remainingQuestions = String(progress.remaining_count ?? Math.max(0, (progress.total_questions_available || 0) - (progress.completed || 0)));
-                card.dataset.totalQuestionsAvailable = String(progress.total_questions_available || 0);
-                card.dataset.completedQuestions = String(progress.completed || 0);
+                card.dataset.remainingQuestions = String(remainingCount);
+                card.dataset.totalQuestionsAvailable = String(totalAvailable);
+                card.dataset.completedQuestions = String(attemptedCount);
+                card.dataset.attemptedQuestions = String(attemptedCount);
+                card.dataset.correctQuestions = String(correctCount);
 
-                if (progress.total_questions_available > 0) {
+                if (totalAvailable > 0) {
                     card.classList.add('selected');
                 }
 
@@ -870,11 +876,11 @@
                 let statusIcon;
 
                 if (data.mode === 'tutor') {
-                    if ((progress.remaining_count ?? 0) === 0 && progress.total_questions_available > 0) {
+                    if (remainingCount === 0 && totalAvailable > 0) {
                         statusClass = 'completed';
                         statusText = 'Completed';
                         statusIcon = 'fas fa-check-circle';
-                    } else if ((progress.completed || 0) > 0) {
+                    } else if (attemptedCount > 0) {
                         statusClass = 'in-progress';
                         statusText = 'In Progress';
                         statusIcon = 'fas fa-clock';
@@ -917,13 +923,18 @@
                                 </div>
                             </div>
                             <div class="source-progress-bar">
-                                <div class="source-progress-value ${statusClass}" style="width: ${progress.percentage}%;">
+                                <div class="source-progress-value ${statusClass}" style="width: ${Number(progress.percentage || 0)}%;">
                                 </div>
                             </div>
                             <div class="source-stats">
                                 <span class="questions-count">
-                                    <i class="fas fa-book-open me-1"></i>${progress.completed}/${progress.total_questions_available} Questions${data.mode === 'tutor' ? ` covered` : ''}
+                                    <i class="fas fa-book-open me-1"></i>${data.mode === 'tutor'
+                                        ? `${correctCount}/${totalAvailable} solved correctly`
+                                        : `${progress.completed}/${totalAvailable} Questions`}
                                 </span>
+                                ${data.mode === 'tutor'
+                                    ? `<span class="questions-count"><i class="fas fa-rotate-right me-1"></i>${remainingCount} left to fix</span>`
+                                    : ''}
                             </div>
                         </div>
                     </div>
@@ -1007,7 +1018,7 @@
                 return sum + Number(card.dataset.remainingQuestions || 0);
             }, 0);
             const totalCompleted = selectedCards.reduce((sum, card) => {
-                return sum + Number(card.dataset.completedQuestions || 0);
+                return sum + Number(card.dataset.attemptedQuestions || card.dataset.completedQuestions || 0);
             }, 0);
 
             if (totalCompleted === 0) {
@@ -1028,7 +1039,7 @@
             if (!hasRemaining) {
                 fullRadio.checked = true;
                 if (tutorScopeHint) {
-                    tutorScopeHint.textContent = 'You already finished these questions. Start again if you want.';
+                    tutorScopeHint.textContent = 'Everything in these sources is already correct. Start again only if you want a full replay.';
                 }
                 return;
             }
@@ -1038,7 +1049,7 @@
             }
 
             if (tutorScopeHint) {
-                tutorScopeHint.textContent = 'Continue where you stopped, or start again.';
+                tutorScopeHint.textContent = 'Continue will load only the questions you still have wrong in tutor mode.';
             }
         }
 
@@ -1140,7 +1151,7 @@
                 }, 0);
 
                 if (tutorScope === 'remaining' && totalRemaining === 0) {
-                    alert('There are no remaining tutor questions in the selected source(s). Choose "Solve full source again" to replay them.');
+                    alert('There are no tutor mistakes left in the selected source(s). Choose "Retry" to replay the full source.');
                     return;
                 }
 

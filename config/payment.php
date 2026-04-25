@@ -10,20 +10,51 @@ return [
     |
     */
 
+    'provider' => env('PAYMENT_PROVIDER', 'manual'),
+
+    'currency' => env('PAYMENT_CURRENCY', 'EGP'),
+
+    'paymob' => [
+        'enabled' => env('PAYMOB_ENABLED', false),
+        'mode' => env('PAYMOB_MODE', 'test'),
+        'base_url' => env('PAYMOB_BASE_URL', 'https://accept.paymob.com'),
+        'public_key' => env('PAYMOB_PUBLIC_KEY'),
+        'secret_key' => env('PAYMOB_SECRET_KEY'),
+        'hmac_secret' => env('PAYMOB_HMAC_SECRET'),
+        'card_integration_id' => env('PAYMOB_CARD_INTEGRATION_ID'),
+        'wallet_integration_id' => env('PAYMOB_WALLET_INTEGRATION_ID'),
+        'iframe_id' => env('PAYMOB_IFRAME_ID'),
+    ],
+
     // Manual payment options
     'vodafone_cash' => [
+        'enabled' => env('VODAFONE_CASH_ENABLED', true),
         'number' => env('VODAFONE_CASH_NUMBER', '01XXXXXXXXX'),
         'name' => env('VODAFONE_CASH_NAME', 'MedCapsule'),
     ],
     
     'fawry' => [
+        'enabled' => env('FAWRY_ENABLED', true),
         'number' => env('FAWRY_NUMBER', 'FAWRY-ACCOUNT-NUMBER'),
         'name' => env('FAWRY_NAME', 'MedCapsule'),
     ],
     
     'instapay' => [
+        'enabled' => env('INSTAPAY_ENABLED', true),
+        'number' => env('INSTAPAY_NUMBER', env('INSTAPAY_USERNAME', 'INSTAPAY-USERNAME')),
         'username' => env('INSTAPAY_USERNAME', 'INSTAPAY-USERNAME'),
         'name' => env('INSTAPAY_NAME', 'MedCapsule'),
+    ],
+
+    'bank_transfer' => [
+        'enabled' => env('BANK_TRANSFER_ENABLED', true),
+        'bank_name' => env('BANK_TRANSFER_BANK_NAME', 'Your Bank'),
+        'account_name' => env('BANK_TRANSFER_ACCOUNT_NAME', 'MedCapsule'),
+        'iban' => env('BANK_TRANSFER_IBAN', 'EGXXXXXXXXXXXXXXXXXXXXXXXXX'),
+        'account_number' => env('BANK_TRANSFER_ACCOUNT_NUMBER'),
+        'swift' => env('BANK_TRANSFER_SWIFT'),
+        'branch' => env('BANK_TRANSFER_BRANCH'),
+        'instructions' => env('BANK_TRANSFER_INSTRUCTIONS', 'Use your full name or order reference in the transfer note, then submit the transfer reference below.'),
     ],
     
     // Payment options

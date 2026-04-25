@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    'paymob' => [
+        'enabled' => env('PAYMOB_ENABLED', false),
+        'mode' => env('PAYMOB_MODE', 'test'),
+        'base_url' => env('PAYMOB_BASE_URL', 'https://accept.paymob.com'),
+        'public_key' => env('PAYMOB_PUBLIC_KEY'),
+        'secret_key' => env('PAYMOB_SECRET_KEY'),
+        'hmac_secret' => env('PAYMOB_HMAC_SECRET'),
+        'card_integration_id' => env('PAYMOB_CARD_INTEGRATION_ID'),
+        'wallet_integration_id' => env('PAYMOB_WALLET_INTEGRATION_ID'),
+        'iframe_id' => env('PAYMOB_IFRAME_ID'),
+    ],
+
 ];

@@ -498,7 +498,7 @@
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="radio" name="tutor_scope" id="tutorScopeRemaining" value="remaining" checked>
                                 <label class="form-check-label" for="tutorScopeRemaining">
-                                    Continue solving
+                                    Continue mistakes
                                 </label>
                             </div>
                             <div class="form-check">
@@ -508,7 +508,7 @@
                                 </label>
                             </div>
                             <div class="small text-muted mt-2" id="tutorScopeHint">
-                                Continue where you stopped, or start again.
+                                Continue with the questions you still have wrong, or start again.
                             </div>
                         </div>
 

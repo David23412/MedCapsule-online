@@ -74,105 +74,143 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 })();
 
         $(document).ready(function() {
+            function normalizeRole(role) {
+                const parsedRole = Number.parseInt(role, 10);
+                return Number.isNaN(parsedRole) ? 0 : parsedRole;
+            }
+
+            function getRoleName(role) {
+                const normalizedRole = normalizeRole(role);
+                if (normalizedRole === 1) return 'Admin';
+                if (normalizedRole === 2) return 'Tutor';
+                return 'Student';
+            }
+
+            function renderUserOption(user) {
+                if (user.loading || !user.id) {
+                    return user.text;
+                }
+
+                const roleName = getRoleName(user.role);
+                const safeName = $('<span>').text(user.name || 'Unknown').html();
+                const safeEmail = $('<span>').text(user.email || '').html();
+                const safeNumber = user.number ? $('<span>').text(user.number).html() : '';
+
+                let display = '<div class="d-flex align-items-center justify-content-between w-100">';
+                display += '<div class="flex-grow-1">';
+                display += '<div class="fw-medium">' + safeName + '</div>';
+                display += '<small class="text-muted">' + safeEmail + '</small>';
+                if (safeNumber) {
+                    display += '<br><small class="text-muted">Number: ' + safeNumber + '</small>';
+                }
+                display += '</div>';
+                display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
+                display += '</div>';
+
+                return display;
+            }
+
+            function renderUserSelection(user) {
+                if (!user.id) {
+                    return user.text;
+                }
+
+                const userName = user.name || user.text || 'Unknown';
+                const userEmail = user.email || '';
+                const userNumber = user.number || '';
+
+                if (userEmail) {
+                    return userNumber ? userName + ' (' + userEmail + ' • ' + userNumber + ')' : userName + ' (' + userEmail + ')';
+                }
+
+                return userName;
+            }
+
+            function buildAjaxUserResults(data) {
+                if (!(data.success && data.users)) {
+                    console.warn('No users found or API error:', data);
+                    return { results: [] };
+                }
+
+                return {
+                    results: data.users.map(function (user) {
+                        return {
+                            id: user.id,
+                            text: user.name + ' (' + user.email + ')',
+                            name: user.name,
+                            email: user.email,
+                            number: user.number,
+                            role: normalizeRole(user.role)
+                        };
+                    })
+                };
+            }
+
+            function select2UserSearchConfig(placeholder) {
+                return {
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    minimumInputLength: 0,
+                    debug: false,
+                    ajax: {
+                        url: '/manage-access/search-users',
+                        type: 'GET',
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                query: params.term || ''
+                            };
+                        },
+                        processResults: function (data) {
+                            return buildAjaxUserResults(data);
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('Select2 AJAX Error:', {
+                                status: xhr.status,
+                                statusText: xhr.statusText,
+                                responseText: xhr.responseText,
+                                error: error
+                            });
+                        },
+                        cache: true
+                    },
+                    escapeMarkup: function (markup) {
+                        return markup;
+                    },
+                    templateResult: renderUserOption,
+                    templateSelection: renderUserSelection
+                };
+            }
+
+            function ensureSelectedOption($select, user) {
+                if (!user || !user.id) return;
+
+                const existingOption = $select.find('option[value="' + user.id + '"]');
+                const optionText = renderUserSelection(user);
+
+                if (existingOption.length > 0) {
+                    existingOption
+                        .text(optionText)
+                        .attr('data-name', user.name || '')
+                        .attr('data-email', user.email || '')
+                        .attr('data-number', user.number || '')
+                        .attr('data-role', normalizeRole(user.role));
+                    return;
+                }
+
+                const option = new Option(optionText, user.id, true, true);
+                $(option)
+                    .attr('data-name', user.name || '')
+                    .attr('data-email', user.email || '')
+                    .attr('data-number', user.number || '')
+                    .attr('data-role', normalizeRole(user.role));
+                $select.append(option);
+            }
             
             // Initialize Select2 for user search - FIXED: Show all users without typing
-            $('.user-select').select2({
-                placeholder: 'Type to search for user...',
-                allowClear: true,
-                width: '100%',
-                minimumInputLength: 0, // FIXED: Show all users immediately
-                debug: false,
-                ajax: {
-                    url: '/manage-access/search-users',
-                    type: 'GET',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            query: params.term || '' // FIXED: Send empty string if no search term
-                        };
-                    },
-                    processResults: function (data, params) {
-                        if (data.success && data.users) {
-                            return {
-                                results: data.users.map(function (user) {
-                                    return {
-                                        id: user.id,
-                                        text: user.name + ' (' + user.email + ')',
-                                        name: user.name,
-                                        email: user.email,
-                                        number: user.number,
-                                        role: user.role
-                                    };
-                                })
-                            };
-                        } else {
-                            console.warn('❌ No users found or API error:', data);
-                            return {
-                                results: []
-                            };
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('❌ Select2 AJAX Error:', {
-                            status: xhr.status,
-                            statusText: xhr.statusText,
-                            responseText: xhr.responseText,
-                            error: error
-                        });
-                    },
-                    cache: true
-                },
-                escapeMarkup: function (markup) {
-                    return markup;
-                },
-                templateResult: function (user) {
-                    if (user.loading) {
-                        return user.text;
-                    }
-                    if (!user.id) {
-                        return user.text;
-                    }
-
-                    // Get role name
-                    let roleName = 'Student';
-                    if (user.role === 1) roleName = 'Admin';
-                    else if (user.role === 2) roleName = 'Tutor';
-
-                    // Escape user data to prevent XSS
-                    var safeName = $('<span>').text(user.name || 'Unknown').html();
-                    var safeEmail = $('<span>').text(user.email || '').html();
-                    var safeNumber = user.number ? $('<span>').text(user.number).html() : '';
-
-                    // Create display with role badge
-                    let display = '<div class="d-flex align-items-center justify-content-between w-100">';
-                    display += '<div class="flex-grow-1">';
-                    display += '<div class="fw-medium">' + safeName + '</div>';
-                    display += '<small class="text-muted">' + safeEmail + '</small>';
-                    if (safeNumber) {
-                        display += '<br><small class="text-muted">Number: ' + safeNumber + '</small>';
-                    }
-                    display += '</div>';
-                    display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
-                    display += '</div>';
-
-                    return display;
-                },
-                templateSelection: function (user) {
-                    if (!user.id) {
-                        return user.text;
-                    }
-                    // FIXED: Handle both AJAX results and pre-loaded options
-                    const userName = user.name || user.text || 'Unknown';
-                    const userEmail = user.email || '';
-                    const userNumber = user.number || '';
-                    
-                    if (userEmail) {
-                        return userNumber ? userName + ' (' + userEmail + ' • ' + userNumber + ')' : userName + ' (' + userEmail + ')';
-                    }
-                    return userName;
-                }
-            });
+            $('.user-select').select2(select2UserSearchConfig('Type to search for user...'));
             
             // GRANT ACCESS BUTTON HANDLER
             $('#grantAccessBtn').on('click', function(e) {
@@ -342,10 +380,10 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             }
             
             // Initialize Admin User Select2
-            $('.admin-user-select').select2({
-                placeholder: 'Type to search for user...',
-                allowClear: true,
-                width: '100%'
+            $('.admin-user-select').select2(select2UserSearchConfig('Type to search for user...'));
+
+            $('.admin-user-select').on('select2:select', function(event) {
+                ensureSelectedOption($(this), event.params.data);
             });
             
             // Admin Management Variables
@@ -367,16 +405,16 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
 
                         selectedAdminUserId = userId;
-                        selectedAdminIsAdmin = userRole === 1; // FIXED: Store boolean correctly
+                        const normalizedRole = normalizeRole(userRole);
+                        selectedAdminIsAdmin = normalizedRole === 1;
 
-                        // FIXED: Proper role handling - userRole is integer (1=admin, 2=tutor, 3=student)
-                        const displayRole = userRole === 1 ? 'ADMIN' : (userRole === 2 ? 'TUTOR' : 'STUDENT');
+                        const displayRole = normalizedRole === 1 ? 'ADMIN' : (normalizedRole === 2 ? 'TUTOR' : 'STUDENT');
 
                         // Update UI
                         $('#selectedAdminUserName').text(userName || 'Unknown');
                         $('#selectedAdminUserEmail').text(userEmail || 'No Email');
                         $('#selectedAdminUserNumber').text(userNumber ? `Number: ${userNumber}` : '');
-                        $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(userRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
+                        $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(normalizedRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
                         $('#selectedUserInfo').show();
 
                         // FIXED: Update buttons - compare with boolean true/false
@@ -489,6 +527,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             showNotification('success', 'Admin Promoted!', response.message || 'User promoted to administrator successfully.');
                             // Update UI in place
                             selectedAdminIsAdmin = true;
+                            $('#admin_user_id').find('option:selected').attr('data-role', 1);
                             $('#selectedAdminUserStatus').removeClass('bg-secondary').addClass('bg-danger').text('ADMIN');
                             btn.prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
                             $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
@@ -537,6 +576,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                             showNotification('success', 'Admin Revoked', response.message || 'Administrator privileges revoked successfully.');
                             // Update UI in place
                             selectedAdminIsAdmin = false;
+                            $('#admin_user_id').find('option:selected').attr('data-role', 3);
                             $('#selectedAdminUserStatus').removeClass('bg-danger').addClass('bg-secondary').text('STUDENT');
                             btn.prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
                             $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');

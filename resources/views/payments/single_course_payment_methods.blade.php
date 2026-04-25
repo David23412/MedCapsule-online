@@ -94,6 +94,15 @@
             <i class="fas fa-info-circle me-1"></i> Admin: All payment methods visible
         </div>
     @endif
+
+    <div class="alert alert-light border mb-4">
+        <div class="fw-semibold mb-1">Payment setup</div>
+        <div class="small text-muted">
+            <strong>IBAN</strong> is your bank account identifier for manual bank transfers.
+            <strong>Paymob</strong> is a payment gateway and needs merchant keys from the Paymob dashboard.
+            You can start immediately with bank transfer, Vodafone Cash, Fawry, or InstaPay, then enable Paymob later.
+        </div>
+    </div>
     
     <!-- Payment Method Tabs -->
     <ul class="nav nav-tabs nav-fill mb-0" id="paymentMethodTabs" role="tablist">
@@ -124,6 +133,17 @@
                 <i class="fas fa-credit-card me-2"></i>InstaPay
             </button>
         </li>
+
+        @if(config('payment.bank_transfer.enabled', true) || Auth::user()->role === 'admin')
+            <li class="nav-item" role="presentation">
+                <button class="nav-link payment-tab-bank py-3" id="bank-transfer-tab" data-bs-toggle="tab" data-bs-target="#bank-transfer-panel" type="button" role="tab">
+                    <i class="fas fa-university me-2"></i>Bank Transfer
+                    @if(Auth::user()->role === 'admin' && !config('payment.bank_transfer.enabled', true))
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">Disabled</span>
+                    @endif
+                </button>
+            </li>
+        @endif
     </ul>
     
     <!-- Payment Method Details -->
@@ -178,6 +198,41 @@
                 <i class="fas fa-check-circle me-2"></i>Auto-verify with <code>IP</code> followed by your transaction number
             </div>
         </div>
+
+        @if(config('payment.bank_transfer.enabled', true) || Auth::user()->role === 'admin')
+            <div class="tab-pane fade" id="bank-transfer-panel" role="tabpanel">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="text-primary me-3"><i class="fas fa-university fa-2x"></i></div>
+                    <div class="fw-bold fs-5">Transfer {{ $course['price'] }} EGP to this bank account:</div>
+                </div>
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Bank Name</div>
+                    <div class="fw-semibold">{{ config('payment.bank_transfer.bank_name', 'Your Bank') }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Account Name</div>
+                    <div class="fw-semibold">{{ config('payment.bank_transfer.account_name', 'MedCapsule') }}</div>
+                </div>
+                <div class="d-flex align-items-center my-3">
+                    <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-6">{{ config('payment.bank_transfer.iban', 'EGXXXXXXXXXXXXXXXXXXXXXXXXX') }}</code>
+                    <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.bank_transfer.iban', 'EGXXXXXXXXXXXXXXXXXXXXXXXXX') }}">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                @if(config('payment.bank_transfer.account_number'))
+                    <div class="small text-muted mb-2">Account Number: {{ config('payment.bank_transfer.account_number') }}</div>
+                @endif
+                @if(config('payment.bank_transfer.swift'))
+                    <div class="small text-muted mb-2">SWIFT: {{ config('payment.bank_transfer.swift') }}</div>
+                @endif
+                @if(config('payment.bank_transfer.branch'))
+                    <div class="small text-muted mb-3">Branch: {{ config('payment.bank_transfer.branch') }}</div>
+                @endif
+                <div class="text-success fs-6">
+                    <i class="fas fa-check-circle me-2"></i>{{ config('payment.bank_transfer.instructions') }}
+                </div>
+            </div>
+        @endif
     </div>
     
     <!-- Payment Form -->
@@ -189,9 +244,9 @@
         
         <!-- Transaction ID Input -->
         <div class="mb-4">
-            <label for="transactionId" class="form-label">Transaction Code</label>
+            <label for="transactionId" class="form-label" id="transactionIdLabel">Transaction Code</label>
             <div class="input-group">
-                <input type="text" class="form-control form-control-lg" id="transactionId" name="transaction_id" placeholder="Enter anything" required>
+                <input type="text" class="form-control form-control-lg" id="transactionId" name="transaction_id" placeholder="Enter your transfer or transaction reference" required>
             </div>
         </div>
         
@@ -400,8 +455,41 @@ function getCurrentPaymentMethod() {
         if (activeTab.id === 'vodafone-tab') return 'vodafone_cash';
         if (activeTab.id === 'fawry-tab') return 'fawry';
         if (activeTab.id === 'instapay-tab') return 'instapay';
+        if (activeTab.id === 'bank-transfer-tab') return 'bank_transfer';
     }
     return 'vodafone_cash'; // default
+}
+
+function updateTransactionFieldCopy(paymentMethod) {
+    const label = document.getElementById('transactionIdLabel');
+    const input = document.getElementById('transactionId');
+
+    if (!label || !input) {
+        return;
+    }
+
+    const copyByMethod = {
+        vodafone_cash: {
+            label: 'Vodafone Cash Transaction Code',
+            placeholder: 'Example: VC1234567890'
+        },
+        fawry: {
+            label: 'Fawry Reference Number',
+            placeholder: 'Example: FWY123456789012'
+        },
+        instapay: {
+            label: 'InstaPay Reference Number',
+            placeholder: 'Example: IP12345678901234'
+        },
+        bank_transfer: {
+            label: 'Bank Transfer Reference',
+            placeholder: 'Enter the transfer reference from your bank app or receipt'
+        }
+    };
+
+    const selected = copyByMethod[paymentMethod] || copyByMethod.vodafone_cash;
+    label.textContent = selected.label;
+    input.placeholder = selected.placeholder;
 }
 
 // Initialize payment form handling
@@ -425,6 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     paymentMethodField.value = paymentMethod;
                     console.log('Payment method updated to:', paymentMethod);
                 }
+                updateTransactionFieldCopy(paymentMethod);
             }, 100); // Small delay to ensure tab is active
         });
     });
@@ -433,6 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (paymentMethodField) {
         paymentMethodField.value = getCurrentPaymentMethod();
         console.log('Initial payment method set to:', paymentMethodField.value);
+        updateTransactionFieldCopy(paymentMethodField.value);
     }
 
     form.addEventListener('submit', function(e) {
@@ -545,6 +635,16 @@ document.addEventListener('DOMContentLoaded', function() {
         background-color: rgba(193, 53, 132, 0.1) !important;
         color: #833ab4 !important;
         border-color: rgba(193, 53, 132, 0.3) !important;
+    }
+
+    .payment-tab-bank {
+        color: #1565c0;
+    }
+
+    .payment-tab-bank:hover, .payment-tab-bank.active {
+        background-color: #e3f2fd !important;
+        color: #0d47a1 !important;
+        border-color: #90caf9 !important;
     }
     
     /* Code Styles */

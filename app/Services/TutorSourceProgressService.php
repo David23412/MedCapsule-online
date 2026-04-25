@@ -59,15 +59,16 @@ class TutorSourceProgressService
 
         $completedCount = (int) ($record->completed_count ?? 0);
         $correctCount = (int) ($record->correct_count ?? 0);
-        $remainingCount = max(0, $availableQuestions - $completedCount);
+        $remainingCount = max(0, $availableQuestions - $correctCount);
 
         return [
             'source' => $normalizedSource,
             'completed' => $completedCount,
+            'attempted' => $completedCount,
             'correct' => $correctCount,
             'total' => $availableQuestions,
             'remaining_count' => $remainingCount,
-            'percentage' => $availableQuestions > 0 ? round(($completedCount / $availableQuestions) * 100, 2) : 0,
+            'percentage' => $availableQuestions > 0 ? round(($correctCount / $availableQuestions) * 100, 2) : 0,
             'accuracy_percentage' => $completedCount > 0 ? round(($correctCount / $completedCount) * 100, 2) : 0,
             'has_attempts' => $completedCount > 0,
             'completed_question_ids' => $this->normalizeQuestionIds($record->completed_question_ids ?? []),
@@ -184,7 +185,7 @@ class TutorSourceProgressService
 
         foreach ($normalizedSources as $source) {
             $progress = $this->getSourceProgress($userId, $topic, $source);
-            $completedIds = [...$completedIds, ...($progress['completed_question_ids'] ?? [])];
+            $completedIds = [...$completedIds, ...($progress['correct_question_ids'] ?? [])];
         }
 
         $completedIds = array_values(array_unique(array_map('intval', $completedIds)));
@@ -346,15 +347,16 @@ class TutorSourceProgressService
 
         $completedCount = count($completedIds);
         $correctCount = count($correctIds);
-        $remainingCount = max(0, $availableQuestions - $completedCount);
+        $remainingCount = max(0, $availableQuestions - $correctCount);
 
         return [
             'source' => $source,
             'completed' => $completedCount,
+            'attempted' => $completedCount,
             'correct' => $correctCount,
             'total' => $availableQuestions,
             'remaining_count' => $remainingCount,
-            'percentage' => $availableQuestions > 0 ? round(($completedCount / $availableQuestions) * 100, 2) : 0,
+            'percentage' => $availableQuestions > 0 ? round(($correctCount / $availableQuestions) * 100, 2) : 0,
             'accuracy_percentage' => $completedCount > 0 ? round(($correctCount / $completedCount) * 100, 2) : 0,
             'has_attempts' => $completedCount > 0,
             'completed_question_ids' => $completedIds,

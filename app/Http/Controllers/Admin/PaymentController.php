@@ -169,7 +169,7 @@ class PaymentController extends Controller
 
             // Validate the request
             $request->validate([
-                'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay',
+                'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay,bank_transfer',
                 'transaction_id' => 'required|string|min:1|max:255',
                 'amount' => 'required|numeric|min:0'
             ]);

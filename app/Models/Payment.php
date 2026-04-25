@@ -34,6 +34,8 @@ class Payment extends Model
     ];
 
     const PAYMENT_METHODS = [
+        'bank_transfer' => 'Bank Transfer',
+        'paymob' => 'Paymob',
         'vodafone_cash' => 'Vodafone Cash',
         'fawry' => 'Fawry',
         'instapay' => 'InstaPay',

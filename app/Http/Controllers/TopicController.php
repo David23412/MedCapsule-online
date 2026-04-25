@@ -528,23 +528,24 @@ class TopicController extends Controller
 
                 if ($mode === 'tutor') {
                     $modeData = $tutorProgressMap[$source] ?? null;
-                    $completed = (int) ($modeData['completed'] ?? 0);
+                    $attempted = (int) ($modeData['attempted'] ?? $modeData['completed'] ?? 0);
                     $correct = (int) ($modeData['correct'] ?? 0);
-                    $remainingCount = (int) ($modeData['remaining_count'] ?? max(0, $count - $completed));
+                    $remainingCount = (int) ($modeData['remaining_count'] ?? max(0, $count - $correct));
 
                     $formattedProgress[$sanitizedSource] = [
-                        'completed' => $completed,
+                        'completed' => $correct,
+                        'attempted_count' => $attempted,
                         'correct' => $correct,
-                        'total' => $completed,
+                        'total' => $count,
                         'total_questions_available' => $count,
                         'remaining_count' => $remainingCount,
-                        'percentage' => $count > 0 ? round(($completed / $count) * 100, 2) : 0,
-                        'accuracy_percentage' => $completed > 0 ? round(($correct / $completed) * 100, 2) : 0,
-                        'has_attempts' => $completed > 0,
+                        'percentage' => $count > 0 ? round(($correct / $count) * 100, 2) : 0,
+                        'accuracy_percentage' => $attempted > 0 ? round(($correct / $attempted) * 100, 2) : 0,
+                        'has_attempts' => $attempted > 0,
                         'can_resume_remaining' => $remainingCount > 0,
                     ];
 
-                    $totalCompleted += $completed;
+                    $totalCompleted += $correct;
                 } else {
                     $modeData = $modeProgress['sources'][$source] ?? null;
                     $completed = $modeData ? $modeData['score'] : 0;
