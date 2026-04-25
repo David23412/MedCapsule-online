@@ -214,6 +214,140 @@ html[data-admin-theme='dark'] .profile-circle {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
+html[data-admin-theme='dark'] .stats-card,
+html[data-admin-theme='dark'] .stat-card,
+html[data-admin-theme='dark'] .review-section,
+html[data-admin-theme='dark'] .chart-container,
+html[data-admin-theme='dark'] .topic-review-item,
+html[data-admin-theme='dark'] .sidebar-profile-link,
+html[data-admin-theme='dark'] .sidebar-insight-card,
+html[data-admin-theme='dark'] .sidebar-stat-card,
+html[data-admin-theme='dark'] .sidebar-game-plan,
+html[data-admin-theme='dark'] .sidebar-task-item,
+html[data-admin-theme='dark'] .course-card,
+html[data-admin-theme='dark'] .question-sidebar,
+html[data-admin-theme='dark'] .question-circle,
+html[data-admin-theme='dark'] .option-card,
+html[data-admin-theme='dark'] .quiz-interface > .container,
+html[data-admin-theme='dark'] .main-content > .container,
+html[data-admin-theme='dark'] .sources-info,
+html[data-admin-theme='dark'] .topic-header,
+html[data-admin-theme='dark'] .streak-indicator,
+html[data-admin-theme='dark'] .case-filters,
+html[data-admin-theme='dark'] .search-container,
+html[data-admin-theme='dark'] .topics-container {
+    background: var(--admin-dark-surface) !important;
+    color: var(--admin-dark-text) !important;
+    border-color: var(--admin-dark-border) !important;
+    box-shadow: var(--admin-dark-shadow) !important;
+}
+
+html[data-admin-theme='dark'] .profile-header,
+html[data-admin-theme='dark'] .hero-section {
+    background: linear-gradient(180deg, rgba(11, 11, 12, 0.96) 0%, rgba(18, 19, 22, 0.92) 100%) !important;
+    color: var(--admin-dark-text) !important;
+    border-color: var(--admin-dark-border) !important;
+}
+
+html[data-admin-theme='dark'] .topics-mobile-header,
+html[data-admin-theme='dark'] .mistakes-mobile-header,
+html[data-admin-theme='dark'] .mistakes-sidebar-backdrop,
+html[data-admin-theme='dark'] .topics-sidebar-backdrop {
+    background-color: rgba(2, 2, 2, 0.88) !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .topics-mobile-header,
+html[data-admin-theme='dark'] .mistakes-mobile-header {
+    border-color: var(--admin-dark-border) !important;
+}
+
+html[data-admin-theme='dark'] .course-header,
+html[data-admin-theme='dark'] .course-header::before,
+html[data-admin-theme='dark'] .course-header::after {
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+html[data-admin-theme='dark'] .course-header {
+    color: inherit !important;
+}
+
+html[data-admin-theme='dark'] .leaderboard-header,
+html[data-admin-theme='dark'] .sidebar-insight-head,
+html[data-admin-theme='dark'] .sidebar-game-plan-head,
+html[data-admin-theme='dark'] .topic-header h1,
+html[data-admin-theme='dark'] .question-text,
+html[data-admin-theme='dark'] .sources-info,
+html[data-admin-theme='dark'] .sidebar-profile-name,
+html[data-admin-theme='dark'] .sidebar-logo-text,
+html[data-admin-theme='dark'] .sidebar-logo-sub,
+html[data-admin-theme='dark'] .sidebar-insight-copy,
+html[data-admin-theme='dark'] .sidebar-task-copy span,
+html[data-admin-theme='dark'] .sidebar-stat-card small,
+html[data-admin-theme='dark'] .sidebar-chip,
+html[data-admin-theme='dark'] .rank-emoji,
+html[data-admin-theme='dark'] .text-muted {
+    color: var(--admin-dark-text-soft) !important;
+}
+
+html[data-admin-theme='dark'] .sidebar-logo-text,
+html[data-admin-theme='dark'] .sidebar-profile-name,
+html[data-admin-theme='dark'] .sidebar-game-plan-title,
+html[data-admin-theme='dark'] .sidebar-insight-head,
+html[data-admin-theme='dark'] .topic-header h1,
+html[data-admin-theme='dark'] h5,
+html[data-admin-theme='dark'] h6 {
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .privacy-control {
+    background: var(--admin-dark-surface-elevated) !important;
+    border-color: var(--admin-dark-border-strong) !important;
+}
+
+html[data-admin-theme='dark'] .privacy-control:hover {
+    background: var(--admin-dark-surface-muted) !important;
+}
+
+html[data-admin-theme='dark'] .privacy-control-label {
+    color: var(--admin-dark-text-soft) !important;
+}
+
+html[data-admin-theme='dark'] .privacy-slider {
+    background-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+html[data-admin-theme='dark'] .privacy-switch input:checked + .privacy-slider {
+    background-color: #10b981 !important;
+}
+
+html[data-admin-theme='dark'] .dropdown-menu,
+html[data-admin-theme='dark'] .dropdown-item,
+html[data-admin-theme='dark'] .nav-links .nav-link {
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .dropdown-menu {
+    background: var(--admin-dark-surface) !important;
+}
+
+html[data-admin-theme='dark'] .question-circle {
+    border: 1px solid var(--admin-dark-border) !important;
+}
+
+html[data-admin-theme='dark'] .question-circle.active,
+html[data-admin-theme='dark'] .sidebar .nav-link.active {
+    background: rgba(78, 115, 223, 0.24) !important;
+    color: #fff !important;
+}
+
+html[data-admin-theme='dark'] .sidebar,
+html[data-admin-theme='dark'] .question-sidebar {
+    background: var(--admin-dark-surface) !important;
+    border-color: var(--admin-dark-border) !important;
+}
+
 html[data-admin-theme='dark'] [data-admin-theme-toggle] {
     display: inline-flex;
     align-items: center;
@@ -288,7 +422,9 @@ html[data-admin-theme='dark'] canvas {
 }
 
 .admin-theme-toggle.admin-theme-toggle--sidebar {
-    width: calc(100% - 2rem);
+    width: 40px;
+    height: 40px;
     justify-content: center;
     margin: 0 1rem 1rem;
+    padding: 0;
 }

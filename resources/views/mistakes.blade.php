@@ -15,6 +15,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.admin-dark-mode-head')
 
     <link rel="stylesheet" href="{{ asset('css/mistakes-page.css') }}?v={{ filemtime(public_path('css/mistakes-page.css')) }}">
     

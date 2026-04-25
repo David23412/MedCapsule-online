@@ -37,6 +37,15 @@
                     </li>
                     
                     @guest
+                        <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-2 d-flex justify-content-center">
+                            <button type="button"
+                                    class="admin-theme-icon-button"
+                                    data-admin-theme-toggle
+                                    aria-pressed="false"
+                                    aria-label="Toggle dark mode">
+                                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                            </button>
+                        </li>
                         <li class="nav-item mobile-nav-item">
                             <a class="nav-link w-100 mobile-nav-link" href="{{ route('login') }}">Login</a>
                         </li>
@@ -44,22 +53,20 @@
                             <a class="nav-link w-100 mobile-nav-link" href="{{ route('register') }}">Sign Up</a>
                         </li>
                     @else
+                        <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-2 d-flex justify-content-center">
+                            <button type="button"
+                                    class="admin-theme-icon-button"
+                                    data-admin-theme-toggle
+                                    aria-pressed="false"
+                                    aria-label="Toggle dark mode">
+                                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                            </button>
+                        </li>
+
                         <x-navigation-dropdown />
                         
                         <!-- Notification Bell Component -->
                         <x-notification-bell :unread-count="$navigationUnreadCount" />
-
-                        @if(Auth::user()->isAdmin())
-                            <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-2 d-flex justify-content-center">
-                                <button type="button"
-                                        class="admin-theme-icon-button"
-                                        data-admin-theme-toggle
-                                        aria-pressed="false"
-                                        aria-label="Toggle dark mode">
-                                    <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
-                                </button>
-                            </li>
-                        @endif
                         
                         <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-3 d-flex justify-content-center">
                             <a href="{{ route('profile') }}" class="nav-link d-flex align-items-center justify-content-center" style="min-height: 44px; min-width: 44px;">
@@ -144,6 +151,13 @@
         .mobile-nav-link {
             padding: 12px 16px;
             font-size: 1.1rem;
+        }
+        .admin-theme-icon-button {
+            width: 100%;
+            min-height: 44px;
+            border-radius: 12px;
+            justify-content: flex-start;
+            padding: 0 16px;
         }
     }
 

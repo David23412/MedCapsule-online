@@ -23,6 +23,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.admin-dark-mode-head')
     <link rel="stylesheet" href="{{ asset('css/profile-page.css') }}">
     <style>
         body {
@@ -111,6 +112,13 @@
         .privacy-control.updating {
             opacity: 0.6;
             pointer-events: none;
+        }
+        .profile-toggle-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
         }
     </style>
 </head>
@@ -524,12 +532,21 @@
                 <div class="stats-card review-section animate-fadeInUp" style="animation-delay: 0.7s">
                     <div class="leaderboard-header">
                         <h5 class="mb-0"><i class="fas fa-medal me-2" style="color: #FFD700;"></i>Leaderboard (Top 10)</h5>
-                        <div class="privacy-control" title="Toggle your visibility on the leaderboard">
-                            <span class="privacy-control-label">Appear on leaderboard</span>
-                            <label class="privacy-switch">
-                                <input type="checkbox" id="leaderboardToggle" {{ ($currentUserView['show_on_leaderboard'] ?? true) ? 'checked' : '' }}>
-                                <span class="privacy-slider"></span>
-                            </label>
+                        <div class="profile-toggle-group">
+                            <div class="privacy-control" title="Toggle dark mode for the entire platform">
+                                <span class="privacy-control-label">Dark mode</span>
+                                <label class="privacy-switch">
+                                    <input type="checkbox" id="darkModeToggle">
+                                    <span class="privacy-slider"></span>
+                                </label>
+                            </div>
+                            <div class="privacy-control" title="Toggle your visibility on the leaderboard">
+                                <span class="privacy-control-label">Appear on leaderboard</span>
+                                <label class="privacy-switch">
+                                    <input type="checkbox" id="leaderboardToggle" {{ ($currentUserView['show_on_leaderboard'] ?? true) ? 'checked' : '' }}>
+                                    <span class="privacy-slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     @if($leaderboard->isEmpty())
@@ -615,6 +632,27 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="{{ asset('js/profile-page.js') }}" defer></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const darkModeToggle = document.getElementById('darkModeToggle');
+
+            if (!darkModeToggle || !window.MedCapsuleTheme) {
+                return;
+            }
+
+            const syncDarkModeToggle = function () {
+                darkModeToggle.checked = window.MedCapsuleTheme.isDarkModeEnabled();
+            };
+
+            syncDarkModeToggle();
+
+            darkModeToggle.addEventListener('change', function () {
+                window.MedCapsuleTheme.setTheme(darkModeToggle.checked ? 'dark' : 'light');
+            });
+
+            window.addEventListener('medcapsule-theme-change', syncDarkModeToggle);
+        });
+    </script>
 
 </body>
 </html>

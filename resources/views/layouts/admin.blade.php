@@ -238,12 +238,9 @@
         </ul>
         <hr class="sidebar-divider d-none d-md-block">
 
-        @if(auth()->check() && auth()->user()->isAdmin())
-            <button type="button" class="admin-theme-toggle admin-theme-toggle--sidebar" data-admin-theme-toggle aria-pressed="false">
-                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
-                <span data-admin-theme-label>Dark Mode Off</span>
-            </button>
-        @endif
+        <button type="button" class="admin-theme-toggle admin-theme-toggle--sidebar" data-admin-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+            <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+        </button>
         
         <ul class="nav flex-column mt-auto">
             <li class="nav-item">

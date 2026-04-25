@@ -11,6 +11,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.admin-dark-mode-head')
     <!-- Optimized CSS Loading -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -138,6 +139,13 @@
                 </svg>
             </a>
             <div class="d-flex">
+                <button type="button"
+                        class="admin-theme-icon-button me-2"
+                        data-admin-theme-toggle
+                        aria-pressed="false"
+                        aria-label="Toggle dark mode">
+                    <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                </button>
                 <a href="{{ route('login') }}" class="btn btn-outline-primary btn-sm">
                     Login
                 </a>
@@ -244,6 +252,7 @@
 
     <!-- Optimized JS Loading -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    @include('partials.admin-dark-mode-script')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Password toggle logic

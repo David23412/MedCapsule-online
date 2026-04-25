@@ -179,15 +179,13 @@
                 <i class="fas fa-bell me-2"></i>Notifications
             </a>
         </li>
-        @if($user->isAdmin())
-            <li><hr class="dropdown-divider"></li>
-            <li class="px-2 py-1">
-                <button type="button" class="admin-theme-toggle w-100 justify-content-center" data-admin-theme-toggle aria-pressed="false">
-                    <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
-                    <span data-admin-theme-label>Dark mode</span>
-                </button>
-            </li>
-        @endif
+        <li><hr class="dropdown-divider"></li>
+        <li class="px-2 py-1">
+            <button type="button" class="admin-theme-toggle w-100 justify-content-center" data-admin-theme-toggle aria-pressed="false">
+                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                <span data-admin-theme-label>Dark mode</span>
+            </button>
+        </li>
         <li>
             <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
                 @csrf

@@ -1,3 +1,25 @@
+<script>
+(function() {
+    try {
+        if (!document.querySelector('link[data-medcapsule-theme-stylesheet]')) {
+            var link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '{{ asset('css/admin-dark-mode.css') }}';
+            link.setAttribute('data-medcapsule-theme-stylesheet', 'true');
+            document.head.appendChild(link);
+        }
+
+        if (window.localStorage.getItem('medcapsule-theme') === 'dark') {
+            document.documentElement.setAttribute('data-admin-theme', 'dark');
+        }
+    } catch (error) {
+        console.warn('Unable to bootstrap theme styles.', error);
+    }
+})();
+</script>
+
+@include('partials.admin-dark-mode-script')
+
 <!-- GOLDEN STANDARD FOUC ELIMINATOR PRELOADER - EXACT SAME DESIGN -->
 <div id="lightningPreloader" class="lightning-preloader">
     <div class="preloader-container">
