@@ -2237,7 +2237,7 @@
             position: fixed;
             bottom: 24px;
             right: 24px;
-            z-index: 1050;
+            z-index: 99999;
             width: 52px;
             height: 52px;
             border-radius: 50%;
@@ -2274,7 +2274,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 1040;
+            z-index: 99998;
             display: none;
             pointer-events: none;
         }
@@ -2299,7 +2299,7 @@
             bottom: 90px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 1051;
+            z-index: 99999;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -2454,6 +2454,8 @@
         /* ── Body class: annotation mode active (scrolling allowed) ─ */
         body.annot-mode-active {
             /* Scrolling is intentionally NOT blocked — users scroll normally */
+            position: relative !important;
+            overflow-x: hidden !important;
         }
 
         /* ── Mobile / small-tablet responsive ───────────── */

@@ -87,23 +87,27 @@
         var body = document.body;
         var zoom = getBodyZoom();
 
+        // When body zoom is used, metrics like scrollHeight often return 
+        // the visually scaled value. We need the unscaled CSS pixels.
         var viewportWidth = window.innerWidth / zoom;
         var viewportHeight = window.innerHeight / zoom;
 
         var width = Math.max(
             viewportWidth,
-            doc ? doc.scrollWidth : 0,
-            doc ? doc.clientWidth : 0,
-            body ? body.scrollWidth : 0,
-            body ? body.clientWidth : 0
+            (doc ? doc.scrollWidth : 0) / zoom,
+            (doc ? doc.clientWidth : 0) / zoom,
+            (body ? body.scrollWidth : 0) / zoom,
+            (body ? body.clientWidth : 0) / zoom
         );
 
         var height = Math.max(
             viewportHeight,
-            doc ? doc.scrollHeight : 0,
-            doc ? doc.clientHeight : 0,
-            body ? body.scrollHeight : 0,
-            body ? body.clientHeight : 0
+            (doc ? doc.scrollHeight : 0) / zoom,
+            (doc ? doc.clientHeight : 0) / zoom,
+            (body ? body.scrollHeight : 0) / zoom,
+            (body ? body.clientHeight : 0) / zoom,
+            // Fallback for very long documents where metrics might be capped
+            (window.pageYOffset + window.innerHeight) / zoom + 500 
         );
 
         return {
@@ -124,18 +128,25 @@
 
     /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing + body zoom). */
     function getCanvasPoint(e) {
-        var zoom = getBodyZoom();
-        var scroll = getScrollOffsets();
+        var rect = canvas.getBoundingClientRect();
+        var dpr  = window.devicePixelRatio || 1;
+        
+        // CSS dimensions as intended (unscaled by zoom if possible)
         var cssWidth = Math.max(canvasCssWidth || canvas.clientWidth || 0, 1);
         var cssHeight = Math.max(canvasCssHeight || canvas.clientHeight || 0, 1);
+        
+        // Scale factors between CSS pixels and backing store pixels
         var scaleX = canvas.width  / cssWidth;
         var scaleY = canvas.height / cssHeight;
-        var docX = (e.clientX / zoom) + scroll.left;
-        var docY = (e.clientY / zoom) + scroll.top;
+
+        // Pointer position relative to the canvas element
+        // rect.left/top account for scroll and zoom automatically!
+        var x = (e.clientX - rect.left);
+        var y = (e.clientY - rect.top);
 
         return {
-            x: docX * scaleX,
-            y: docY * scaleY,
+            x: x * scaleX,
+            y: y * scaleY,
             pressure: e.pressure ?? 0.5
         };
     }
@@ -718,6 +729,7 @@
         overlay = document.createElement('div');
         overlay.id = 'annot-overlay';
         overlay.className = 'annot-overlay';
+        overlay.style.zIndex = '20000'; // Ensure it's above everything, even modals
 
         // Canvas
         canvas = document.createElement('canvas');
