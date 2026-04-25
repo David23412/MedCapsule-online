@@ -48,6 +48,18 @@
                         
                         <!-- Notification Bell Component -->
                         <x-notification-bell :unread-count="$navigationUnreadCount" />
+
+                        @if(Auth::user()->isAdmin())
+                            <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-2 d-flex justify-content-center">
+                                <button type="button"
+                                        class="admin-theme-icon-button"
+                                        data-admin-theme-toggle
+                                        aria-pressed="false"
+                                        aria-label="Toggle dark mode">
+                                    <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                                </button>
+                            </li>
+                        @endif
                         
                         <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-3 d-flex justify-content-center">
                             <a href="{{ route('profile') }}" class="nav-link d-flex align-items-center justify-content-center" style="min-height: 44px; min-width: 44px;">
@@ -214,6 +226,29 @@
 
     .profile-circle:hover {
         transform: scale(1.1);
+    }
+
+    .admin-theme-icon-button {
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .admin-theme-icon-button:hover {
+        background: rgba(15, 23, 42, 0.06);
+        color: #0f172a;
+        transform: translateY(-1px);
+    }
+
+    .admin-theme-icon-button.is-active {
+        color: #111827;
     }
 
     /* Streak Indicator */

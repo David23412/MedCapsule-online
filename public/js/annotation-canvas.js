@@ -63,6 +63,8 @@
     let cursorCircle  = null;          // visual cursor circle for eraser/highlighter
     let strokeStarted = false;         // whether actual drawing has begun for current gesture
     let tapDownPoint  = null;          // record pointer-down position for tap detection
+    let canvasCssWidth = 0;            // cached CSS width of the annotation surface
+    let canvasCssHeight = 0;           // cached CSS height of the annotation surface
 
     /* ── helpers ───────────────────────────────────────── */
 
@@ -124,9 +126,10 @@
     function getCanvasPoint(e) {
         var zoom = getBodyZoom();
         var scroll = getScrollOffsets();
-        var cssSize = getCanvasCssSize();
-        var scaleX = canvas.width  / Math.max(cssSize.width, 1);
-        var scaleY = canvas.height / Math.max(cssSize.height, 1);
+        var cssWidth = Math.max(canvasCssWidth || canvas.clientWidth || 0, 1);
+        var cssHeight = Math.max(canvasCssHeight || canvas.clientHeight || 0, 1);
+        var scaleX = canvas.width  / cssWidth;
+        var scaleY = canvas.height / cssHeight;
         var docX = (e.clientX / zoom) + scroll.left;
         var docY = (e.clientY / zoom) + scroll.top;
 
@@ -553,30 +556,59 @@
     }
 
     /* ── resize handler ────────────────────────────────── */
-    function resizeCanvas() {
+    function resizeCanvas(force) {
         if (!canvas) return;
 
-        // Save current drawing
-        var dataURL = canvas.toDataURL('image/png');
         var size = getCanvasCssSize();
-
+        var nextCssWidth = Math.max(1, size.width);
+        var nextCssHeight = Math.max(1, size.height);
         var dpr = window.devicePixelRatio || 1;
-        canvas.width  = Math.max(1, Math.floor(size.width * dpr));
-        canvas.height = Math.max(1, Math.floor(size.height * dpr));
-        canvas.style.width  = size.width + 'px';
-        canvas.style.height = size.height + 'px';
+        var nextPixelWidth = Math.max(1, Math.floor(nextCssWidth * dpr));
+        var nextPixelHeight = Math.max(1, Math.floor(nextCssHeight * dpr));
 
-        if (overlay) {
-            overlay.style.width = size.width + 'px';
-            overlay.style.height = size.height + 'px';
+        if (!force && canvas.width === nextPixelWidth && canvas.height === nextPixelHeight) {
+            canvasCssWidth = nextCssWidth;
+            canvasCssHeight = nextCssHeight;
+            canvas.style.width = nextCssWidth + 'px';
+            canvas.style.height = nextCssHeight + 'px';
+
+            if (overlay) {
+                overlay.style.width = nextCssWidth + 'px';
+                overlay.style.height = nextCssHeight + 'px';
+            }
+            return;
         }
 
-        // Restore drawing
-        var img = new Image();
-        img.onload = function () {
-            ctx.drawImage(img, 0, 0);
-        };
-        img.src = dataURL;
+        // Preserve the drawing synchronously so scroll-triggered resizes
+        // cannot repaint old content on top of fresh strokes afterward.
+        var snapshot = null;
+        if (canvas.width > 0 && canvas.height > 0) {
+            snapshot = document.createElement('canvas');
+            snapshot.width = canvas.width;
+            snapshot.height = canvas.height;
+            var snapshotCtx = snapshot.getContext('2d');
+            if (snapshotCtx) {
+                snapshotCtx.drawImage(canvas, 0, 0);
+            }
+        }
+
+        canvas.width = nextPixelWidth;
+        canvas.height = nextPixelHeight;
+        canvas.style.width = nextCssWidth + 'px';
+        canvas.style.height = nextCssHeight + 'px';
+        canvasCssWidth = nextCssWidth;
+        canvasCssHeight = nextCssHeight;
+
+        if (overlay) {
+            overlay.style.width = nextCssWidth + 'px';
+            overlay.style.height = nextCssHeight + 'px';
+        }
+
+        ctx = canvas.getContext('2d', { willReadFrequently: false });
+
+        if (snapshot) {
+            ctx.drawImage(snapshot, 0, 0);
+        }
     }
 
     /* ── toggle annotation mode ────────────────────────── */
@@ -586,7 +618,7 @@
         overlay.classList.add('annot-visible');
         toggleBtn.classList.add('annot-toggle-active');
         document.body.classList.add('annot-mode-active');
-        resizeCanvas();
+        resizeCanvas(true);
     }
 
     function close() {
@@ -905,30 +937,40 @@
         var resizeTimer;
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+            resizeTimer = setTimeout(function () {
+                resizeCanvas(true);
+            }, RESIZE_DEBOUNCE_MS);
         });
 
         // Keep the document-sized overlay in sync after page scrolling.
         window.addEventListener('scroll', function () {
             if (!isOpen) return;
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+            resizeTimer = setTimeout(function () {
+                resizeCanvas(false);
+            }, RESIZE_DEBOUNCE_MS);
         }, { passive: true });
 
         // Orientation change (iPad)
         window.addEventListener('orientationchange', function () {
-            setTimeout(resizeCanvas, ORIENTATION_CHANGE_MS);
+            setTimeout(function () {
+                resizeCanvas(true);
+            }, ORIENTATION_CHANGE_MS);
         });
 
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', function () {
                 clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+                resizeTimer = setTimeout(function () {
+                    resizeCanvas(true);
+                }, RESIZE_DEBOUNCE_MS);
             });
             window.visualViewport.addEventListener('scroll', function () {
                 if (!isOpen) return;
                 clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(resizeCanvas, RESIZE_DEBOUNCE_MS);
+                resizeTimer = setTimeout(function () {
+                    resizeCanvas(false);
+                }, RESIZE_DEBOUNCE_MS);
             });
         }
 
@@ -939,7 +981,7 @@
     function init() {
         buildUI();
         bindEvents();
-        resizeCanvas();
+        resizeCanvas(true);
     }
 
     // Boot once DOM is ready

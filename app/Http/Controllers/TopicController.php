@@ -695,21 +695,36 @@ class TopicController extends Controller
     public function searchCourseQuestions(Course $course, Request $request)
     {
         try {
+            $user = auth()->user();
+
+            if (!$user || !$user->hasFullAccessToCourse($course)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Search is unavailable for preview courses.',
+                ], 403);
+            }
+
             $query = trim((string) $request->input('query', ''));
             if (strlen($query) < 2) {
                 return response()->json(['success' => true, 'questions' => []]);
             }
 
-            // 🚀 SMART CACHE LAYER: Load all course data with cross-field blobs
-            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v8", 86400, function() use ($course) {
-                $topicNames = \App\Models\Topic::where('course_id', $course->id)->pluck('name', 'id')->toArray();
+            $topicNames = \App\Models\Topic::where('course_id', $course->id)->pluck('name', 'id')->toArray();
+            $courseTopicIds = array_map('intval', array_keys($topicNames));
 
-                return Question::whereHas('topic', function($q) use ($course) {
-                        $q->where('course_id', $course->id);
-                    })
+            if (empty($courseTopicIds)) {
+                return response()->json(['success' => true, 'questions' => []]);
+            }
+
+            // 🚀 SMART CACHE LAYER: Load only this course's question data with cross-field blobs
+            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v9", 86400, function() use ($courseTopicIds, $topicNames) {
+                return Question::query()
+                    ->whereIn('topic_id', $courseTopicIds)
                     ->select('id', 'question', 'correct_answer', 'explanation', 'topic_id', 'extra_topic', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d')
                     ->get()
-                    ->map(function($q) use ($topicNames) {
+                    ->map(function($q) use ($topicNames, $courseTopicIds) {
+                        $courseTopicIdLookup = array_flip($courseTopicIds);
+
                         $cleanQ = strip_tags($q->question);
                         $cleanE = strip_tags($q->explanation ?? '');
                         
@@ -726,9 +741,13 @@ class TopicController extends Controller
                         // Create a normalized search blob for cross-field intelligence
                         $searchBlob = strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ . ' ' . $actualAnswer . ' ' . $cleanE));
 
-                        $associatedTopicIds = collect([$q->topic_id]);
+                        $associatedTopicIds = collect([(int) $q->topic_id]);
                         if (!empty($q->extra_topic)) {
-                            $associatedTopicIds = $associatedTopicIds->concat(explode(',', $q->extra_topic));
+                            $associatedTopicIds = $associatedTopicIds->concat(
+                                collect(explode(',', $q->extra_topic))
+                                    ->map(fn ($id) => (int) trim($id))
+                                    ->filter(fn ($id) => isset($courseTopicIdLookup[$id]))
+                            );
                         }
                         
                         $topicTitles = $associatedTopicIds->unique()

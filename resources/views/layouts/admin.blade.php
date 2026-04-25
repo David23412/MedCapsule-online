@@ -23,6 +23,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.admin-dark-mode-head')
     
     <style>
         /* Admin layout styles */
@@ -236,6 +237,13 @@
             </li>
         </ul>
         <hr class="sidebar-divider d-none d-md-block">
+
+        @if(auth()->check() && auth()->user()->isAdmin())
+            <button type="button" class="admin-theme-toggle admin-theme-toggle--sidebar" data-admin-theme-toggle aria-pressed="false">
+                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                <span data-admin-theme-label>Dark Mode Off</span>
+            </button>
+        @endif
         
         <ul class="nav flex-column mt-auto">
             <li class="nav-item">
@@ -257,6 +265,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     @include('partials.design-protection')
+    @include('partials.admin-dark-mode-script')
     @yield('scripts')
 </body>
-</html> 
+</html>

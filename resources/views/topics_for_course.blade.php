@@ -418,43 +418,45 @@
         </div>
     </div>
 
-    <div class="modal fade" id="searchQuestionsModal" tabindex="-1" aria-labelledby="searchQuestionsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-centered">
-            <div class="modal-content search-modal-content">
-                <div class="modal-header border-0 pb-0">
-                    <div class="modal-title-wrapper w-100">
-                        <div class="d-flex align-items-center justify-content-between mb-2">
-                            <div class="d-flex align-items-center">
-                                <div class="modal-icon-wrapper me-3">
-                                    <i class="fas fa-search"></i>
+    @if($hasFullCourseAccess)
+        <div class="modal fade" id="searchQuestionsModal" tabindex="-1" aria-labelledby="searchQuestionsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content search-modal-content">
+                    <div class="modal-header border-0 pb-0">
+                        <div class="modal-title-wrapper w-100">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="modal-icon-wrapper me-3">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="modal-title mb-0" id="searchQuestionsModalLabel">Search Course Questions</h5>
+                                        <p class="modal-subtitle mb-0">Find and bookmark any question instantly</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h5 class="modal-title mb-0" id="searchQuestionsModalLabel">Search Course Questions</h5>
-                                    <p class="modal-subtitle mb-0">Find and bookmark any question instantly</p>
-                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="search-input-group mt-3">
-                            <i class="fas fa-search search-input-icon"></i>
-                            <input type="text" id="courseQuestionSearchInput" class="form-control" placeholder="Type keywords, concepts, or question text..." autocomplete="off">
-                            <div class="search-spinner" id="searchSpinner" style="display: none;">
-                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <div class="search-input-group mt-3">
+                                <i class="fas fa-search search-input-icon"></i>
+                                <input type="text" id="courseQuestionSearchInput" class="form-control" placeholder="Type keywords, concepts, or question text..." autocomplete="off">
+                                <div class="search-spinner" id="searchSpinner" style="display: none;">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-body pt-3">
-                    <div id="searchQuestionsResults" class="search-results-container">
-                        <div class="search-results-placeholder">
-                            <i class="fas fa-keyboard mb-2"></i>
-                            <p>Start typing to search keywords, concepts, or question text</p>
+                    <div class="modal-body pt-3">
+                        <div id="searchQuestionsResults" class="search-results-container">
+                            <div class="search-results-placeholder">
+                                <i class="fas fa-keyboard mb-2"></i>
+                                <p>Start typing to search keywords, concepts, or question text</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    @endif
 
     <!-- Source Selection Modal -->
     <div class="modal fade" id="sourceSelectionModal" tabindex="-1">
@@ -683,9 +685,11 @@
             <i class="fas fa-times-circle"></i>
             Review Mistakes
         </a>
-        <a href="#" class="search-icon-bubble" data-bs-toggle="modal" data-bs-target="#searchQuestionsModal" title="Search Questions" style="order: 101;">
-            <i class="fas fa-search"></i>
-        </a>
+        @if($hasFullCourseAccess)
+            <a href="#" class="search-icon-bubble" data-bs-toggle="modal" data-bs-target="#searchQuestionsModal" title="Search Questions" style="order: 101;">
+                <i class="fas fa-search"></i>
+            </a>
+        @endif
         
         {{-- Assignment Icon in Red Circle - Only show if there are assignments --}}
         @if(isset($assignments) && (is_array($assignments) ? count($assignments) : $assignments->count()) > 0)
