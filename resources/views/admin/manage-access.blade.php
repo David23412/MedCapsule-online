@@ -9,7 +9,7 @@
     };
 @endphp
 <!DOCTYPE html>
-<html lang="en" data-admin-theme='dark'>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1605,9 +1605,10 @@
         }
 
         /* Dark mode support */
-        body {
-            background-color: #000000 !important;
-        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #000000 !important;
+            }
 
         .main-header {
             background: #0a0a0a !important;
@@ -2111,6 +2112,7 @@
             background: rgba(107, 114, 128, 0.15) !important;
             color: #d1d5db !important;
             border-color: rgba(107, 114, 128, 0.3);
+        }
         }
 
         /* Action buttons styling */
