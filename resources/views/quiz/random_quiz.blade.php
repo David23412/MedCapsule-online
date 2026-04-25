@@ -20,6 +20,7 @@
     <!-- LETHAL AUDIO SYSTEM - NO EXTERNAL DEPENDENCIES -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
+    @include('partials.admin-dark-mode-head')
     <link rel="stylesheet" href="{{ asset('css/random-quiz-page.css') }}">
 </head>
 <body>

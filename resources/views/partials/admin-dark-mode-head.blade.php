@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{{ asset('css/admin-dark-mode.css') }}" data-medcapsule-theme-stylesheet="true">
+<link rel="stylesheet" href="{{ asset('css/dark-mode.css') }}" data-medcapsule-theme-stylesheet="true">
 <script>
     (function () {
         try {

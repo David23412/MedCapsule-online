@@ -1,20 +1,15 @@
 <script>
-(function() {
+// DARK MODE PRELOADER — reads localStorage before CSS loads to prevent white flash
+(function(){
     try {
-        if (!document.querySelector('link[data-medcapsule-theme-stylesheet]')) {
-            var link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = '{{ asset('css/admin-dark-mode.css') }}';
-            link.setAttribute('data-medcapsule-theme-stylesheet', 'true');
-            document.head.appendChild(link);
+        if(window.localStorage.getItem('medcapsule-theme')==='dark'){
+            document.documentElement.setAttribute('data-admin-theme','dark');
+            // Inject dark preloader style immediately
+            var s=document.createElement('style');
+            s.textContent='.lightning-preloader{background:linear-gradient(135deg,#060810 0%,#0d1118 100%)!important}.preloader-brand{color:#4e9eff!important}.preloader-subtitle{color:#7a8aab!important}.spinner-ring{border-top-color:#4e9eff!important}.spinner-ring:nth-child(1){border-top-color:#4e9eff!important}.spinner-ring:nth-child(2){border-top-color:#2563eb!important}.spinner-ring:nth-child(3){border-top-color:#1d4ed8!important}';
+            document.head.appendChild(s);
         }
-
-        if (window.localStorage.getItem('medcapsule-theme') === 'dark') {
-            document.documentElement.setAttribute('data-admin-theme', 'dark');
-        }
-    } catch (error) {
-        console.warn('Unable to bootstrap theme styles.', error);
-    }
+    } catch(e){}
 })();
 </script>
 
