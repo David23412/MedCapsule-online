@@ -128,7 +128,8 @@
 
     /** Convert pointer coords to canvas-local coords (handles DPR + CSS sizing + body zoom). */
     function getCanvasPoint(e) {
-        var rect = canvas.getBoundingClientRect();
+        var zoom = getBodyZoom();
+        var scroll = getScrollOffsets();
         var dpr  = window.devicePixelRatio || 1;
         
         // CSS dimensions as intended (unscaled by zoom if possible)
@@ -139,14 +140,12 @@
         var scaleX = canvas.width  / cssWidth;
         var scaleY = canvas.height / cssHeight;
 
-        // Pointer position relative to the canvas element
-        // rect.left/top account for scroll and zoom automatically!
-        var x = (e.clientX - rect.left);
-        var y = (e.clientY - rect.top);
+        var docX = (e.clientX / zoom) + scroll.left;
+        var docY = (e.clientY / zoom) + scroll.top;
 
         return {
-            x: x * scaleX,
-            y: y * scaleY,
+            x: docX * scaleX,
+            y: docY * scaleY,
             pressure: e.pressure ?? 0.5
         };
     }

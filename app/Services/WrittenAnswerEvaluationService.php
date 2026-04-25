@@ -1109,19 +1109,66 @@ class WrittenAnswerEvaluationService
     {
         $submittedNormalized = $this->normalizeForSemanticComparison($submittedAnswer);
         $correctItems        = $this->extractEnumerationItems($correctAnswer);
+        $submittedItems      = $this->extractEnumerationItems($submittedAnswer);
 
         if (empty($correctItems)) {
             return $this->performRegularEvaluation($submittedAnswer, $correctAnswer, self::DEFAULT_SIMILARITY_THRESHOLD);
         }
 
-        // Use fuzzy matching for enumeration items (catch typos AND reordering)
+        // Apply semantic phrase normalization to handle common paraphrases
+        $submittedNormalized = $this->normalizeSemanticPhrases($submittedNormalized);
+
+        // If student also used enumeration format, compare item-to-item for better matching
+        if (!empty($submittedItems) && count($submittedItems) >= count($correctItems) * 0.75) {
+            $submittedItems = array_map([$this, 'normalizeSemanticPhrases'], array_map('strtolower', array_map('trim', $submittedItems)));
+            $correctItemsNormalized = array_map([$this, 'normalizeSemanticPhrases'], array_map('strtolower', array_map('trim', $correctItems)));
+
+            $matchedCount = 0;
+            foreach ($correctItemsNormalized as $correctItem) {
+                $correctWords = preg_split('/\s+/', $correctItem);
+                $found = false;
+
+                foreach ($submittedItems as $submittedItem) {
+                    $submittedWords = preg_split('/\s+/', $submittedItem);
+
+                    // Check for high word overlap between items
+                    $overlap = $this->calculateWordOverlap($correctWords, $submittedWords);
+                    if ($overlap >= 0.6) {
+                        $found = true;
+                        break;
+                    }
+                }
+
+                if ($found) {
+                    $matchedCount++;
+                }
+            }
+
+            $coverage = $matchedCount / count($correctItems);
+            $isCorrect = $coverage >= 0.70;
+
+            return [
+                'isCorrect'   => $isCorrect,
+                'similarity'  => $isCorrect ? max(0.85, $coverage) : $coverage,
+                'metrics'     => ['enumeration_coverage' => $coverage, 'matched_items' => $matchedCount, 'expected_items' => count($correctItems)],
+                'reason'      => $isCorrect ? 'Enumeration — key items identified' : 'Enumeration — missing key items',
+                'courseTopic' => $this->identifyCourseTopic($correctAnswer),
+                'feedback'    => $isCorrect ? 'You identified the key required items.'
+                                            : 'Your answer is missing one or more of the expected key items.',
+            ];
+        }
+
+        // Fallback to original matching logic for non-enumerated student answers
         $matched = array_values(array_filter($correctItems, function($item) use ($submittedNormalized) {
-            // Exact substring match
-            if (stripos($submittedNormalized, $item) !== false) {
+            // Normalize the item for semantic comparison too
+            $itemNormalized = $this->normalizeSemanticPhrases(strtolower(trim($item)));
+
+            // Exact substring match (after semantic normalization)
+            if (stripos($submittedNormalized, $itemNormalized) !== false) {
                 return true;
             }
 
-            $itemWords = preg_split('/\s+/', trim($item));
+            $itemWords = preg_split('/\s+/', trim($itemNormalized));
 
             // Single word item — check per-word fuzzy match
             if (count($itemWords) === 1 && strlen($item) >= 3) {
@@ -1150,8 +1197,9 @@ class WrittenAnswerEvaluationService
                         }
                     }
                 }
-                // If ≥80% of the item's significant words are found (fuzzy), consider it matched
-                if ($significantWords > 0 && $matchedWords >= $significantWords * 0.8) {
+                // Lowered from 80% to 60% to accommodate paraphrasing
+                // "They are greater in number" vs "Their number is much greater" (66% overlap) should match
+                if ($significantWords > 0 && $matchedWords >= $significantWords * 0.6) {
                     return true;
                 }
             }
@@ -1172,6 +1220,31 @@ class WrittenAnswerEvaluationService
             'feedback'    => $isCorrect ? 'You identified the key required items.'
                                         : 'Your answer is missing one or more of the expected key items.',
         ];
+    }
+
+    /**
+     * Calculate word overlap between two word arrays using fuzzy matching
+     */
+    private function calculateWordOverlap(array $words1, array $words2): float
+    {
+        if (empty($words1) || empty($words2)) {
+            return 0.0;
+        }
+
+        $matched = 0;
+        foreach ($words1 as $w1) {
+            if (strlen($w1) < 3) continue; // Skip short words
+            foreach ($words2 as $w2) {
+                if (strlen($w2) < 3) continue;
+                if ($this->wordsAreSimilar(strtolower($w1), strtolower($w2))) {
+                    $matched++;
+                    break;
+                }
+            }
+        }
+
+        $significant1 = count(array_filter($words1, fn($w) => strlen($w) >= 3));
+        return $significant1 > 0 ? $matched / $significant1 : 0.0;
     }
 
     private function evaluateDefinitionAnswer(string $submittedAnswer, string $correctAnswer, float $baseThreshold): array
@@ -1704,6 +1777,45 @@ class WrittenAnswerEvaluationService
             return $dist <= 2;
         }
         return $dist <= 3;
+    }
+
+    /**
+     * Normalize common semantic phrase variations to canonical forms.
+     * This handles paraphrases like "greater in number" vs "much greater".
+     */
+    private function normalizeSemanticPhrases(string $text): string
+    {
+        $lower = strtolower($text);
+
+        // Common paraphrase mappings
+        $replacements = [
+            // Number/quantity variations
+            'greater in number' => 'much greater',
+            'larger in number' => 'much greater',
+            'more numerous' => 'much greater',
+            'increased number' => 'much greater',
+
+            // Movement/freedom variations
+            'move freely' => 'free to move',
+            'moves freely' => 'free to move',
+            'freely move' => 'free to move',
+            'free movement' => 'free to move',
+
+            // Infection variations
+            'inapparent infection' => 'infection is inapparent',
+            'asymptomatic infection' => 'infection is inapparent',
+
+            // Persistence variations
+            'infectivity is persistent' => 'infectivity may persist',
+            'infectivity persists' => 'infectivity may persist',
+            'persistent infectivity' => 'infectivity may persist',
+        ];
+
+        foreach ($replacements as $from => $to) {
+            $lower = str_replace($from, $to, $lower);
+        }
+
+        return $lower;
     }
 
     // =========================================================================

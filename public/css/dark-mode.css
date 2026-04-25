@@ -85,18 +85,7 @@ html[data-admin-theme='dark'] .offcanvas-header,
 html[data-admin-theme='dark'] .accordion-button,
 html[data-admin-theme='dark'] .nav-tabs .nav-link.active,
 html[data-admin-theme='dark'] .nav-pills .nav-link.active {
-    background: var(--primary-color, #0d6efd) !important;
-    color: white !important;
-}
-
-html[data-admin-theme='dark'] .nav-tabs .nav-link {
-    background: #2d2d2d !important;
-    color: #e0e0e0 !important;
-}
-
-html[data-admin-theme='dark'] .nav-tabs .nav-link:hover {
-    background: #3d3d3d !important;
-    color: #ffffff !important;
+    background: var(--admin-dark-surface-elevated) !important;
 }
 
 html[data-admin-theme='dark'] .nav-link,
