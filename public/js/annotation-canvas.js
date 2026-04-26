@@ -63,8 +63,6 @@
     let cursorCircle  = null;          // visual cursor circle for eraser/highlighter
     let strokeStarted = false;         // whether actual drawing has begun for current gesture
     let tapDownPoint  = null;          // record pointer-down position for tap detection
-    let canvasCssWidth = 0;            // cached CSS width of the annotation surface
-    let canvasCssHeight = 0;           // cached CSS height of the annotation surface
 
     /* ── helpers ───────────────────────────────────────── */
 
@@ -87,27 +85,23 @@
         var body = document.body;
         var zoom = getBodyZoom();
 
-        // When body zoom is used, metrics like scrollHeight often return 
-        // the visually scaled value. We need the unscaled CSS pixels.
         var viewportWidth = window.innerWidth / zoom;
         var viewportHeight = window.innerHeight / zoom;
 
         var width = Math.max(
             viewportWidth,
-            (doc ? doc.scrollWidth : 0) / zoom,
-            (doc ? doc.clientWidth : 0) / zoom,
-            (body ? body.scrollWidth : 0) / zoom,
-            (body ? body.clientWidth : 0) / zoom
+            doc ? doc.scrollWidth : 0,
+            doc ? doc.clientWidth : 0,
+            body ? body.scrollWidth : 0,
+            body ? body.clientWidth : 0
         );
 
         var height = Math.max(
             viewportHeight,
-            (doc ? doc.scrollHeight : 0) / zoom,
-            (doc ? doc.clientHeight : 0) / zoom,
-            (body ? body.scrollHeight : 0) / zoom,
-            (body ? body.clientHeight : 0) / zoom,
-            // Fallback for very long documents where metrics might be capped
-            (window.pageYOffset + window.innerHeight) / zoom + 500 
+            doc ? doc.scrollHeight : 0,
+            doc ? doc.clientHeight : 0,
+            body ? body.scrollHeight : 0,
+            body ? body.clientHeight : 0
         );
 
         return {
@@ -130,16 +124,9 @@
     function getCanvasPoint(e) {
         var zoom = getBodyZoom();
         var scroll = getScrollOffsets();
-        var dpr  = window.devicePixelRatio || 1;
-        
-        // CSS dimensions as intended (unscaled by zoom if possible)
-        var cssWidth = Math.max(canvasCssWidth || canvas.clientWidth || 0, 1);
-        var cssHeight = Math.max(canvasCssHeight || canvas.clientHeight || 0, 1);
-        
-        // Scale factors between CSS pixels and backing store pixels
-        var scaleX = canvas.width  / cssWidth;
-        var scaleY = canvas.height / cssHeight;
-
+        var cssSize = getCanvasCssSize();
+        var scaleX = canvas.width  / Math.max(cssSize.width, 1);
+        var scaleY = canvas.height / Math.max(cssSize.height, 1);
         var docX = (e.clientX / zoom) + scroll.left;
         var docY = (e.clientY / zoom) + scroll.top;
 
@@ -273,9 +260,8 @@
     /** Move the cursor circle to follow the pointer. */
     function positionCursorCircle(clientX, clientY) {
         if (!cursorCircle || cursorCircle.style.display === 'none') return;
-        var zoom = getBodyZoom();
-        cursorCircle.style.left = (clientX / zoom) + 'px';
-        cursorCircle.style.top  = (clientY / zoom) + 'px';
+        cursorCircle.style.left = clientX + 'px';
+        cursorCircle.style.top  = clientY + 'px';
     }
 
     /* ── tap-through helpers ──────────────────────────── */
@@ -577,8 +563,6 @@
         var nextPixelHeight = Math.max(1, Math.floor(nextCssHeight * dpr));
 
         if (!force && canvas.width === nextPixelWidth && canvas.height === nextPixelHeight) {
-            canvasCssWidth = nextCssWidth;
-            canvasCssHeight = nextCssHeight;
             canvas.style.width = nextCssWidth + 'px';
             canvas.style.height = nextCssHeight + 'px';
 
@@ -606,8 +590,6 @@
         canvas.height = nextPixelHeight;
         canvas.style.width = nextCssWidth + 'px';
         canvas.style.height = nextCssHeight + 'px';
-        canvasCssWidth = nextCssWidth;
-        canvasCssHeight = nextCssHeight;
 
         if (overlay) {
             overlay.style.width = nextCssWidth + 'px';

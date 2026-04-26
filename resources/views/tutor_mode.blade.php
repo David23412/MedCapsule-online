@@ -70,9 +70,9 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            max-width: 1550px;
+            max-width: none;
             margin: 0 auto;
-            padding: 0;
+            padding: 0 2rem;
         }
 
         .navbar-brand {
@@ -156,31 +156,33 @@
 
         .main-content {
             margin-top: 80px;
-            padding: 2rem;
+            padding: 1.5rem 2.75rem;
         }
 
         .container {
-            background: white;
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            max-width: 1550px;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
+            max-width: none;
             margin: 0 auto;
         }
 
         .question-card {
-            background: white;
-            border-radius: 12px;
-            padding: 2.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 1rem;
+            background: transparent;
+            border-radius: 0;
+            padding: 0 0 1.75rem;
+            box-shadow: none;
+            margin-bottom: 1.75rem;
+            border: 0;
+            border-bottom: 2px solid rgba(148, 163, 184, 0.28);
             user-select: text;
             -webkit-user-select: text;
         }
 
         .question-content {
             display: flex;
-            gap: 2.5rem;
+            gap: 3.25rem;
             align-items: flex-start;
             margin-bottom: 2rem;
             width: 100%;
@@ -209,11 +211,11 @@
         }
 
         .question-text {
-            font-size: 1.4rem;
-            font-weight: 425;
+            font-size: 1.6rem;
+            font-weight: 600;
             color: #000000;
-            margin-bottom: 1rem;
-            line-height: 1.5;
+            margin-bottom: 1.75rem;
+            line-height: 1.45;
             user-select: text;
             -webkit-user-select: text;
             -moz-user-select: text;
@@ -393,8 +395,8 @@
         }
 
         .question-image {
-            flex: 0 0 450px;
-            max-width: 45%;
+            flex: 0 0 min(34vw, 560px);
+            max-width: min(34vw, 560px);
             display: flex;
             justify-content: center;
         }
@@ -402,7 +404,7 @@
         .question-image img {
             width: 100%;
             height: auto;
-            max-height: 550px;
+            max-height: 640px;
             border-radius: 12px;
             object-fit: contain;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -420,17 +422,18 @@
         }
 
         .option-card {
-            padding: 1rem;
-            background-color: #f8f9fa;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            margin-bottom: 1rem;
+            padding: 1.05rem 1.2rem;
+            background-color: rgba(248, 250, 252, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            margin-bottom: 0.9rem;
             cursor: pointer;
             display: flex;
             align-items: flex-start;
             gap: 1rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             outline: 1.5px solid transparent;
+            box-shadow: none;
         }
 
         .option-card:hover {
@@ -442,8 +445,24 @@
         }
 
         .option-card.selected {
-            border-color: #007bff;
-            background: #e3f2fd;
+            border-color: #007bff !important;
+            background: #e3f2fd !important;
+            color: #007bff !important;
+            box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.08);
+        }
+
+        .option-card.selected:hover,
+        .option-card.selected:focus,
+        .option-card.selected:active {
+            border-color: #007bff !important;
+            background: #e3f2fd !important;
+            color: #007bff !important;
+            outline: 1px solid #007bff;
+            transform: none;
+        }
+
+        .option-card.selected .option-letter {
+            background: rgba(0, 123, 255, 0.14);
             color: #007bff;
         }
 
@@ -800,6 +819,37 @@
             -webkit-user-select: text;
         }
 
+        .sources-info {
+            margin: 0.25rem 0 1rem !important;
+        }
+
+        @media (min-width: 1200px) {
+            .main-content {
+                padding-left: 4rem;
+                padding-right: 4rem;
+            }
+
+            .question-card {
+                padding-bottom: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .question-text {
+                font-size: 1.8rem;
+                line-height: 1.42;
+                margin-bottom: 2rem;
+            }
+
+            .option-card {
+                min-height: 72px;
+                padding: 1.2rem 1.35rem;
+            }
+
+            .option-content {
+                font-size: 1.08rem;
+            }
+        }
+
         .actions {
             margin-top: 1.5rem;
             display: flex;
@@ -869,9 +919,9 @@
             }
 
             .container {
-                padding: 1.5rem;
+                padding: 0;
                 width: 100%;
-                border-radius: 8px;
+                border-radius: 0;
             }
 
             /* ── iPad / Tablet (768px–850px) layout fixes ── */
@@ -896,7 +946,7 @@
             .main-content {
                 margin-left: 62px;
                 margin-top: 64px;
-                padding: 1rem;
+                padding: 0.5rem 1rem 0.75rem;
             }
 
             .progress-bar-container {
@@ -951,7 +1001,7 @@
 
         @media (max-width: 576px) {
             .container {
-                padding: 1rem;
+                padding: 0;
             }
         }
 
@@ -1232,15 +1282,15 @@
             /* main-content margin-left and margin-top are set
                by the sidebar block below — no overrides needed here */
             .container {
-                padding: 1.25rem;
-                border-radius: 8px;
+                padding: 0;
+                border-radius: 0;
                 max-width: 100%;
                 margin: 0;
             }
 
             .topic-header h1 {
                 font-size: 1.4rem;
-                margin-bottom: 0.75rem;
+                margin-bottom: 0.45rem;
             }
         }
 
@@ -1271,10 +1321,19 @@
 
         /* Mobile Question Card */
         @media (max-width: 768px) {
+            .topic-header.mb-4 {
+                margin-bottom: 0.5rem !important;
+            }
+
+            .sources-info.mb-4 {
+                margin-bottom: 0.85rem !important;
+            }
+
             .question-card {
-                padding: 1.5rem;
-                border-radius: 8px;
-                margin-bottom: 1rem;
+                padding: 0 0 1.5rem;
+                border-radius: 0;
+                margin-bottom: 1.5rem;
+                border-bottom-color: rgba(148, 163, 184, 0.38);
             }
 
             .question-content {
@@ -1283,8 +1342,8 @@
             }
 
             .question-text {
-                font-size: 1.2rem;
-                line-height: 1.4;
+                font-size: 1.12rem;
+                line-height: 1.6;
                 margin-bottom: 1rem;
             }
 
@@ -1305,9 +1364,9 @@
         /* Mobile Options */
         @media (max-width: 768px) {
             .option-card {
-                padding: 0.875rem;
+                padding: 1rem 1rem;
                 margin-bottom: 0.75rem;
-                border-radius: 8px;
+                border-radius: 12px;
                 gap: 0.75rem;
             }
 
@@ -1319,8 +1378,8 @@
             }
 
             .option-content {
-                font-size: 0.95rem;
-                line-height: 1.4;
+                font-size: 0.98rem;
+                line-height: 1.5;
             }
         }
 
@@ -1383,11 +1442,11 @@
             }
 
             .main-content {
-                padding: 0.75rem;
+                padding: 0 0.85rem 0.75rem;
             }
 
             .container {
-                padding: 1rem;
+                padding: 0;
             }
 
             .topic-header h1 {
@@ -1395,16 +1454,27 @@
             }
 
             .question-card {
-                padding: 1rem;
+                padding: 0 0 1.2rem;
+                margin-bottom: 1.2rem;
+            }
+
+            .topic-header.mb-4 {
+                margin-bottom: 0.35rem !important;
+            }
+
+            .sources-info.mb-4 {
+                margin-bottom: 0.7rem !important;
             }
 
             .question-text {
-                font-size: 1.1rem;
+                font-size: 1.08rem;
             }
 
             .option-card {
-                padding: 0.75rem;
-                gap: 0.5rem;
+                padding: 0.95rem 0.95rem;
+                gap: 0.6rem;
+                margin-left: -0.1rem;
+                margin-right: -0.1rem;
             }
 
             .option-letter {
@@ -1414,7 +1484,7 @@
             }
 
             .option-content {
-                font-size: 0.9rem;
+                font-size: 0.96rem;
             }
 
             .popup {
@@ -2442,7 +2512,7 @@
         .annot-cursor-circle {
             position: fixed;
             pointer-events: none;
-            z-index: 1052;
+            z-index: 100000;
             border-radius: 50%;
             border: 2px solid rgba(255, 255, 255, 0.9);
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
@@ -2454,8 +2524,6 @@
         /* ── Body class: annotation mode active (scrolling allowed) ─ */
         body.annot-mode-active {
             /* Scrolling is intentionally NOT blocked — users scroll normally */
-            position: relative !important;
-            overflow-x: hidden !important;
         }
 
         /* ── Mobile / small-tablet responsive ───────────── */
@@ -3480,10 +3548,11 @@
             tutorScope: @json($tutor_scope ?? 'full'),
             selectedSources: @json($selected_sources ?? []),
             randomSessionKey: @json($random_session_key ?? null),
+            tutorSessionKey: @json($tutor_session_key ?? null),
             draftKey: @json(
                 (isset($is_random_quiz) && $is_random_quiz)
                 ? 'tutor-random:' . ($random_session_key ?? 'default')
-                : 'tutor:' . request()->fullUrl()
+                : 'tutor:' . (($tutor_session_key ?? null) ?: request()->fullUrl())
             ),
             questionData: {
                 @foreach($questions as $index => $question)

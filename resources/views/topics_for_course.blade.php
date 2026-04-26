@@ -1103,159 +1103,159 @@
         updateSegments();
     })();
 
-    /* Search Questions Feature */
-    (function() {
-        const searchInput = document.getElementById('courseQuestionSearchInput');
-        const resultsContainer = document.getElementById('searchQuestionsResults');
-        const spinner = document.getElementById('searchSpinner');
-        const courseId = {{ $course->id }};
-        let searchTimeout;
+    @if($hasFullCourseAccess)
+        /* Search Questions Feature */
+        (function() {
+            const searchInput = document.getElementById('courseQuestionSearchInput');
+            const resultsContainer = document.getElementById('searchQuestionsResults');
+            const spinner = document.getElementById('searchSpinner');
+            const courseId = {{ $course->id }};
+            let searchTimeout;
 
-        if (!searchInput || !resultsContainer) return;
+            if (!searchInput || !resultsContainer) return;
 
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            clearTimeout(searchTimeout);
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim();
+                clearTimeout(searchTimeout);
 
-            if (query.length < 2) {
-                resultsContainer.innerHTML = `
-                    <div class="search-results-placeholder">
-                        <i class="fas fa-keyboard mb-2"></i>
-                        <p>Start typing to search keywords, concepts, or question text</p>
-                    </div>
-                `;
-                return;
-            }
-
-            spinner.style.display = 'block';
-            searchTimeout = setTimeout(() => performSearch(query), 500);
-        });
-
-        async function performSearch(query) {
-            try {
-                const response = await fetch(`/courses/${courseId}/search-questions?query=${encodeURIComponent(query)}`);
-                const data = await response.json();
-                
-                spinner.style.display = 'none';
-
-                if (!data.success || !data.questions || data.questions.length === 0) {
+                if (query.length < 2) {
                     resultsContainer.innerHTML = `
                         <div class="search-results-placeholder">
-                            <i class="fas fa-search-minus mb-2"></i>
-                            <p>No questions found matching "${query}"</p>
+                            <i class="fas fa-keyboard mb-2"></i>
+                            <p>Start typing to search keywords, concepts, or question text</p>
                         </div>
                     `;
                     return;
                 }
 
-                resultsContainer.innerHTML = data.questions.map(q => `
-                    <div class="search-result-card" data-question-id="${q.id}">
-                        <div class="search-result-content">
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div class="search-result-question flex-grow-1 me-3">${q.question}</div>
-                                <div class="search-result-status-action">
-                                    ${q.is_already_mistake 
-                                        ? '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>' 
-                                        : `<button class="btn add-mistake-minimal-btn" data-id="${q.id}" title="Add to Mistakes"><i class="fas fa-plus"></i></button>`
-                                    }
-                                </div>
+                spinner.style.display = 'block';
+                searchTimeout = setTimeout(() => performSearch(query), 500);
+            });
+
+            async function performSearch(query) {
+                try {
+                    const response = await fetch(`/courses/${courseId}/search-questions?query=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    spinner.style.display = 'none';
+
+                    if (!data.success || !data.questions || data.questions.length === 0) {
+                        resultsContainer.innerHTML = `
+                            <div class="search-results-placeholder">
+                                <i class="fas fa-search-minus mb-2"></i>
+                                <p>No questions found matching "${query}"</p>
                             </div>
-                            <div class="search-result-answer mb-3">
-                                <span class="badge bg-success-subtle text-success me-3" style="align-self: flex-start; margin-top: 5px;">Correct Answer</span>
-                                <div class="fw-semibold text-dark search-result-answer-text">${q.correct_answer}</div>
-                            </div>
-                            <div class="search-result-explanation">
-                                ${q.explanation}
-                            </div>
-                            ${q.topic_titles && q.topic_titles.length > 0 ? `
-                                <div class="search-result-footer d-flex justify-content-end mt-3">
-                                    <div class="search-result-meta d-flex gap-2 flex-wrap justify-content-end">
-                                        ${q.topic_titles.map(title => `<span class="source-tag">${title}</span>`).join('')}
+                        `;
+                        return;
+                    }
+
+                    resultsContainer.innerHTML = data.questions.map(q => `
+                        <div class="search-result-card" data-question-id="${q.id}">
+                            <div class="search-result-content">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="search-result-question flex-grow-1 me-3">${q.question}</div>
+                                    <div class="search-result-status-action">
+                                        ${q.is_already_mistake 
+                                            ? '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>' 
+                                            : `<button class="btn add-mistake-minimal-btn" data-id="${q.id}" title="Add to Mistakes"><i class="fas fa-plus"></i></button>`
+                                        }
                                     </div>
                                 </div>
-                            ` : ''}
+                                <div class="search-result-answer mb-3">
+                                    <span class="badge bg-success-subtle text-success me-3" style="align-self: flex-start; margin-top: 5px;">Correct Answer</span>
+                                    <div class="fw-semibold text-dark search-result-answer-text">${q.correct_answer}</div>
+                                </div>
+                                <div class="search-result-explanation">
+                                    ${q.explanation}
+                                </div>
+                                ${q.topic_titles && q.topic_titles.length > 0 ? `
+                                    <div class="search-result-footer d-flex justify-content-end mt-3">
+                                        <div class="search-result-meta d-flex gap-2 flex-wrap justify-content-end">
+                                            ${q.topic_titles.map(title => `<span class="source-tag">${title}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
 
-                // Attach events to Add to Mistakes buttons
-                resultsContainer.querySelectorAll('.add-mistake-minimal-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const qId = this.dataset.id;
-                        addQuestionToMistakes(qId, this);
+                    resultsContainer.querySelectorAll('.add-mistake-minimal-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const qId = this.dataset.id;
+                            addQuestionToMistakes(qId, this);
+                        });
                     });
-                });
 
-            } catch (error) {
-                console.error('Search error:', error);
-                spinner.style.display = 'none';
-                resultsContainer.innerHTML = '<div class="alert alert-danger">Search failed. Please try again.</div>';
+                } catch (error) {
+                    console.error('Search error:', error);
+                    spinner.style.display = 'none';
+                    resultsContainer.innerHTML = '<div class="alert alert-danger">Search failed. Please try again.</div>';
+                }
             }
-        }
 
-        async function addQuestionToMistakes(qId, button) {
-            const originalContent = button.innerHTML;
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+            async function addQuestionToMistakes(qId, button) {
+                const originalContent = button.innerHTML;
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
 
-            try {
-                const response = await fetch(`/questions/${qId}/add-mistake`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+                try {
+                    const response = await fetch(`/questions/${qId}/add-mistake`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const parent = button.parentElement;
+                        parent.innerHTML = '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>';
+                        
+                        showToast('Mistake Added', data.message, 'success');
+                    } else {
+                        button.disabled = false;
+                        button.innerHTML = originalContent;
+                        showToast('Error', data.message || 'Failed to add mistake.', 'error');
                     }
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    // Replace minimal button with check icon instantly
-                    const parent = button.parentElement;
-                    parent.innerHTML = '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>';
-                    
-                    showToast('Mistake Added', data.message, 'success');
-                } else {
+                } catch (error) {
+                    console.error('Add mistake error:', error);
                     button.disabled = false;
                     button.innerHTML = originalContent;
-                    showToast('Error', data.message || 'Failed to add mistake.', 'error');
+                    showToast('Error', 'An error occurred. Please try again.', 'error');
                 }
-            } catch (error) {
-                console.error('Add mistake error:', error);
-                button.disabled = false;
-                button.innerHTML = originalContent;
-                showToast('Error', 'An error occurred. Please try again.', 'error');
-            }
-        }
-
-        function showToast(title, message, type) {
-            const toastStack = document.getElementById('taskToastStack');
-            if (!toastStack) {
-                alert(message);
-                return;
             }
 
-            const toast = document.createElement('div');
-            toast.className = `task-toast ${type === 'error' ? 'toast-error' : ''}`;
-            toast.innerHTML = `
-                <div class="task-toast-icon">
-                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check'}"></i>
-                </div>
-                <div class="task-toast-copy">
-                    <span class="task-toast-kicker">${title}</span>
-                    <strong class="task-toast-title">${message}</strong>
-                </div>
-            `;
+            function showToast(title, message, type) {
+                const toastStack = document.getElementById('taskToastStack');
+                if (!toastStack) {
+                    alert(message);
+                    return;
+                }
 
-            toastStack.appendChild(toast);
-            requestAnimationFrame(() => toast.classList.add('is-visible'));
-            setTimeout(() => {
-                toast.classList.remove('is-visible');
-                setTimeout(() => toast.remove(), 260);
-            }, 3000);
-        }
-    })();
+                const toast = document.createElement('div');
+                toast.className = `task-toast ${type === 'error' ? 'toast-error' : ''}`;
+                toast.innerHTML = `
+                    <div class="task-toast-icon">
+                        <i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check'}"></i>
+                    </div>
+                    <div class="task-toast-copy">
+                        <span class="task-toast-kicker">${title}</span>
+                        <strong class="task-toast-title">${message}</strong>
+                    </div>
+                `;
+
+                toastStack.appendChild(toast);
+                requestAnimationFrame(() => toast.classList.add('is-visible'));
+                setTimeout(() => {
+                    toast.classList.remove('is-visible');
+                    setTimeout(() => toast.remove(), 260);
+                }, 3000);
+            }
+        })();
+    @endif
     </script>
 </body>
 </html>

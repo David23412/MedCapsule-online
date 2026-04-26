@@ -203,10 +203,55 @@ html[data-admin-theme='dark'] .table {
     --bs-table-border-color: var(--admin-dark-border);
 }
 
+html[data-admin-theme='dark'] .table tbody tr:hover,
+html[data-admin-theme='dark'] .table-hover > tbody > tr:hover {
+    background-color: rgba(78, 115, 223, 0.12) !important;
+}
+
+html[data-admin-theme='dark'] .table-hover > tbody > tr:hover > * {
+    background-color: rgba(78, 115, 223, 0.12) !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .table tbody tr[data-payment-status="completed"]:hover > * {
+    background-color: rgba(251, 191, 36, 0.16) !important;
+}
+
 html[data-admin-theme='dark'] .badge.bg-light,
 html[data-admin-theme='dark'] .bg-light {
     background: var(--admin-dark-surface-elevated) !important;
     color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .badge.bg-light.text-dark,
+html[data-admin-theme='dark'] .bg-light.text-dark {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--admin-dark-text) !important;
+    border-color: var(--admin-dark-border-strong) !important;
+}
+
+html[data-admin-theme='dark'] .badge.bg-primary {
+    background: rgba(13, 110, 253, 0.25) !important;
+    color: #60a5fa !important;
+    border: 1px solid rgba(13, 110, 253, 0.4) !important;
+}
+
+html[data-admin-theme='dark'] .badge.bg-success {
+    background: rgba(25, 135, 84, 0.25) !important;
+    color: #6ee7b7 !important;
+    border: 1px solid rgba(25, 135, 84, 0.4) !important;
+}
+
+html[data-admin-theme='dark'] .badge.bg-danger {
+    background: rgba(220, 53, 69, 0.25) !important;
+    color: #fca5a5 !important;
+    border: 1px solid rgba(220, 53, 69, 0.4) !important;
+}
+
+html[data-admin-theme='dark'] .badge.bg-warning {
+    background: rgba(255, 193, 7, 0.25) !important;
+    color: #fcd34d !important;
+    border: 1px solid rgba(255, 193, 7, 0.4) !important;
 }
 
 html[data-admin-theme='dark'] .profile-circle.no-image,
@@ -240,6 +285,119 @@ html[data-admin-theme='dark'] .topics-container {
     color: var(--admin-dark-text) !important;
     border-color: var(--admin-dark-border) !important;
     box-shadow: var(--admin-dark-shadow) !important;
+}
+
+html[data-admin-theme='dark'] .main-header {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+html[data-admin-theme='dark'] .header-shell {
+    background: rgba(17, 19, 24, 0.94) !important;
+    border-color: var(--admin-dark-border) !important;
+    box-shadow: var(--admin-dark-shadow) !important;
+}
+
+html[data-admin-theme='dark'] .page-title {
+    color: #ffffff !important;
+}
+
+html[data-admin-theme='dark'] .page-subtitle {
+    color: var(--admin-dark-text-soft) !important;
+}
+
+html[data-admin-theme='dark'] .header-btn {
+    background: var(--admin-dark-surface-elevated) !important;
+    border-color: var(--admin-dark-border-strong) !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .header-btn:hover {
+    background: rgba(78, 115, 223, 0.14) !important;
+    border-color: rgba(78, 115, 223, 0.35) !important;
+    color: #ffffff !important;
+}
+
+html[data-admin-theme='dark'] .nav-tabs .nav-link {
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: var(--admin-dark-text-soft) !important;
+    border-color: var(--admin-dark-border) !important;
+}
+
+html[data-admin-theme='dark'] .nav-tabs {
+    background: rgba(17, 19, 24, 0.92) !important;
+    border-color: var(--admin-dark-border) !important;
+    box-shadow: var(--admin-dark-shadow) !important;
+}
+
+html[data-admin-theme='dark'] .nav-tabs .nav-link:hover {
+    background: rgba(78, 115, 223, 0.14) !important;
+    color: var(--admin-dark-text) !important;
+    border-color: rgba(78, 115, 223, 0.35) !important;
+}
+
+html[data-admin-theme='dark'] .nav-tabs .nav-link.active {
+    background: var(--admin-dark-surface-elevated) !important;
+    color: #ffffff !important;
+    border-color: var(--admin-dark-border-strong) !important;
+}
+
+html[data-admin-theme='dark'] .select2-container .select2-selection--single,
+html[data-admin-theme='dark'] .select2-container--default .select2-selection--single {
+    background: var(--admin-dark-surface-elevated) !important;
+    border-color: var(--admin-dark-border-strong) !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .select2-container--default .select2-selection--single .select2-selection__rendered {
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .select2-container--default .select2-selection--single .select2-selection__placeholder {
+    color: rgba(182, 190, 205, 0.7) !important;
+}
+
+html[data-admin-theme='dark'] .select2-container--default .select2-selection--single .select2-selection__arrow b {
+    border-top-color: rgba(182, 190, 205, 0.9) !important;
+}
+
+html[data-admin-theme='dark'] .select2-dropdown {
+    background: var(--admin-dark-surface) !important;
+    border-color: var(--admin-dark-border-strong) !important;
+    box-shadow: var(--admin-dark-shadow) !important;
+}
+
+html[data-admin-theme='dark'] .select2-search--dropdown .select2-search__field {
+    background: var(--admin-dark-surface-elevated) !important;
+    border-color: var(--admin-dark-border-strong) !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .select2-results__option {
+    background: transparent !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .select2-results__option--highlighted,
+html[data-admin-theme='dark'] .select2-results__option--highlighted[aria-selected] {
+    background: rgba(78, 115, 223, 0.16) !important;
+    color: #ffffff !important;
+}
+
+html[data-admin-theme='dark'] .select2-results__option--selected,
+html[data-admin-theme='dark'] .select2-results__option[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: var(--admin-dark-text) !important;
+}
+
+html[data-admin-theme='dark'] .select2-results__option .text-muted {
+    color: var(--admin-dark-text-soft) !important;
+}
+
+html[data-admin-theme='dark'] .activity-status.this_week,
+html[data-admin-theme='dark'] .activity-status.never {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--admin-dark-text) !important;
 }
 
 html[data-admin-theme='dark'] .profile-header,

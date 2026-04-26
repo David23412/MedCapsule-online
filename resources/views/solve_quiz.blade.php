@@ -44,9 +44,9 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            max-width: 1200px;
+            max-width: none;
             margin: 0 auto;
-            padding: 0;
+            padding: 0 2rem;
         }
 
         .navbar-brand {
@@ -124,24 +124,24 @@
         }
 
         .quiz-interface {
-            max-width: 1200px;
+            max-width: none;
             margin: 0 auto;
-            padding: 0 1rem;
+            padding: 0;
         }
 
         .main-content {
             margin-top: 80px;
-            padding: 1rem;
+            padding: 1.5rem 2.75rem;
             min-height: 100vh;
         }
 
         .container {
-            background: white;
-            padding: 1rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            box-shadow: none;
             margin-bottom: 100px; /* Space for fixed progress bar */
-            max-width: 1400px; /* Increased from default for desktop */
+            max-width: none;
             width: 100%;
         }
 
@@ -543,17 +543,18 @@
         }
 
         .question-box {
-            background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            border: 1px solid #edf2f7;
+            background: transparent;
+            border-radius: 0;
+            padding: 0 0 1.75rem;
+            margin-bottom: 1.75rem;
+            box-shadow: none;
+            border: 0;
+            border-bottom: 2px solid rgba(148, 163, 184, 0.28);
         }
 
         .question-content-wrapper {
             display: flex;
-            gap: 2.5rem;
+            gap: 3.25rem;
             align-items: flex-start;
             width: 100%;
         }
@@ -567,13 +568,13 @@
             font-size: 1.5rem;
             color: #1a202c;
             font-weight: 600;
-            margin-bottom: 1.5rem;
-            line-height: 1.4;
+            margin-bottom: 1.75rem;
+            line-height: 1.45;
         }
 
         .question-image-container {
-            flex: 0 0 450px;
-            max-width: 45%;
+            flex: 0 0 min(34vw, 560px);
+            max-width: min(34vw, 560px);
             display: flex;
             justify-content: center;
         }
@@ -581,7 +582,7 @@
         .question-image {
             width: 100%;
             height: auto;
-            max-height: 550px;
+            max-height: 640px;
             border-radius: 12px;
             object-fit: contain;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
@@ -648,7 +649,13 @@
         .options {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.9rem;
+        }
+
+        .form-check {
+            width: 100%;
+            margin: 0;
+            padding-left: 0;
         }
 
         .form-check input {
@@ -657,17 +664,48 @@
 
         .form-check label {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
+            width: 100%;
             min-height: 48px; /* Touch target size */
-            padding: 1rem;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
+            padding: 1.05rem 1.2rem;
+            background-color: rgba(248, 250, 252, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             margin: 0;
             outline: 1.5px solid transparent;
             font-size: 1.05rem; /* Ensure readable font size */
+            line-height: 1.55;
+            box-shadow: none;
+        }
+
+        @media (min-width: 1200px) {
+            .main-content {
+                padding-left: 4rem;
+                padding-right: 4rem;
+            }
+
+            .question-box {
+                padding-bottom: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .question-text {
+                font-size: 1.8rem;
+                line-height: 1.42;
+                margin-bottom: 2rem;
+            }
+
+            .options {
+                gap: 1rem;
+            }
+
+            .form-check label {
+                min-height: 72px;
+                font-size: 1.12rem;
+                padding: 1.2rem 1.35rem;
+            }
         }
 
         .form-check label:hover {
@@ -1093,7 +1131,9 @@
 
         @media (max-width: 768px) {
             .container {
-                padding: 1rem;
+                padding: 0;
+                border-radius: 0;
+                box-shadow: none;
             }
 
             .popup {
@@ -1117,22 +1157,35 @@
 
             /* Mobile quiz optimizations */
             .question-box {
-                padding: 1rem;
+                padding: 0 0 1.5rem;
+                margin-bottom: 1.5rem;
+                border-radius: 0;
+                border-bottom-color: rgba(148, 163, 184, 0.38);
             }
 
             .question-text {
-                font-size: 1rem !important;
+                font-size: 1.12rem !important;
                 line-height: 1.6;
+                margin-bottom: 1.35rem;
+            }
+
+            .options {
+                gap: 0.75rem;
+            }
+
+            .form-check {
+                padding-left: 0 !important;
             }
 
             .form-check label {
-                font-size: 0.95rem;
-                padding: 0.875rem 0.75rem;
-                min-height: 48px; /* Apple HIG touch target */
+                font-size: 0.98rem;
+                padding: 1rem 1rem;
+                min-height: 56px; /* Apple HIG touch target */
             }
 
             .main-content {
-                margin-top: 70px;
+                margin-top: 24px;
+                padding: 0 0.85rem 0.75rem;
             }
 
             /* Prevent horizontal overflow on small screens */
@@ -1142,12 +1195,19 @@
 
             h1 {
                 font-size: 1.25rem;
+                line-height: 1.35;
+                margin-bottom: 0.45rem;
             }
 
             .grade-icon {
                 width: 60px;
                 height: 60px;
                 font-size: 1.75rem;
+            }
+
+            .source-outline {
+                padding: 0.1rem 0 0.6rem;
+                margin: 0.1rem 0 0.95rem 0;
             }
         }
 
@@ -1157,16 +1217,29 @@
         }
 
         @media (max-width: 480px) {
-            .question-text {
-                font-size: 0.95rem !important;
+            .container {
+                padding: 0;
             }
 
-            .form-check label {
-                font-size: 0.9rem;
+            .question-box {
+                padding: 0 0 1.2rem;
+                margin-bottom: 1.2rem;
+            }
+
+            .question-text {
+                font-size: 1.08rem !important;
+                margin-bottom: 1rem;
             }
 
             .options {
-                gap: 0.5rem;
+                margin-left: -0.1rem;
+                margin-right: -0.1rem;
+                gap: 0.7rem;
+            }
+
+            .form-check label {
+                font-size: 0.96rem;
+                padding: 0.95rem 0.95rem;
             }
         }
 
@@ -1312,7 +1385,7 @@
 
         /* PROFESSIONAL MINIMAL SOURCE DISPLAY */
         .source-outline {
-            padding: 0.75rem 0;
+            padding: 0.4rem 0 0.9rem;
             margin: 0.5rem 0 1.5rem 0;
             position: relative;
             display: block;

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Services\TutorSourceProgressService;
+use Illuminate\Support\Str;
 
 class QuizService
 {
@@ -302,6 +303,7 @@ class QuizService
 
         // Initialize tutor progress if in tutor mode
         if ($mode === 'tutor') {
+            $tutorSessionKey = (string) Str::uuid();
             $questionsBySource = $questions
                 ->groupBy(fn ($question) => (string) ($question->source ?: 'General'))
                 ->map(fn ($group) => $group->pluck('id')->map(fn ($id) => (int) $id)->values()->all())
@@ -310,7 +312,9 @@ class QuizService
             session([
                 'tutor_progress' => ['sources' => []],
                 'tutor_scope' => ($options['tutor_scope'] ?? 'full'),
+                'tutor_session_key' => $tutorSessionKey,
                 'tutor_session_questions' => [
+                    'session_key' => $tutorSessionKey,
                     'topic_id' => $topic->id,
                     'course_id' => $course->id,
                     'sources' => $questionsBySource,

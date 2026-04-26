@@ -102,6 +102,7 @@ class QuizTutorController extends Controller
                 'course' => $quizData['course'],
                 'selected_sources' => $quizData['sources'],
                 'tutor_scope' => $tutorScope,
+                'tutor_session_key' => session('tutor_session_key'),
                 'mode' => 'tutor',
                 'currentUserView' => [
                     'profile_image_url' => $user->getProfileImageUrl(),

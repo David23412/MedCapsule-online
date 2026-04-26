@@ -786,6 +786,35 @@
             return sourceSelectionModal;
         }
 
+        function updateTutorSourceCtaState() {
+            if (!sourceSelectionForm || !startSourceQuizBtn) {
+                return;
+            }
+
+            const selectedModeInput = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked');
+            const selectedMode = selectedModeInput ? selectedModeInput.value : 'quiz';
+            const tutorScope = sourceSelectionForm.querySelector('input[name="tutor_scope"]:checked')?.value || 'remaining';
+            const selectedCards = getSelectedSourceCards();
+            const totalRemaining = selectedCards.reduce((sum, card) => {
+                return sum + Number(card.dataset.remainingQuestions || 0);
+            }, 0);
+            const totalAttempted = selectedCards.reduce((sum, card) => {
+                return sum + Number(card.dataset.attemptedQuestions || card.dataset.completedQuestions || 0);
+            }, 0);
+
+            if (selectedMode !== 'tutor') {
+                startSourceQuizBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
+                return;
+            }
+
+            if (tutorScope === 'remaining' && totalRemaining > 0 && totalAttempted > 0) {
+                startSourceQuizBtn.innerHTML = '<i class="fas fa-rotate-right me-2"></i>Continue Solving';
+                return;
+            }
+
+            startSourceQuizBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Tutor Mode';
+        }
+
         document.querySelectorAll('input[name="quiz_mode"]').forEach(radio => {
             radio.addEventListener('change', async function() {
                 const topicId = sourceTopicId.value;
@@ -810,6 +839,7 @@
                     updateSourcesContainer(data);
                 } catch (error) {
                     sourcesContainer.innerHTML = '<div class="alert alert-danger">Error loading sources. Please try again.</div>';
+                    updateTutorSourceCtaState();
                 }
             });
         });
@@ -932,7 +962,7 @@
                                         ? `${correctCount}/${totalAvailable} solved correctly`
                                         : `${progress.completed}/${totalAvailable} Questions`}
                                 </span>
-                                ${data.mode === 'tutor'
+                                ${data.mode === 'tutor' && attemptedCount > 0 && remainingCount > 0
                                     ? `<span class="questions-count"><i class="fas fa-rotate-right me-1"></i>${remainingCount} left to fix</span>`
                                     : ''}
                             </div>
@@ -1010,6 +1040,7 @@
             if (!isTutorMode) {
                 tutorScopeSection.classList.add('d-none');
                 if (fullRadio) fullRadio.checked = true;
+                updateTutorSourceCtaState();
                 return;
             }
 
@@ -1024,6 +1055,7 @@
             if (totalCompleted === 0) {
                 tutorScopeSection.classList.add('d-none');
                 if (remainingRadio) remainingRadio.checked = true;
+                updateTutorSourceCtaState();
                 return;
             }
 
@@ -1041,6 +1073,7 @@
                 if (tutorScopeHint) {
                     tutorScopeHint.textContent = 'Everything in these sources is already correct. Start again only if you want a full replay.';
                 }
+                updateTutorSourceCtaState();
                 return;
             }
 
@@ -1051,6 +1084,8 @@
             if (tutorScopeHint) {
                 tutorScopeHint.textContent = 'Continue will load only the questions you still have wrong in tutor mode.';
             }
+
+            updateTutorSourceCtaState();
         }
 
         document.addEventListener('click', function(e) {
@@ -1095,18 +1130,21 @@
             sourceCourseId.value = courseId;
             sourceSelectionForm.action = originalHref;
 
-            cachedFetchJson(`/topics/${topicId}/source-progress?mode=quiz`, {
+            const selectedMode = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
+
+            cachedFetchJson(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
                 method: 'GET',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken.content,
                     'Accept': 'application/json'
                 }
-            }, 15000, `source-progress:${topicId}:quiz`)
+            }, 15000, `source-progress:${topicId}:${selectedMode}`)
                 .then(data => {
                     updateSourcesContainer(data);
                     modal.show();
                 })
                 .catch(() => {
+                    updateTutorSourceCtaState();
                     modal.show();
                 });
         });
