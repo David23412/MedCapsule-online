@@ -424,7 +424,7 @@
         .option-card {
             padding: 1.05rem 1.2rem;
             background-color: rgba(248, 250, 252, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.2);
+            border: 1px solid rgba(148, 163, 184, 0.34);
             border-radius: 12px;
             margin-bottom: 0.9rem;
             cursor: pointer;
@@ -433,12 +433,12 @@
             gap: 1rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             outline: 1.5px solid transparent;
-            box-shadow: none;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
         .option-card:hover {
-            background-color: #f1f3f5;
-            border-color: #007bff;
+            background-color: #f8fbff;
+            border-color: rgba(0, 123, 255, 0.68);
             transform: translateY(-1px);
             outline: 1px solid #007bff;
             box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
@@ -501,7 +501,7 @@
         }
 
         .option-letter {
-            background: #e9ecef;
+            background: #e5ebf2;
             width: 30px;
             height: 30px;
             display: flex;
@@ -510,15 +510,16 @@
             border-radius: 50%;
             font-weight: 600;
             flex-shrink: 0;
+            color: #334155;
         }
 
         .progress-bar-container {
             position: relative;
             background: #f8f9fa;
             border-radius: 10px;
-            padding: 1rem;
+            padding: 1rem 1rem 1.1rem;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            margin-bottom: 0.25rem;
+            margin-bottom: 1rem;
         }
 
         .progress-bar {
@@ -641,12 +642,12 @@
             color: #333;
             font-weight: 600;
             background: #f8f9fa;
-            padding: 0.5rem 1rem;
+            padding: 0.55rem 1rem;
             border-radius: 6px;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.8rem;
             transition: all 0.3s ease;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
