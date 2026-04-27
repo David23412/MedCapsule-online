@@ -15,6 +15,41 @@ class ConceptAnalyticsService
     private static ?bool $hasReviewEvents = null;
     private static ?bool $conceptAnalyticsSupported = null;
 
+    public function getConceptSignalsForMistakes(Collection $mistakes, int $userId, string $mode): Collection
+    {
+        if ($mistakes->isEmpty() || !$this->supportsConceptAnalytics()) {
+            return collect();
+        }
+
+        $user = new User(['id' => $userId]);
+        $topicIds = $mistakes
+            ->map(fn (Mistake $mistake) => (int) (optional($mistake->question)->topic_id ?? 0))
+            ->filter(fn (int $topicId) => $topicId > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $signals = $this->buildSignals($user, $topicIds);
+
+        return collect($signals['by_topic'] ?? [])
+            ->flatten(1)
+            ->mapWithKeys(function (array $signal) {
+                $topicId = (int) ($signal['topic_id'] ?? 0);
+                $slug = trim((string) ($signal['slug'] ?? ''));
+
+                if ($topicId <= 0 || $slug === '') {
+                    return [];
+                }
+
+                return [
+                    $topicId . '|' . $slug => [
+                        'name' => $signal['concept_name'] ?? null,
+                        'risk_score' => (float) ($signal['risk_score'] ?? 0.0),
+                    ],
+                ];
+            });
+    }
+
     public function buildSignals(User $user, array $courseTopicIds): array
     {
         if (empty($courseTopicIds) || !$this->supportsConceptAnalytics()) {
