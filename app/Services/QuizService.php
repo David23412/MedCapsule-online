@@ -193,12 +193,14 @@ class QuizService
     {
         // Trim all source values to avoid whitespace issues
         $sources = array_map('trim', $sources);
+        $topicVersion = $this->currentTopicQuestionVersion($topic);
 
         $cacheKey = "topic:{$topic->id}:questions:" . md5(serialize([
             'sources' => $sources,
             'mode' => $mode,
             'tutor_scope' => $options['tutor_scope'] ?? null,
             'user_id' => $mode === 'tutor' ? $user->id : null,
+            'topic_version' => $topicVersion,
         ]));
 
         $questions = $this->cacheService->remember($cacheKey, function () use ($user, $topic, $sources, $mode, $options) {
@@ -206,6 +208,11 @@ class QuizService
         }, 1800); // 30 minutes
 
         return $questions;
+    }
+
+    private function currentTopicQuestionVersion(Topic $topic): int
+    {
+        return (int) Cache::get("quiz_questions_version:topic_{$topic->id}", 1);
     }
 
     /**

@@ -17,11 +17,11 @@ class ConceptAnalyticsService
 
     public function getConceptSignalsForMistakes(Collection $mistakes, int $userId, string $mode): Collection
     {
-        if ($mistakes->isEmpty() || !$this->supportsConceptAnalytics()) {
+        if ($mistakes->isEmpty() || $userId <= 0 || !$this->supportsConceptAnalytics()) {
             return collect();
         }
 
-        $user = new User(['id' => $userId]);
+        $user = (new User())->forceFill(['id' => $userId]);
         $topicIds = $mistakes
             ->map(fn (Mistake $mistake) => (int) (optional($mistake->question)->topic_id ?? 0))
             ->filter(fn (int $topicId) => $topicId > 0)
@@ -52,19 +52,16 @@ class ConceptAnalyticsService
 
     public function buildSignals(User $user, array $courseTopicIds): array
     {
-        if (empty($courseTopicIds) || !$this->supportsConceptAnalytics()) {
-            return [
-                'by_topic' => [],
-                'weakest' => [],
-                'clusters' => [],
-                'clusters_by_topic' => [],
-            ];
+        $userId = $this->resolveUserId($user);
+
+        if ($userId === null || empty($courseTopicIds) || !$this->supportsConceptAnalytics()) {
+            return $this->emptySignalSet();
         }
 
-        $eventMetrics = $this->eventMetricsByConcept($user->id, $courseTopicIds);
+        $eventMetrics = $this->eventMetricsByConcept($userId, $courseTopicIds);
 
         $mistakes = Mistake::query()
-            ->where('user_id', $user->id)
+            ->where('user_id', $userId)
             ->whereHas('question', function ($query) use ($courseTopicIds) {
                 $query->whereIn('topic_id', $courseTopicIds);
             })
@@ -195,6 +192,29 @@ class ConceptAnalyticsService
                 ->map(fn (Collection $group) => $group->values()->all())
                 ->all(),
         ];
+    }
+
+    private function emptySignalSet(): array
+    {
+        return [
+            'by_topic' => [],
+            'weakest' => [],
+            'clusters' => [],
+            'clusters_by_topic' => [],
+        ];
+    }
+
+    private function resolveUserId(User $user): ?int
+    {
+        $userId = $user->getKey();
+
+        if (!is_numeric($userId)) {
+            return null;
+        }
+
+        $userId = (int) $userId;
+
+        return $userId > 0 ? $userId : null;
     }
 
     private function buildClusters(Collection $signals): Collection

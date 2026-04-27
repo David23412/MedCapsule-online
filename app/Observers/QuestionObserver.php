@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Question;
 use App\Services\Core\UltraConsolidatedCacheService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 
@@ -34,6 +35,7 @@ class QuestionObserver
 
             // Invalidate topic-level caches that depend on question data
             $this->clearTopicQuestionCaches($question->topic_id);
+            $this->invalidateMistakeCachesForQuestion($question->id);
 
         } catch (\Exception $e) {
             Log::error('Error clearing caches after question deletion', [
@@ -63,6 +65,7 @@ class QuestionObserver
                 'source',
             ])) {
                 Cache::increment("quiz_questions_version:topic_{$question->topic_id}");
+                $this->invalidateMistakeCachesForQuestion($question->id);
             }
 
             // If source or topic_id changed, invalidate topic-level caches
@@ -81,6 +84,7 @@ class QuestionObserver
                 $this->cacheService->clearQuestionCaches($question->id, $question->topic_id);
                 $this->cacheService->clearRandomQuizCaches();
                 $this->clearTopicQuestionCaches($question->topic_id);
+                $this->invalidateMistakeCachesForQuestion($question->id);
             }
         } catch (\Exception $e) {
             Log::error('Error clearing caches after question update', [
@@ -117,4 +121,31 @@ class QuestionObserver
         Cache::forget("api:topic:{$topicId}:question_counts");
         Cache::forget("api:topic:{$topicId}:sources");
     }
-} 
+
+    private function invalidateMistakeCachesForQuestion(int $questionId): void
+    {
+        $userIds = DB::table('mistakes')
+            ->where('question_id', $questionId)
+            ->distinct()
+            ->pluck('user_id')
+            ->map(fn ($userId) => (int) $userId)
+            ->filter(fn (int $userId) => $userId > 0);
+
+        foreach ($userIds as $userId) {
+            foreach ([
+                "mistakes_count_{$userId}",
+                "skipped_mistakes_{$userId}",
+                "review_mistakes_{$userId}",
+                "mistakes_smart_{$userId}_v3",
+                "mistakes_smart_{$userId}_skipped_v3",
+                "mistakes_support_smart_{$userId}",
+            ] as $key) {
+                Cache::forget($key);
+            }
+
+            $versionKey = "mistakes_cache_version_{$userId}";
+            $currentVersion = (int) Cache::get($versionKey, 1);
+            Cache::put($versionKey, $currentVersion + 1, 3600);
+        }
+    }
+}
