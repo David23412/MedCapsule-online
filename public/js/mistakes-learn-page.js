@@ -435,9 +435,9 @@ function initializeMistakesLearnPage() {
             };
 
             const getDifficultyLabel = (difficulty) => {
-                if (difficulty >= 0.75) return 'Stubborn';
-                if (difficulty >= 0.55) return 'Sticky';
-                if (difficulty >= 0.35) return 'Improving';
+                if (difficulty >= 8) return 'Stubborn';
+                if (difficulty >= 6) return 'Sticky';
+                if (difficulty >= 4) return 'Improving';
                 return 'Fluent';
             };
 
@@ -685,8 +685,12 @@ function initializeMistakesLearnPage() {
                 question.learningState = typeof payload.learning_state === 'string' && payload.learning_state !== ''
                     ? payload.learning_state
                     : null;
+                question.fsrsState = typeof payload.fsrs_state === 'string' && payload.fsrs_state !== ''
+                    ? payload.fsrs_state
+                    : question.fsrsState;
                 question.sameDayRelearnStep = parseNumber(payload.same_day_relearn_step, question.sameDayRelearnStep);
                 question.needsSameDayRelearn = payload.needs_same_day_relearn === true;
+                question.isDueNow = payload.is_due_now === true;
                 question.isMastered = payload.is_mastered === true;
                 question.lastReviewedAt = Date.now();
                 question.lastAttemptAt = new Date();
@@ -874,32 +878,84 @@ function initializeMistakesLearnPage() {
             const getSpacedReviewedCount = () => getSpacedSessionDeck().filter((question) => question.sessionResolved).length;
 
             const getNextSpacedQuestionIndex = (excludeQuestionId = null) => {
+                const spacedQueueBucket = (question) => {
+                    const isDue = !question.nextReviewAt || question.nextReviewAt.getTime() <= Date.now();
+                    const state = question.fsrsState || question.learningState;
+
+                    if (state === 'relearning' && isDue) {
+                        return 0;
+                    }
+
+                    if (state === 'learning' && isDue) {
+                        return 1;
+                    }
+
+                    if (state === 'review' && isDue) {
+                        return 2;
+                    }
+
+                    if (!question.nextReviewAt) {
+                        return 3;
+                    }
+
+                    if (state === 'relearning' || state === 'learning') {
+                        return 4;
+                    }
+
+                    return 5;
+                };
+
+                const spacedOverdueRatio = (question) => {
+                    if (!question.nextReviewAt) {
+                        return 0;
+                    }
+
+                    const intervalDays = Math.max(1, question.intervalDays || 1);
+                    const overdueDays = Math.max(0, (Date.now() - question.nextReviewAt.getTime()) / 86400000);
+
+                    return overdueDays / intervalDays;
+                };
+
                 const sortSpacedQuestions = (questions) => questions.sort((left, right) => {
-                    const leftDue = left.question.nextReviewAt ? left.question.nextReviewAt.getTime() : 0;
-                    const rightDue = right.question.nextReviewAt ? right.question.nextReviewAt.getTime() : 0;
+                    const leftBucket = spacedQueueBucket(left.question);
+                    const rightBucket = spacedQueueBucket(right.question);
+                    if (leftBucket !== rightBucket) {
+                        return leftBucket - rightBucket;
+                    }
+
+                    if (leftBucket === 2) {
+                        const leftOverdueRatio = spacedOverdueRatio(left.question);
+                        const rightOverdueRatio = spacedOverdueRatio(right.question);
+                        if (leftOverdueRatio !== rightOverdueRatio) {
+                            return rightOverdueRatio - leftOverdueRatio;
+                        }
+                    }
+
+                    const leftDue = left.question.nextReviewAt ? left.question.nextReviewAt.getTime() : Number.MAX_SAFE_INTEGER;
+                    const rightDue = right.question.nextReviewAt ? right.question.nextReviewAt.getTime() : Number.MAX_SAFE_INTEGER;
 
                     if (leftDue !== rightDue) {
                         return leftDue - rightDue;
-                    }
-
-                    if (left.question.learningState !== right.question.learningState) {
-                        return left.question.learningState === 'relearn' ? -1 : 1;
                     }
 
                     if (left.question.sameDayRelearnStep !== right.question.sameDayRelearnStep) {
                         return left.question.sameDayRelearnStep - right.question.sameDayRelearnStep;
                     }
 
-                    if (left.question.conceptRiskScore !== right.question.conceptRiskScore) {
-                        return right.question.conceptRiskScore - left.question.conceptRiskScore;
-                    }
-
                     if (left.question.retrievability !== right.question.retrievability) {
                         return left.question.retrievability - right.question.retrievability;
                     }
 
+                    if (left.question.lapseCount !== right.question.lapseCount) {
+                        return right.question.lapseCount - left.question.lapseCount;
+                    }
+
                     if (left.question.difficulty !== right.question.difficulty) {
                         return right.question.difficulty - left.question.difficulty;
+                    }
+
+                    if (left.question.conceptRiskScore !== right.question.conceptRiskScore) {
+                        return right.question.conceptRiskScore - left.question.conceptRiskScore;
                     }
 
                     const leftAttempt = left.question.lastAttemptAt ? left.question.lastAttemptAt.getTime() : 0;
@@ -909,15 +965,21 @@ function initializeMistakesLearnPage() {
                 });
 
                 let eligibleQuestions = sortSpacedQuestions(getSpacedEligibleQuestions());
+                const scheduledQuestions = sortSpacedQuestions(getSpacedEligibleQuestions(true));
 
                 if (excludeQuestionId !== null) {
                     const alternativeQuestion = eligibleQuestions.find(({ question }) => question.id !== excludeQuestionId);
                     if (alternativeQuestion) {
                         return alternativeQuestion.index;
                     }
+
+                    const scheduledAlternativeQuestion = scheduledQuestions.find(({ question }) => question.id !== excludeQuestionId);
+                    if (scheduledAlternativeQuestion) {
+                        return scheduledAlternativeQuestion.index;
+                    }
                 }
 
-                return eligibleQuestions[0]?.index ?? null;
+                return eligibleQuestions[0]?.index ?? scheduledQuestions[0]?.index ?? null;
             };
 
             const updateSidebarProgress = () => {
@@ -1012,15 +1074,18 @@ function initializeMistakesLearnPage() {
                     difficulty: parseNumber(card.dataset.difficulty),
                     retrievability: parseNumber(card.dataset.retrievability, 0.9),
                     reviewCount: parseNumber(card.dataset.reviewCount),
+                    lapseCount: parseNumber(card.dataset.lapseCount),
                     lastReviewRating: parseNumber(card.dataset.lastReviewRating),
                     lastReviewConfidence: null,
                     conceptRiskScore: parseNumber(card.dataset.conceptRiskScore),
                     focusConceptName: card.dataset.focusConceptName || null,
                     learningState: card.dataset.learningState || null,
+                    fsrsState: card.dataset.fsrsState || null,
                     sameDayRelearnStep: parseNumber(card.dataset.sameDayRelearnStep),
                     maxSameDayRelearnStep: 2,
-                    needsSameDayRelearn: (card.dataset.learningState || '') === 'relearn' && parseNumber(card.dataset.sameDayRelearnStep) > 0,
+                    needsSameDayRelearn: ['relearn', 'relearning', 'learning'].includes(card.dataset.learningState || '') && parseNumber(card.dataset.sameDayRelearnStep) > 0,
                     lastAttemptAt: parseDateValue(card.dataset.lastAttemptDate),
+                    isDueNow: card.dataset.isDueNow === 'true',
                     confidenceLevel: null,
                     firstConfidenceLevel: null,
                     confidenceChangeCount: 0,
@@ -1502,33 +1567,41 @@ function initializeMistakesLearnPage() {
                             currentQuestion.selectedAnswer = selectedOption;
                         }
 
-                        // ⚡️ OPTIMISTIC CYCLING - Fire and move on
-                        const processOutcome = () => {
-                            if (selectedMode === 'spaced') {
-                                applySpacedOutcome(currentQuestion, isCorrect);
-                            } else {
-                                applySessionOutcome(currentQuestion, isCorrect);
-                            }
-                        };
+                        if (selectedMode === 'spaced') {
+                            submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
+                                .then((data) => {
+                                    syncAdaptiveState(currentQuestion, data);
+                                    applySpacedOutcome(currentQuestion, data.is_correct === true, data);
 
-                        processOutcome();
+                                    setTimeout(() => {
+                                        this.parentElement.classList.remove('answered');
+                                        this.classList.remove('correct', 'incorrect');
+                                        showNextQuestion();
+                                    }, 600);
+                                })
+                                .catch((error) => {
+                                    console.error('Error syncing spaced review:', error);
+                                    this.parentElement.classList.remove('answered');
+                                    this.classList.remove('correct', 'incorrect');
+                                    showReviewSyncError(currentQuestion, error.message || 'Failed to record review. Try again.');
+                                });
+                            return;
+                        }
 
-                        // 🔥 NUCLEAR SPEED: Reduced timeout to 600ms for faster cycling feel
+                        applySessionOutcome(currentQuestion, isCorrect);
+
                         setTimeout(() => {
                             this.parentElement.classList.remove('answered');
                             this.classList.remove('correct', 'incorrect');
                             showNextQuestion();
                         }, 600);
 
-                        // BACKGROUND SYNC - Do not block the experience
                         submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
                             .then((data) => {
                                 syncAdaptiveState(currentQuestion, data);
                             })
                             .catch((error) => {
                                 console.error('Error background syncing review:', error);
-                                // We don't show sync error here unless it's critical, 
-                                // because the user has already moved on.
                             });
                         return;
 

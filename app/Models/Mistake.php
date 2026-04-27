@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\Learning\AdaptiveMistakeScheduler;
+use App\Services\Learning\FsrsScheduler;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -179,28 +180,7 @@ class Mistake extends Model
 
     public function currentRetrievability(?Carbon $asOf = null): float
     {
-        $asOf ??= now();
-        $lastReviewedAt = $this->last_reviewed_at instanceof Carbon
-            ? $this->last_reviewed_at
-            : ($this->last_attempt_date instanceof Carbon ? $this->last_attempt_date : null);
-
-        if (!$lastReviewedAt && $this->last_reviewed_at) {
-            $lastReviewedAt = Carbon::parse($this->last_reviewed_at);
-        } elseif (!$lastReviewedAt && $this->last_attempt_date) {
-            $lastReviewedAt = Carbon::parse($this->last_attempt_date);
-        }
-
-        $retrievabilitySeed = max(0.01, min(0.99, (float) ($this->retrievability ?? 0.9)));
-
-        if (!$lastReviewedAt || !static::hasColumn('stability')) {
-            return round($retrievabilitySeed, 4);
-        }
-
-        $stability = max(0.15, (float) ($this->stability ?? 0.5));
-        $elapsedDays = max(0.0, $lastReviewedAt->diffInSeconds($asOf) / 86400);
-        $retrievability = $retrievabilitySeed / (1.0 + ($elapsedDays / (9.0 * $stability)));
-
-        return round(max(0.01, min(0.99, $retrievability)), 4);
+        return app(FsrsScheduler::class)->calculateRetrievability($this, $asOf ?? now());
     }
 
     /**

@@ -120,15 +120,15 @@
                 && (!$mistake->next_review_at || $mistake->next_review_at->lte($sessionNow));
         })->count();
         $highRiskCount = $mistakes->filter(function ($mistake) {
-            return !(bool) $mistake->skipped && (float) ($mistake->retrievability ?? 0.9) <= 0.55;
+            return !(bool) $mistake->skipped && (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9) <= 0.55;
         })->count();
         $stabilizingCount = $mistakes->filter(function ($mistake) {
             return !(bool) $mistake->skipped
                 && (float) ($mistake->stability ?? 0) >= 1.5
-                && (float) ($mistake->retrievability ?? 0.9) > 0.55;
+                && (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9) > 0.55;
         })->count();
         $averageIntervalDays = round($mistakes->avg(fn ($mistake) => (float) ($mistake->interval_days ?? 0)) ?? 0, 1);
-        $averageRetrievability = (int) round(($mistakes->avg(fn ($mistake) => (float) ($mistake->retrievability ?? 0.9)) ?? 0.9) * 100);
+        $averageRetrievability = (int) round(($mistakes->avg(fn ($mistake) => (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9)) ?? 0.9) * 100);
         $upNextMistake = $mistakes
             ->filter(fn ($mistake) => !(bool) $mistake->skipped && $mistake->next_review_at)
             ->sortBy('next_review_at')
@@ -436,9 +436,10 @@
             @foreach($mistakes as $index => $mistake)
                 @php
                     $nextReviewAt = $mistake->next_review_at;
-                    $retrievability = (float) ($mistake->retrievability ?? 0.9);
+                    $retrievability = (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9);
                     $stability = (float) ($mistake->stability ?? 0);
                     $difficulty = (float) ($mistake->difficulty ?? 0);
+                    $fsrsState = $mistake->fsrs_state ?? ($mistake->learning_state ?: 'review');
                     $memoryStatusLabel = !$nextReviewAt || $nextReviewAt->lte($sessionNow)
                         ? 'Due now'
                         : ($nextReviewAt->isToday() ? 'Later today' : ($nextReviewAt->isTomorrow() ? 'Tomorrow' : 'Scheduled'));
@@ -446,7 +447,7 @@
                         ? 'is-due'
                         : ($retrievability <= 0.55 ? 'is-risk' : 'is-scheduled');
                     $stabilityLabel = $stability < 0.5 ? 'Fragile' : ($stability < 2 ? 'Building' : ($stability < 7 ? 'Settling' : 'Stable'));
-                    $difficultyLabel = $difficulty >= 0.75 ? 'Stubborn' : ($difficulty >= 0.55 ? 'Sticky' : ($difficulty >= 0.35 ? 'Improving' : 'Fluent'));
+                    $difficultyLabel = $difficulty >= 8 ? 'Stubborn' : ($difficulty >= 6 ? 'Sticky' : ($difficulty >= 4 ? 'Improving' : 'Fluent'));
                 @endphp
                 <div class="card {{ $index === 0 ? 'active' : '' }}" 
                     data-question-id="{{ $mistake->question_id }}"
@@ -458,13 +459,16 @@
                     data-difficulty="{{ round($difficulty, 2) }}"
                     data-retrievability="{{ round($retrievability, 4) }}"
                     data-review-count="{{ (int) ($mistake->review_count ?? 0) }}"
+                    data-lapse-count="{{ (int) ($mistake->lapse_count ?? 0) }}"
                     data-review-streak="{{ (int) ($mistake->correct_streak ?? 0) }}"
                     data-last-review-rating="{{ (int) ($mistake->last_review_rating ?? 0) }}"
                     data-concept-risk-score="{{ round((float) ($mistake->concept_risk_score ?? 0), 4) }}"
                     data-focus-concept-name="{{ $mistake->focus_concept_name ?? '' }}"
                     data-learning-state="{{ $mistake->learning_state ?? '' }}"
+                    data-fsrs-state="{{ $fsrsState }}"
                     data-same-day-relearn-step="{{ (int) ($mistake->same_day_relearn_step ?? 0) }}"
                     data-last-attempt-date="{{ optional($mistake->last_attempt_date)->toIso8601String() }}"
+                    data-is-due-now="{{ (!$nextReviewAt || $nextReviewAt->lte($sessionNow)) ? 'true' : 'false' }}"
                     data-skipped="{{ $mistake->skipped ? 'true' : 'false' }}">
                     <!-- Course: {{ $mistake->question->topic->course->name ?? 'Unknown' }} -->
 
@@ -482,9 +486,9 @@
                     <div class="review-sync-feedback" data-role="review-sync-feedback"></div>
                     <div class="spaced-confidence-panel" data-role="spaced-confidence-panel">
                         <div class="spaced-confidence-options" role="group" aria-label="Spaced review confidence">
-                            <button type="button" class="spaced-confidence-option" data-confidence="guessed">Guessed</button>
-                            <button type="button" class="spaced-confidence-option" data-confidence="unsure">Unsure</button>
-                            <button type="button" class="spaced-confidence-option" data-confidence="knew">Knew it</button>
+                            <button type="button" class="spaced-confidence-option" data-confidence="guessed">خمنتها</button>
+                            <button type="button" class="spaced-confidence-option" data-confidence="unsure">مش متأكد</button>
+                            <button type="button" class="spaced-confidence-option" data-confidence="knew">عارفها</button>
                         </div>
                     </div>
                     

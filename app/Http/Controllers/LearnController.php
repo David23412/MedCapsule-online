@@ -159,6 +159,11 @@ class LearnController extends Controller
                 'selected_answer' => 'required|string|max:1000',
                 'time_spent' => 'nullable|integer|min:0|max:3600',
                 'confidence' => 'nullable|string|in:guessed,unsure,knew',
+                'first_selected_answer' => 'nullable|string|max:1000',
+                'answer_change_count' => 'nullable|integer|min:0|max:50',
+                'time_to_first_selection' => 'nullable|integer|min:0|max:3600',
+                'first_confidence' => 'nullable|string|in:guessed,unsure,knew',
+                'confidence_change_count' => 'nullable|integer|min:0|max:50',
             ]);
             
             $mode = $validated['mode'] ?? 'quiz';
@@ -166,7 +171,15 @@ class LearnController extends Controller
             $timeSpent = (int) ($validated['time_spent'] ?? 0);
             $confidence = $validated['confidence'] ?? null;
             $interactionSignals = [
+                'first_selected_answer' => $validated['first_selected_answer'] ?? null,
                 'final_selected_answer' => $selectedAnswer,
+                'answer_change_count' => (int) ($validated['answer_change_count'] ?? 0),
+                'time_to_first_selection' => isset($validated['time_to_first_selection'])
+                    ? (int) $validated['time_to_first_selection']
+                    : null,
+                'first_confidence' => $validated['first_confidence'] ?? null,
+                'final_confidence' => $confidence,
+                'confidence_change_count' => (int) ($validated['confidence_change_count'] ?? 0),
             ];
 
             if ($mode === 'spaced' && $confidence === null) {

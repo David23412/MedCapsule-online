@@ -3,7 +3,7 @@
 namespace App\Services\Learning;
 
 use App\Models\Mistake;
-use App\Services\Core\UltraConsolidatedCacheService;
+use App\Services\Learning\FsrsScheduler;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +12,7 @@ class MistakeManagementService
 {
     public function __construct(
         private UserMistakeMasteryService $userMistakeMasteryService,
+        private FsrsScheduler $fsrsScheduler,
     ) {
     }
 
@@ -93,18 +94,20 @@ class MistakeManagementService
                     });
                 })
                 ->when($mode === 'spaced', function ($query) {
-                    return $query->dueForReview('spaced');
+                    return $this->applySpacedSessionFilters($query);
                 });
 
             $mistakes = (clone $baseQuery)
-                ->when($mode === 'spaced' && Mistake::hasColumn('next_review_at'), function ($query) {
-                    $query->orderBy('next_review_at');
+                ->when($mode === 'spaced', function ($query) {
+                    return $this->applySpacedSessionOrdering($query);
                 })
                 ->when($mode !== 'spaced', function ($query) {
                     $query->orderBy('correct_streak')
                           ->orderBy('last_attempt_date');
                 })
-                ->limit(500)
+                ->when($mode !== 'spaced', function ($query) {
+                    $query->limit(500);
+                })
                 ->get();
 
             $mistakes = $this->attachConceptSignals($mistakes, $userId, $mode);
@@ -180,6 +183,36 @@ class MistakeManagementService
         return (int) Cache::get("mistakes_cache_version_{$userId}", 1);
     }
 
+    private function applySpacedSessionFilters($query)
+    {
+        if (Mistake::hasColumn('skip_until')) {
+            return $query->where(function ($innerQuery) {
+                $innerQuery
+                    ->where('skipped', false)
+                    ->orWhere(function ($skipQuery) {
+                        $skipQuery
+                            ->where('skipped', true)
+                            ->whereNotNull('skip_until')
+                            ->where('skip_until', '<=', now());
+                    });
+            });
+        }
+
+        return $query->where('skipped', false);
+    }
+
+    private function applySpacedSessionOrdering($query)
+    {
+        if (!Mistake::hasColumn('next_review_at')) {
+            return $query->orderBy('last_attempt_date');
+        }
+
+        return $query
+            ->orderByRaw('CASE WHEN next_review_at IS NULL OR next_review_at <= ? THEN 0 ELSE 1 END ASC', [now()])
+            ->orderBy('next_review_at')
+            ->orderBy('last_attempt_date');
+    }
+
     /**
      * 🚀 NUCLEAR OPTIMIZED: Get updated mistakes count with ZERO N+1 queries
      *
@@ -193,7 +226,26 @@ class MistakeManagementService
         $cacheKey = "mistakes_count_{$userId}_" . md5($mode);
 
         return Cache::remember($cacheKey, 300, function () use ($userId, $mode) {
-            // ✅ ZERO N+1: Simple count query, no eager loading needed
+            if ($mode === 'spaced') {
+                $activeBacklogQuery = $this->applySpacedSessionFilters(Mistake::where('user_id', $userId));
+                $activeBacklogCount = (clone $activeBacklogQuery)->count();
+                $dueNowCount = (clone $activeBacklogQuery)
+                    ->where(function ($query) {
+                        $query
+                            ->whereNull('next_review_at')
+                            ->orWhere('next_review_at', '<=', now());
+                    })
+                    ->count();
+
+                return [
+                    'success' => true,
+                    'mistakes_count' => $activeBacklogCount,
+                    'due_now_count' => $dueNowCount,
+                    'active_backlog_count' => $activeBacklogCount,
+                    'has_mistakes' => $activeBacklogCount > 0,
+                ];
+            }
+
             $mistakesCount = Mistake::where('user_id', $userId)
                 ->dueForReview($mode)
                 ->count();
@@ -226,6 +278,173 @@ class MistakeManagementService
         }
         
         return false;
+    }
+
+    private function attachConceptSignals($mistakes, int $userId, string $mode)
+    {
+        $now = now();
+
+        if ($mistakes->isEmpty()) {
+            return $mistakes;
+        }
+
+        $conceptSignals = app(ConceptAnalyticsService::class)
+            ->getConceptSignalsForMistakes($mistakes, $userId, $mode);
+
+        $enriched = $mistakes->map(function (Mistake $mistake) use ($conceptSignals, $now) {
+            $topicId = (int) (optional($mistake->question)->topic_id ?? 0);
+            $slug = trim((string) ($mistake->focus_concept_slug ?? ''));
+            $strongestSignal = $topicId > 0 && $slug !== ''
+                ? $conceptSignals->get($topicId . '|' . $slug)
+                : null;
+
+            $mistake->setAttribute('concept_risk_score', (float) ($strongestSignal['risk_score'] ?? 0.0));
+            $mistake->setAttribute('focus_concept_name', $strongestSignal['name'] ?? null);
+            $mistake->setAttribute('current_retrievability', $mistake->currentRetrievability($now));
+            $mistake->setAttribute('fsrs_state', $this->fsrsScheduler->currentState($mistake, $now));
+            $mistake->setAttribute('is_due_now', $this->isDueNow($mistake, $now));
+
+            return $mistake;
+        });
+
+        if ($mode === 'spaced') {
+            return $enriched->sort(function (Mistake $left, Mistake $right) use ($now) {
+                return $this->compareSpacedQueuePriority($left, $right, $now);
+            })->values();
+        }
+
+        return $enriched->values();
+    }
+
+    /**
+     * Process mistake review
+     */
+    public function reviewMistake(
+        int $userId,
+        int $questionId,
+        mixed $response,
+        mixed $timeSpentOrMode = 0,
+        ?string $mode = null,
+        ?string $confidence = null,
+        array $interactionSignals = []
+    ): array
+    {
+        $responseSeconds = is_numeric($timeSpentOrMode) ? max(0, (int) $timeSpentOrMode) : 0;
+        $resolvedMode = is_string($timeSpentOrMode) && $mode === null
+            ? $timeSpentOrMode
+            : ($mode ?? 'quiz');
+        $resolvedConfidence = $this->normalizeConfidence($confidence);
+        $normalizedSignals = $this->normalizeInteractionSignals($interactionSignals, $response, $resolvedConfidence, $responseSeconds);
+        $effectiveResponseSeconds = $responseSeconds;
+
+        return DB::transaction(function () use ($userId, $questionId, $response, $resolvedMode, $resolvedConfidence, $normalizedSignals, $effectiveResponseSeconds) {
+            $mistake = Mistake::select(array_merge([
+                    'id',
+                    'user_id',
+                    'question_id',
+                    'correct_streak',
+                    'last_attempt_date',
+                    'mastered',
+                ], Mistake::availableColumns([
+                    'next_review_at',
+                    'interval_days',
+                    'ease_factor',
+                    'review_count',
+                    'lapse_count',
+                    'quick_correct_count',
+                    'quiz_correct_count',
+                    'difficulty',
+                    'stability',
+                    'retrievability',
+                    'last_response_seconds',
+                    'last_review_rating',
+                    'hesitation_score',
+                    'learning_state',
+                    'same_day_relearn_step',
+                    'same_day_relearn_count',
+                    'last_reviewed_at',
+                ])))
+                ->where('user_id', $userId)
+                ->where('question_id', $questionId)
+                ->with('question:id,question_type,correct_answer,explanation,topic_id')
+                ->first();
+
+            if (!$mistake) {
+                return [
+                    'success' => false,
+                    'message' => 'Mistake not found'
+                ];
+            }
+
+            $usedRating = null;
+            $isCorrect = false;
+            $writtenFeedback = null;
+
+            if (is_int($response) && $response >= 1 && $response <= 4) {
+                $usedRating = $response;
+                $isCorrect = $usedRating >= 2;
+            } else {
+                $selectedAnswer = (string) $response;
+
+                if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
+                    $evaluation = app(\App\Services\WrittenAnswerEvaluationService::class)
+                        ->evaluateQuestionAnswer($mistake->question, $selectedAnswer);
+                    $isCorrect = (bool) ($evaluation['isCorrect'] ?? false);
+                    $writtenFeedback = $evaluation['feedback'] ?? null;
+                } else {
+                    $isCorrect = strtolower(trim($selectedAnswer)) === strtolower(trim($mistake->question->correct_answer));
+                }
+
+                $usedRating = $this->resolveRatingFromAnswerOutcome($isCorrect, $resolvedMode, $resolvedConfidence);
+            }
+
+            $mistake->applyRatedReview(
+                $usedRating,
+                $resolvedMode,
+                $effectiveResponseSeconds > 0 ? $effectiveResponseSeconds : null,
+                $resolvedConfidence,
+                $normalizedSignals
+            );
+            $mistake->save();
+
+            $normalizedMode = $mistake->normalizeReviewMode($resolvedMode);
+            $requiredStreak = ($normalizedMode === 'easy') ? 2 : 3;
+            
+            if ($mistake->question) {
+                $this->userMistakeMasteryService->recordAttempt(
+                    $userId,
+                    $mistake->question,
+                    $isCorrect,
+                    $requiredStreak,
+                    syncMistakeMirror: true
+                );
+            }
+
+            return [
+                'success' => true,
+                'is_correct' => $isCorrect,
+                'rating' => $usedRating,
+                'confidence' => $resolvedConfidence,
+                'correct_answer' => $mistake->question->correct_answer,
+                'explanation' => $mistake->question->explanation,
+                'new_streak' => $mistake->correct_streak,
+                'is_mastered' => $mistake->isMastered($resolvedMode),
+                'next_review_at' => optional($mistake->next_review_at)->toIso8601String(),
+                'interval_days' => (int) $mistake->interval_days,
+                'review_count' => (int) $mistake->review_count,
+                'stability' => (float) ($mistake->stability ?? 0),
+                'difficulty' => (float) ($mistake->difficulty ?? 0),
+                'retrievability' => $mistake->currentRetrievability(),
+                'learning_state' => Mistake::hasColumn('learning_state') ? $mistake->learning_state : null,
+                'same_day_relearn_step' => (int) ($mistake->same_day_relearn_step ?? 0),
+                'needs_same_day_relearn' => $this->needsSameDayRelearn($mistake, $resolvedMode),
+                'hesitation_score' => (float) ($mistake->hesitation_score ?? 0),
+                'fsrs_state' => $this->fsrsScheduler->currentState($mistake),
+                'is_due_now' => $this->isDueNow($mistake),
+                'elapsed_days_since_last_review' => $this->elapsedDaysSinceLastReview($mistake),
+                'message' => $writtenFeedback ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!')
+            ];
+        });
     }
     
     /**
@@ -291,249 +510,20 @@ class MistakeManagementService
         });
     }
 
-    private function attachConceptSignals(\Illuminate\Support\Collection $mistakes, int $userId, string $mode): \Illuminate\Support\Collection
-    {
-        if ($mistakes->isEmpty()) {
-            return $mistakes;
-        }
-
-        $now = now();
-
-        $conceptSignals = $mistakes
-            ->map(function (Mistake $mistake) use ($now) {
-                $slug = trim((string) ($mistake->focus_concept_slug ?? ''));
-                $name = trim((string) ($mistake->focus_concept_name ?? ''));
-                $topicId = (int) (optional($mistake->question)->topic_id ?? 0);
-                $currentRetrievability = $mistake->currentRetrievability($now);
-
-                if ($slug === '' || $name === '' || $topicId <= 0) {
-                    return null;
-                }
-
-                return [
-                    'key' => $topicId . '|' . $slug,
-                    'topic_id' => $topicId,
-                    'slug' => $slug,
-                    'name' => $name,
-                    'difficulty' => (float) ($mistake->difficulty ?? 0.45),
-                    'retrievability' => $currentRetrievability,
-                    'lapse_count' => (int) ($mistake->lapse_count ?? 0),
-                    'next_review_at' => $mistake->next_review_at,
-                ];
-            })
-            ->filter()
-            ->groupBy('key')
-            ->map(function (\Illuminate\Support\Collection $group) {
-                $first = $group->first();
-                $averageDifficulty = (float) $group->avg('difficulty');
-                $averageRetrievability = (float) $group->avg('retrievability');
-                $lapseCount = (int) $group->sum('lapse_count');
-                $isDue = $group->contains(fn (array $signal) => $signal['next_review_at'] && $signal['next_review_at']->lte(now()));
-
-                return [
-                    'name' => $first['name'],
-                    'risk_score' => round(min(3.0,
-                        ($averageDifficulty * 1.4)
-                        + ((1 - $averageRetrievability) * 1.8)
-                        + (min(6, $lapseCount) * 0.08)
-                        + ($isDue ? 0.18 : 0.0)
-                    ), 4),
-                ];
-            });
-
-        $enriched = $mistakes->map(function (Mistake $mistake) use ($conceptSignals, $now) {
-            $topicId = (int) (optional($mistake->question)->topic_id ?? 0);
-            $slug = trim((string) ($mistake->focus_concept_slug ?? ''));
-            $strongestSignal = $topicId > 0 && $slug !== ''
-                ? $conceptSignals->get($topicId . '|' . $slug)
-                : null;
-
-            $mistake->setAttribute('concept_risk_score', (float) ($strongestSignal['risk_score'] ?? 0.0));
-            $mistake->setAttribute('focus_concept_name', $strongestSignal['name'] ?? null);
-            $mistake->setAttribute('current_retrievability', $mistake->currentRetrievability($now));
-
-            return $mistake;
-        });
-
-        if ($mode === 'spaced') {
-            return $enriched->sort(function (Mistake $left, Mistake $right) use ($now) {
-                $leftDue = $left->next_review_at?->getTimestamp() ?? 0;
-                $rightDue = $right->next_review_at?->getTimestamp() ?? 0;
-                if ($leftDue !== $rightDue) {
-                    return $leftDue <=> $rightDue;
-                }
-
-                $leftConceptRisk = (float) ($left->concept_risk_score ?? 0.0);
-                $rightConceptRisk = (float) ($right->concept_risk_score ?? 0.0);
-                if ($leftConceptRisk !== $rightConceptRisk) {
-                    return $rightConceptRisk <=> $leftConceptRisk;
-                }
-
-                $leftRetrievability = (float) ($left->current_retrievability ?? $left->currentRetrievability($now));
-                $rightRetrievability = (float) ($right->current_retrievability ?? $right->currentRetrievability($now));
-                if ($leftRetrievability !== $rightRetrievability) {
-                    return $leftRetrievability <=> $rightRetrievability;
-                }
-
-                $leftDifficulty = (float) ($left->difficulty ?? 0.45);
-                $rightDifficulty = (float) ($right->difficulty ?? 0.45);
-                if ($leftDifficulty !== $rightDifficulty) {
-                    return $rightDifficulty <=> $leftDifficulty;
-                }
-
-                return ($left->last_attempt_date?->getTimestamp() ?? 0) <=> ($right->last_attempt_date?->getTimestamp() ?? 0);
-            })->values();
-        }
-
-        return $enriched->values();
-    }
-
-    /**
-     * Process mistake review
-     */
-    public function reviewMistake(
-        int $userId,
-        int $questionId,
-        mixed $response,
-        mixed $timeSpentOrMode = 0,
-        ?string $mode = null,
-        ?string $confidence = null,
-        array $interactionSignals = []
-    ): array
-    {
-        $responseSeconds = is_numeric($timeSpentOrMode) ? max(0, (int) $timeSpentOrMode) : 0;
-        $resolvedMode = is_string($timeSpentOrMode) && $mode === null
-            ? $timeSpentOrMode
-            : ($mode ?? 'quiz');
-        $resolvedConfidence = $this->normalizeConfidence($confidence);
-        $normalizedSignals = $this->normalizeInteractionSignals($interactionSignals, $response, $resolvedConfidence, $responseSeconds);
-        $effectiveResponseSeconds = $responseSeconds;
-
-        return DB::transaction(function () use ($userId, $questionId, $response, $resolvedMode, $resolvedConfidence, $normalizedSignals, $effectiveResponseSeconds) {
-            $mistake = Mistake::select(array_merge([
-                    'id',
-                    'user_id',
-                    'question_id',
-                    'correct_streak',
-                    'last_attempt_date',
-                    'mastered',
-                ], Mistake::availableColumns([
-                    'next_review_at',
-                    'interval_days',
-                    'ease_factor',
-                    'review_count',
-                    'lapse_count',
-                    'quick_correct_count',
-                    'quiz_correct_count',
-                    'difficulty',
-                    'stability',
-                    'retrievability',
-                    'last_response_seconds',
-                    'last_review_rating',
-                    'hesitation_score',
-                    'learning_state',
-                    'same_day_relearn_step',
-                    'same_day_relearn_count',
-                ])))
-                ->where('user_id', $userId)
-                ->where('question_id', $questionId)
-                ->with('question:id,question_type,correct_answer,explanation,topic_id')
-                ->first();
-
-            if (!$mistake) {
-                return [
-                    'success' => false,
-                    'message' => 'Mistake not found'
-                ];
-            }
-
-            $usedRating = null;
-            $isCorrect = false;
-            $writtenFeedback = null;
-
-            if (is_int($response) && $response >= 1 && $response <= 5) {
-                $usedRating = $response;
-                $isCorrect = $usedRating >= 3;
-            } else {
-                $selectedAnswer = (string) $response;
-
-                if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
-                    $evaluation = app(\App\Services\WrittenAnswerEvaluationService::class)
-                        ->evaluateQuestionAnswer($mistake->question, $selectedAnswer);
-                    $isCorrect = (bool) ($evaluation['isCorrect'] ?? false);
-                    $writtenFeedback = $evaluation['feedback'] ?? null;
-                } else {
-                    $isCorrect = strtolower(trim($selectedAnswer)) === strtolower(trim($mistake->question->correct_answer));
-                }
-
-                $usedRating = $this->resolveRatingFromAnswerOutcome($isCorrect, $resolvedMode, $resolvedConfidence);
-            }
-
-            $mistake->applyRatedReview(
-                $usedRating,
-                $resolvedMode,
-                $effectiveResponseSeconds > 0 ? $effectiveResponseSeconds : null,
-                $resolvedConfidence,
-                $normalizedSignals
-            );
-            $mistake->save();
-
-            $normalizedMode = $mistake->normalizeReviewMode($resolvedMode);
-            $requiredStreak = ($normalizedMode === 'easy') ? 2 : 3;
-            
-            if ($mistake->question) {
-                // syncMistakeMirror: true ensures mistakes table's updated_at advances,
-                // securely triggering cache invalidation via buildLearningDeckFingerprint()
-                $this->userMistakeMasteryService->recordAttempt(
-                    $userId,
-                    $mistake->question,
-                    $isCorrect,
-                    $requiredStreak,
-                    syncMistakeMirror: true
-                );
-            }
-
-            return [
-                'success' => true,
-                'is_correct' => $isCorrect,
-                'rating' => $usedRating,
-                'confidence' => $resolvedConfidence,
-                'correct_answer' => $mistake->question->correct_answer,
-                'explanation' => $mistake->question->explanation,
-                'new_streak' => $mistake->correct_streak,
-                'is_mastered' => $mistake->isMastered($resolvedMode),
-                'next_review_at' => optional($mistake->next_review_at)->toIso8601String(),
-                'interval_days' => (int) $mistake->interval_days,
-                'review_count' => (int) $mistake->review_count,
-                'stability' => (float) ($mistake->stability ?? 0),
-                'difficulty' => (float) ($mistake->difficulty ?? 0),
-                'retrievability' => $mistake->currentRetrievability(),
-                'learning_state' => Mistake::hasColumn('learning_state') ? $mistake->learning_state : null,
-                'same_day_relearn_step' => (int) ($mistake->same_day_relearn_step ?? 0),
-                'needs_same_day_relearn' => $this->needsSameDayRelearn($mistake, $resolvedMode),
-                'hesitation_score' => (float) ($mistake->hesitation_score ?? 0),
-                'message' => $writtenFeedback ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!')
-            ];
-        });
-    }
-
     private function resolveRatingFromAnswerOutcome(bool $isCorrect, string $mode, ?string $confidence): int
     {
         if ($mode !== 'spaced') {
             return $isCorrect ? 4 : 1;
         }
 
-        if ($isCorrect) {
-            return match ($confidence) {
-                'guessed' => 3,
-                'knew' => 5,
-                default => 4,
-            };
+        if (!$isCorrect) {
+            return FsrsScheduler::GRADE_AGAIN;
         }
 
         return match ($confidence) {
-            'guessed' => 2,
-            default => 1,
+            'guessed' => FsrsScheduler::GRADE_HARD,
+            'knew' => FsrsScheduler::GRADE_EASY,
+            default => FsrsScheduler::GRADE_GOOD,
         };
     }
 
@@ -548,28 +538,158 @@ class MistakeManagementService
     private function normalizeInteractionSignals(array $signals, mixed $response, ?string $confidence, int $responseSeconds): array
     {
         $finalSelectedAnswer = is_scalar($response) ? trim((string) $response) : null;
+        $firstSelectedAnswer = is_scalar($signals['first_selected_answer'] ?? null)
+            ? trim((string) $signals['first_selected_answer'])
+            : null;
 
         if ($finalSelectedAnswer === '') {
             $finalSelectedAnswer = null;
         }
 
+        if ($firstSelectedAnswer === '') {
+            $firstSelectedAnswer = null;
+        }
+
         return [
-            'first_selected_answer' => null,
+            'first_selected_answer' => $firstSelectedAnswer,
             'final_selected_answer' => $finalSelectedAnswer,
-            'answer_change_count' => 0,
-            'time_to_first_selection' => null,
-            'first_confidence' => null,
-            'final_confidence' => $confidence,
-            'confidence_change_count' => 0,
+            'answer_change_count' => max(0, min(50, (int) ($signals['answer_change_count'] ?? 0))),
+            'time_to_first_selection' => isset($signals['time_to_first_selection'])
+                ? max(0, min(3600, (int) $signals['time_to_first_selection']))
+                : null,
+            'first_confidence' => $this->normalizeConfidence($signals['first_confidence'] ?? null),
+            'final_confidence' => $this->normalizeConfidence($signals['final_confidence'] ?? $confidence),
+            'confidence_change_count' => max(0, min(50, (int) ($signals['confidence_change_count'] ?? 0))),
         ];
     }
 
     private function needsSameDayRelearn(Mistake $mistake, string $mode): bool
     {
         return $mode === 'spaced'
-            && Mistake::hasColumn('learning_state')
-            && in_array($mistake->learning_state, ['relearn', 'learning'], true)
+            && in_array($mistake->learning_state, ['relearn', 'relearning', 'learning'], true)
             && ((int) ($mistake->same_day_relearn_step ?? 0)) > 0;
+    }
+
+    private function compareSpacedQueuePriority(Mistake $left, Mistake $right, \Carbon\Carbon $now): int
+    {
+        $leftBucket = $this->spacedQueueBucket($left, $now);
+        $rightBucket = $this->spacedQueueBucket($right, $now);
+
+        if ($leftBucket !== $rightBucket) {
+            return $leftBucket <=> $rightBucket;
+        }
+
+        if ($leftBucket === 2) {
+            $leftOverdue = $this->spacedOverdueRatio($left, $now);
+            $rightOverdue = $this->spacedOverdueRatio($right, $now);
+            if ($leftOverdue !== $rightOverdue) {
+                return $rightOverdue <=> $leftOverdue;
+            }
+        }
+
+        $leftDue = $left->next_review_at?->getTimestamp() ?? PHP_INT_MAX;
+        $rightDue = $right->next_review_at?->getTimestamp() ?? PHP_INT_MAX;
+        if ($leftDue !== $rightDue) {
+            return $leftDue <=> $rightDue;
+        }
+
+        $leftStep = (int) ($left->same_day_relearn_step ?? 0);
+        $rightStep = (int) ($right->same_day_relearn_step ?? 0);
+        if ($leftStep !== $rightStep) {
+            return $leftStep <=> $rightStep;
+        }
+
+        $leftRetrievability = (float) ($left->current_retrievability ?? $left->currentRetrievability($now));
+        $rightRetrievability = (float) ($right->current_retrievability ?? $right->currentRetrievability($now));
+        if ($leftRetrievability !== $rightRetrievability) {
+            return $leftRetrievability <=> $rightRetrievability;
+        }
+
+        $leftLapses = (int) ($left->lapse_count ?? 0);
+        $rightLapses = (int) ($right->lapse_count ?? 0);
+        if ($leftLapses !== $rightLapses) {
+            return $rightLapses <=> $leftLapses;
+        }
+
+        $leftDifficulty = (float) ($left->difficulty ?? 5.0);
+        $rightDifficulty = (float) ($right->difficulty ?? 5.0);
+        if ($leftDifficulty !== $rightDifficulty) {
+            return $rightDifficulty <=> $leftDifficulty;
+        }
+
+        $leftConceptRisk = (float) ($left->concept_risk_score ?? 0.0);
+        $rightConceptRisk = (float) ($right->concept_risk_score ?? 0.0);
+        if ($leftConceptRisk !== $rightConceptRisk) {
+            return $rightConceptRisk <=> $leftConceptRisk;
+        }
+
+        return ($left->last_attempt_date?->getTimestamp() ?? 0) <=> ($right->last_attempt_date?->getTimestamp() ?? 0);
+    }
+
+    private function spacedQueueBucket(Mistake $mistake, \Carbon\Carbon $now): int
+    {
+        $state = $this->fsrsScheduler->currentState($mistake, $now);
+        $nextReviewAt = $mistake->next_review_at;
+        $isDueNow = $nextReviewAt === null || $nextReviewAt->lte($now);
+
+        if ($state === FsrsScheduler::STATE_RELEARNING && $isDueNow) {
+            return 0;
+        }
+
+        if ($state === FsrsScheduler::STATE_LEARNING && $isDueNow) {
+            return 1;
+        }
+
+        if ($state === FsrsScheduler::STATE_REVIEW && $isDueNow) {
+            return 2;
+        }
+
+        if ($nextReviewAt === null) {
+            return 3;
+        }
+
+        if ($state === FsrsScheduler::STATE_RELEARNING || $state === FsrsScheduler::STATE_LEARNING) {
+            return 4;
+        }
+
+        return 5;
+    }
+
+    private function spacedOverdueRatio(Mistake $mistake, \Carbon\Carbon $now): float
+    {
+        $nextReviewAt = $mistake->next_review_at;
+        if (!$nextReviewAt) {
+            return 0.0;
+        }
+
+        $intervalDays = max(1.0, (float) ($mistake->interval_days ?? 1));
+        $overdueDays = max(0.0, $nextReviewAt->diffInSeconds($now, false) / 86400);
+
+        return round($overdueDays / $intervalDays, 6);
+    }
+
+    private function isDueNow(Mistake $mistake, ?\Carbon\Carbon $now = null): bool
+    {
+        $now ??= now();
+        $nextReviewAt = $mistake->next_review_at;
+
+        return $nextReviewAt === null || $nextReviewAt->lte($now);
+    }
+
+    private function elapsedDaysSinceLastReview(Mistake $mistake, ?\Carbon\Carbon $now = null): float
+    {
+        $now ??= now();
+        $lastReviewedAt = $mistake->last_reviewed_at ?? $mistake->last_attempt_date;
+
+        if ($lastReviewedAt === null) {
+            return 0.0;
+        }
+
+        if (!$lastReviewedAt instanceof \Carbon\Carbon) {
+            $lastReviewedAt = \Carbon\Carbon::parse($lastReviewedAt);
+        }
+
+        return round(max(0.0, $lastReviewedAt->diffInSeconds($now) / 86400), 4);
     }
 
 
