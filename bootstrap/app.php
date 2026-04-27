@@ -54,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'ngrok.csrf' => \App\Http\Middleware\NgrokCsrfFix::class,
             'free.course.survey' => \App\Http\Middleware\EnsureFreeCourseSurveyUnlocked::class,
+            'secure.study' => \App\Http\Middleware\PreventSensitivePageCaching::class,
         ]);
         
         // Keep environment-sensitive middleware centralized in the web stack.
@@ -61,7 +62,6 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HttpsRedirectMiddleware::class,
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\NgrokCsrfFix::class,
-            \App\Http\Middleware\InjectDesignProtection::class,
             \App\Http\Middleware\TrackLastActive::class,
         ]);
     })

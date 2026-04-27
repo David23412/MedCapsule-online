@@ -67,7 +67,6 @@
         </main>
     </div>
 
-    @include('partials.design-protection')
     @include('partials.admin-dark-mode-script')
     @stack('scripts')
 </body>

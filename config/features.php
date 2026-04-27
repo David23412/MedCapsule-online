@@ -47,7 +47,13 @@ return [
     'log_feature_usage' => env('FEATURE_LOG_USAGE', true), // Log when new features are used
     'performance_comparison' => env('FEATURE_PERFORMANCE_COMPARISON', false), // Compare old vs new performance
 
-    // Frontend design protection
+    // Frontend secure-study protection
     'design_protection_enabled' => env('DESIGN_PROTECTION_ENABLED', false),
-    'design_protection_devtools_threshold' => (int) env('DESIGN_PROTECTION_DEVTOOLS_THRESHOLD', 160),
+    'design_protection_block_shortcuts' => env('DESIGN_PROTECTION_BLOCK_SHORTCUTS', true),
+    'design_protection_block_copy' => env('DESIGN_PROTECTION_BLOCK_COPY', true),
+    'design_protection_block_print' => env('DESIGN_PROTECTION_BLOCK_PRINT', true),
+    'design_protection_hide_on_background' => env('DESIGN_PROTECTION_HIDE_ON_BACKGROUND', true),
+    'design_protection_blur_on_background_desktop' => env('DESIGN_PROTECTION_BLUR_ON_BACKGROUND_DESKTOP', false),
+    'design_protection_watermark_enabled' => env('DESIGN_PROTECTION_WATERMARK_ENABLED', true),
+    'design_protection_background_lock_delay_ms' => (int) env('DESIGN_PROTECTION_BACKGROUND_LOCK_DELAY_MS', 120),
 ];

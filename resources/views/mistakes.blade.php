@@ -474,5 +474,6 @@
         });
     })();
     </script>
+    @include('partials.secure-study-protection', ['surfaceLabel' => 'mistake cards'])
 </body>
 </html>

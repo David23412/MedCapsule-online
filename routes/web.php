@@ -92,8 +92,8 @@ Route::group([], function () {
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
 
     // Review routes with CSRF and rate limiting
-    Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->name('review.index');
-    Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->name('review.learn');
+    Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->middleware('secure.study')->name('review.index');
+    Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->middleware('secure.study')->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove');
     Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
@@ -190,7 +190,7 @@ Route::group([], function () {
     Route::post('/questions/{question}/add-mistake', [TopicController::class, 'addMistake'])->name('questions.add-mistake');
 
     // 💀 NUCLEAR OPTIMIZED QUIZ ROUTES - SPLIT ARCHITECTURE 💀
-    Route::prefix('quiz')->name('quiz.')->group(function () {
+    Route::prefix('quiz')->middleware('secure.study')->name('quiz.')->group(function () {
         // Quiz Execution - REFACTORED ARCHITECTURE
         Route::get('/{course}/{topic}', [App\Http\Controllers\Quiz\QuizReadController::class, 'show'])
             ->name('start')
@@ -225,8 +225,10 @@ Route::group([], function () {
 
     // Random Quiz Routes with CSRF and rate limiting - OPTIMIZED VERSION
     Route::get('/quiz/random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomQuiz'])
+        ->middleware('secure.study')
         ->name('quiz.random.show');
     Route::get('/quiz/random/tutor', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'showRandomTutorQuiz'])
+        ->middleware('secure.study')
         ->name('quiz.random.tutor');
     Route::post('/quiz/generate-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
         ->name('quiz.random.generate');

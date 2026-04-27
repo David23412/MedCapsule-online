@@ -3416,5 +3416,6 @@
     })();
     </script>
     @endif
+    @include('partials.secure-study-protection', ['surfaceLabel' => 'quiz mode'])
 </body>
 </html>
