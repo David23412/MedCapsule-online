@@ -55,5 +55,6 @@ return [
     'design_protection_hide_on_background' => env('DESIGN_PROTECTION_HIDE_ON_BACKGROUND', true),
     'design_protection_blur_on_background_desktop' => env('DESIGN_PROTECTION_BLUR_ON_BACKGROUND_DESKTOP', false),
     'design_protection_watermark_enabled' => env('DESIGN_PROTECTION_WATERMARK_ENABLED', true),
+    'design_protection_disable_for_admins' => env('DESIGN_PROTECTION_DISABLE_FOR_ADMINS', true),
     'design_protection_background_lock_delay_ms' => (int) env('DESIGN_PROTECTION_BACKGROUND_LOCK_DELAY_MS', 120),
 ];

@@ -1,4 +1,11 @@
-@if (config('features.design_protection_enabled', false) && !(auth()->check() && auth()->user()->isAdmin()))
+@if (
+    config('features.design_protection_enabled', false)
+    && !(
+        config('features.design_protection_disable_for_admins', true)
+        && auth()->check()
+        && auth()->user()->isAdmin()
+    )
+)
     @php
         $secureStudyUser = auth()->user();
         $secureStudyLabel = trim(implode(' | ', array_filter([
