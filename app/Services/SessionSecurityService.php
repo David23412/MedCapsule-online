@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\SessionSecurityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Normalizer;
 
@@ -376,8 +377,23 @@ class SessionSecurityService
      */
     public function handleNewLogin(User $user, Request $request): void
     {
-        $currentSessionToken = session()->getId();
+        $currentSessionToken = $request->session()->getId();
         $currentFingerprint = $this->generateDeviceFingerprint($request);
+
+        DB::table('sessions')
+            ->where('user_id', $user->id)
+            ->where('id', '!=', $currentSessionToken)
+            ->delete();
+
+        DB::table('sessions')
+            ->where('id', $currentSessionToken)
+            ->update([
+                'user_id' => $user->id,
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'fingerprint' => $currentFingerprint,
+                'is_visitor' => false,
+            ]);
         
         // Update user with new session information
         $user->update([

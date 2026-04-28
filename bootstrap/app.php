@@ -62,6 +62,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HttpsRedirectMiddleware::class,
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\NgrokCsrfFix::class,
+            \App\Http\Middleware\EnforceSessionSecurity::class,
             \App\Http\Middleware\TrackLastActive::class,
         ]);
     })

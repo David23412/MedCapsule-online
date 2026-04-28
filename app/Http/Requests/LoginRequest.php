@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\IdentityInput;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoginRequest extends FormRequest
@@ -28,5 +29,12 @@ class LoginRequest extends FormRequest
             'password.required' => 'Password is required',
             'password.min' => 'Password must be at least 8 characters'
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'email' => IdentityInput::normalizeEmail($this->input('email')),
+        ]);
     }
 }

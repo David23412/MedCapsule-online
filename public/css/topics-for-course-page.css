@@ -2656,6 +2656,20 @@ body.topics-sidebar-open {
     padding-right: 12px;
 }
 
+.search-results-container.search-results-protected,
+.search-results-container.search-results-protected *:not(button):not(input):not(textarea):not(select):not(option):not([contenteditable="true"]):not([contenteditable=""]) {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -webkit-touch-callout: none !important;
+}
+
+.search-results-container.search-results-protected img,
+.search-results-container.search-results-protected svg,
+.search-results-container.search-results-protected canvas {
+    -webkit-user-drag: none !important;
+    user-drag: none !important;
+}
+
 .search-results-container::-webkit-scrollbar {
     width: 6px;
 }

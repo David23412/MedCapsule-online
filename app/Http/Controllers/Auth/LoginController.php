@@ -101,16 +101,7 @@ use Illuminate\Support\Facades\Cache;
                     'Suspicious login detected. Please verify your identity and try again.');
             }
             
-            // Update user security data
-            $user->update([
-                'active_session_token' => $request->session()->getId(),
-                'session_created_at' => now(),
-                'device_fingerprint' => $securityAnalysis['fingerprint'],
-                'last_login_ip' => $securityAnalysis['ip'],
-                'last_user_agent' => $request->userAgent(),
-                'last_security_check' => now(),
-                'concurrent_login_attempts' => 0 // Reset on successful login
-            ]);
+            $this->securityService->handleNewLogin($user, $request);
             
             // CRITICAL FIX: Clear all user-related caches to ensure fresh state
             \Illuminate\Support\Facades\Cache::forget("home_nuclear_v5_auth_{$user->id}_" . now()->format('Y-m-d-H'));

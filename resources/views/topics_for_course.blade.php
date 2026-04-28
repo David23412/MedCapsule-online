@@ -1114,6 +1114,59 @@
 
             if (!searchInput || !resultsContainer) return;
 
+            resultsContainer.classList.add('search-results-protected');
+
+            const clearSearchSelection = () => {
+                const selection = window.getSelection ? window.getSelection() : null;
+                if (!selection || selection.isCollapsed) {
+                    return;
+                }
+
+                selection.removeAllRanges();
+            };
+
+            const isProtectedSearchTarget = (target) => {
+                return target instanceof HTMLElement
+                    && Boolean(target.closest('#searchQuestionsResults'))
+                    && !target.closest('button, input, textarea, select, option, [contenteditable=""], [contenteditable="true"]');
+            };
+
+            ['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach((eventName) => {
+                resultsContainer.addEventListener(eventName, (event) => {
+                    if (!isProtectedSearchTarget(event.target)) {
+                        return;
+                    }
+
+                    if (eventName === 'copy' || eventName === 'cut') {
+                        try {
+                            event.clipboardData?.setData('text/plain', 'Copying course search content is disabled.');
+                        } catch (error) {
+                            // Ignore clipboard access failures.
+                        }
+                    }
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation?.();
+                    clearSearchSelection();
+                }, true);
+            });
+
+            resultsContainer.addEventListener('keydown', (event) => {
+                const key = String(event.key || '').toLowerCase();
+                const withModifier = event.ctrlKey || event.metaKey;
+
+                if (withModifier && ['a', 'c', 'x'].includes(key)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    event.stopImmediatePropagation?.();
+                    clearSearchSelection();
+                }
+            }, true);
+
+            resultsContainer.addEventListener('mouseup', clearSearchSelection, true);
+            resultsContainer.addEventListener('touchend', clearSearchSelection, true);
+
             searchInput.addEventListener('input', function() {
                 const query = this.value.trim();
                 clearTimeout(searchTimeout);
