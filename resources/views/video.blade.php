@@ -686,13 +686,26 @@
             });
         }
         
-        // 🔒 SIMPLE SECURITY: Prevent right-click and link copying
-        document.addEventListener('contextmenu', function(e) {
-            if (e.target.closest('.video-player')) {
-                e.preventDefault();
-                return false;
+        // Keep desktop right-click blocking off touch browsers where long-press is part of normal playback UX.
+        (function() {
+            const userAgent = navigator.userAgent || '';
+            const platform = navigator.platform || '';
+            const isTouchMac = platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1;
+            const isPhoneOrTabletBrowser =
+                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+                isTouchMac;
+
+            if (isPhoneOrTabletBrowser) {
+                return;
             }
-        });
+
+            document.addEventListener('contextmenu', function(e) {
+                if (e.target.closest('.video-player')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        })();
 
         // 📊 REAL-TIME VIDEO PROGRESS TRACKING
         (function() {

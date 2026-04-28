@@ -16,7 +16,7 @@
             'blockShortcuts' => (bool) config('features.design_protection_block_shortcuts', true),
             'blockCopy' => (bool) config('features.design_protection_block_copy', true),
             'blockPrint' => (bool) config('features.design_protection_block_print', true),
-            'hideOnBackground' => (bool) config('features.design_protection_hide_on_background', true),
+            'hideOnBackground' => (bool) ($hideOnBackground ?? config('features.design_protection_hide_on_background', true)),
             'blurOnBackgroundDesktop' => (bool) config('features.design_protection_blur_on_background_desktop', false),
             'watermarkEnabled' => (bool) config('features.design_protection_watermark_enabled', true),
             'allowSelection' => (bool) ($allowSelection ?? false),
@@ -188,6 +188,12 @@
             let backgroundTimer = null;
             let selectionResetTimer = null;
             let awayLocked = false;
+            const userAgent = navigator.userAgent || '';
+            const platform = navigator.platform || '';
+            const isTouchMac = platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1;
+            const isPhoneOrTabletBrowser =
+                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+                isTouchMac;
 
             const isEditableTarget = (target) => {
                 if (!(target instanceof HTMLElement)) {
@@ -422,6 +428,13 @@
             };
 
             const attachProtection = () => {
+                if (isPhoneOrTabletBrowser) {
+                    if (config.watermarkEnabled) {
+                        ensureWatermark();
+                    }
+                    return;
+                }
+
                 ensureOverlay();
                 ensureWatermark();
                 document.body.classList.add('secure-study-hardened');

@@ -64,6 +64,12 @@
             let lockReason = null;
             let overlay;
             let temporaryLockTimer = null;
+            const userAgent = navigator.userAgent || '';
+            const platform = navigator.platform || '';
+            const isTouchMac = platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1;
+            const isPhoneOrTabletBrowser =
+                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+                isTouchMac;
 
             const isEditableTarget = (target) => {
                 if (!(target instanceof HTMLElement)) {
@@ -169,6 +175,10 @@
             };
 
             const attachProtection = () => {
+                if (isPhoneOrTabletBrowser) {
+                    return;
+                }
+
                 ensureOverlay();
 
                 document.addEventListener('keydown', handleKeyboardShortcut, true);

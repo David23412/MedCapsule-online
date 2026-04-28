@@ -3759,7 +3759,7 @@
             }
         }
     </style>
-    @include('partials.secure-study-protection', ['surfaceLabel' => isset($is_random_quiz) && $is_random_quiz ? 'random tutor mode' : 'tutor mode', 'allowSelection' => true])
+    @include('partials.secure-study-protection', ['surfaceLabel' => isset($is_random_quiz) && $is_random_quiz ? 'random tutor mode' : 'tutor mode', 'allowSelection' => true, 'hideOnBackground' => false])
 </body>
 
 </html>
