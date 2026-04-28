@@ -38,35 +38,25 @@ class SessionSecurityService
             return $this->fingerprintCache[$cacheKey];
         }
 
-        // Get all headers in their original structure for maximum sensitivity
-        $allHeaders = $request->headers->all();
-        
-        // Create a signature that's sensitive to header order and structure
-        $headerStructureSignature = hash('sha256', serialize($allHeaders));
-        
-        // Normalize and sanitize components to prevent spoofing
+        $acceptLanguage = strtolower(trim(explode(',', (string) $request->header('Accept-Language', 'unknown'))[0] ?? 'unknown'));
+        $platform = $this->normalizeHeader(
+            (string) ($request->header('Sec-CH-UA-Platform')
+                ?? $request->header('X-Platform')
+                ?? 'unknown')
+        );
+        $mobileHint = $this->normalizeHeader((string) $request->header('Sec-CH-UA-Mobile', 'unknown'));
+        $userAgent = $this->normalizeHeader($request->userAgent() ?? 'unknown');
+
+        // Use only relatively stable characteristics. Full header shape is too volatile for real traffic.
         $components = [
-            $this->normalizeHeader($request->userAgent() ?? 'unknown'),
-            $this->normalizeHeader($request->header('Accept-Language') ?? 'unknown'),
-            $this->normalizeHeader($request->header('Accept-Encoding') ?? 'unknown'),
-            $this->normalizeHeader($request->header('Accept') ?? 'unknown'),
-            $this->normalizeHeader($request->header('DNT') ?? 'unknown'),
-            $this->normalizeHeader($request->header('Upgrade-Insecure-Requests') ?? 'unknown'),
+            $userAgent,
+            $acceptLanguage !== '' ? $acceptLanguage : 'unknown',
+            $platform !== '' ? $platform : 'unknown',
+            $mobileHint !== '' ? $mobileHint : 'unknown',
+            strtolower((string) $request->getHost()),
         ];
-        
-        // Add additional entropy from request characteristics
-        $additionalEntropy = [
-            $request->getScheme(),
-            $request->getHttpHost(),
-            $request->getPort(),
-            count($request->headers->all()), // Header count as additional fingerprint
-            $headerStructureSignature, // Full header structure signature for security
-            hash('md5', json_encode(array_keys($allHeaders))), // Header key order
-        ];
-        
-        $allComponents = array_merge($components, $additionalEntropy);
-        
-        $fingerprint = hash('sha256', implode('|', $allComponents));
+
+        $fingerprint = hash('sha256', implode('|', $components));
         $this->fingerprintCache[$cacheKey] = $fingerprint;
         
         return $fingerprint;
@@ -232,15 +222,15 @@ class SessionSecurityService
             return $result;
         }
 
-        // 2. DEVICE FINGERPRINT LOCK
+        // 2. DEVICE FINGERPRINT CHECK
         $currentFingerprint = $this->generateDeviceFingerprint($request);
         if ($user->device_fingerprint && $user->device_fingerprint !== $currentFingerprint) {
-            $result = [
-                'valid' => false,
-                'action' => 'logout',
-                'reason' => 'Security fingerprint mismatch. Your device/browser signature has changed.'
-            ];
-            return $result;
+            $this->logSecurityEvent($user, 'fingerprint_mismatch', $request, [
+                'risk_level' => 'medium',
+                'action_taken' => false,
+                'stored_fingerprint_prefix' => substr((string) $user->device_fingerprint, 0, 12),
+                'current_fingerprint_prefix' => substr($currentFingerprint, 0, 12),
+            ]);
         }
 
         // 3. CONCURRENT IP LOCK — read recent_ips once and reuse for the
@@ -293,19 +283,22 @@ class SessionSecurityService
         // Immediate red flags
         $suspiciousActivity = false;
 
-        // Device fingerprint changed mid-session
-        if ($user->device_fingerprint && $user->device_fingerprint !== $currentFingerprint) {
-            $suspiciousActivity = true;
-        }
+        $fingerprintChanged = $user->device_fingerprint && $user->device_fingerprint !== $currentFingerprint;
+        $geoChanged = $user->last_login_ip && $this->isDifferentGeolocation($user->last_login_ip, $currentIp);
 
         // IP changed dramatically (different country)
-        if ($user->last_login_ip && $this->isDifferentGeolocation($user->last_login_ip, $currentIp)) {
+        if ($geoChanged) {
             $suspiciousActivity = true;
         }
 
         // Multiple rapid requests from different IPs — reuse pre-fetched list when available
         $ips = $recentIps ?? $this->getRecentRequestIPs($user->id);
         if (count($ips) > 2) {
+            $suspiciousActivity = true;
+        }
+
+        // Fingerprint mismatch alone is too noisy. Treat it as suspicious only when paired with network churn.
+        if ($fingerprintChanged && ($geoChanged || count($ips) > 1)) {
             $suspiciousActivity = true;
         }
 
