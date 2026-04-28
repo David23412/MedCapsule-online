@@ -3674,6 +3674,90 @@
         .tutor-review-mode .annot-overlay {
             display: none !important;
         }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: rgba(0, 123, 255, 0.12);
+        }
+
+        @media (max-width: 850px) {
+            html {
+                scroll-padding-top: calc(76px + env(safe-area-inset-top, 0px));
+            }
+
+            .navbar {
+                position: sticky;
+                padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+                backdrop-filter: none;
+            }
+
+            .question-sidebar {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+            }
+
+            .main-content {
+                padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
+            }
+
+            .question-card {
+                border-radius: 18px;
+                box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+            }
+
+            .option-card,
+            .question-circle,
+            .next-question,
+            .nav-arrow-btn,
+            .profile-circle,
+            .back-button,
+            .popup-btn,
+            .written-answer {
+                touch-action: manipulation;
+            }
+
+            .option-card,
+            .question-circle,
+            .popup-btn {
+                min-height: 44px;
+            }
+
+            .written-answer,
+            .edit-input {
+                font-size: 16px !important;
+            }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .navbar-brand:hover,
+            .nav-link:hover,
+            .profile-circle:hover,
+            .option-card:hover,
+            .popup-btn:hover,
+            .back-button:hover {
+                transform: none !important;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto;
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
     @include('partials.secure-study-protection', ['surfaceLabel' => isset($is_random_quiz) && $is_random_quiz ? 'random tutor mode' : 'tutor mode', 'allowSelection' => true])
 </body>

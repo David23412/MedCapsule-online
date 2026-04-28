@@ -247,7 +247,10 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarBackdrop = document.getElementById('profileSidebarBackdrop');
         const sidebarStorageKey = 'medcapsule-profile-sidebar-collapsed';
+        const mobileBreakpoint = 992;
+        const isMobileViewport = () => window.innerWidth < mobileBreakpoint;
         const getStoredSidebarState = () => {
             try {
                 return localStorage.getItem(sidebarStorageKey);
@@ -270,6 +273,10 @@
             }
         };
 
+        const closeMobileSidebar = () => {
+            document.body.classList.remove('mobile-sidebar-open');
+        };
+
         const savedSidebarState = getStoredSidebarState();
         if (savedSidebarState !== null) {
             applySidebarState(savedSidebarState === 'true');
@@ -281,11 +288,27 @@
             sidebarToggle.addEventListener('click', function (event) {
                 event.preventDefault();
                 event.stopPropagation();
+
+                if (isMobileViewport()) {
+                    document.body.classList.toggle('mobile-sidebar-open');
+                    return;
+                }
+
                 const collapsed = !document.body.classList.contains('sidebar-collapsed');
                 applySidebarState(collapsed);
                 setStoredSidebarState(collapsed);
             });
         }
+
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+        }
+
+        window.addEventListener('resize', function () {
+            if (!isMobileViewport()) {
+                closeMobileSidebar();
+            }
+        });
 
         const profilePicInput = document.getElementById('profilePictureInput');
         if (profilePicInput) {

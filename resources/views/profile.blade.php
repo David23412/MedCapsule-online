@@ -230,6 +230,7 @@
         </div>
 
     </div>
+    <div class="profile-sidebar-backdrop" id="profileSidebarBackdrop" aria-hidden="true"></div>
 
     <!-- Main Content -->
     <div class="main-content">

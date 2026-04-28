@@ -207,6 +207,10 @@
             color: #dc2626;
         }
 
+        .profile-sidebar-backdrop {
+            display: none;
+        }
+
         .main-content {
             margin-left: 260px;
             padding: 30px;
@@ -251,6 +255,15 @@
             width: 0;
             overflow: hidden;
             pointer-events: none;
+        }
+
+        body.sidebar-collapsed .sidebar .nav-link:has(.sidebar-admin-badge) {
+            gap: 0;
+        }
+
+        body.sidebar-collapsed .sidebar .nav-link .sidebar-admin-badge {
+            position: absolute;
+            margin-left: 0;
         }
 
         body.sidebar-collapsed .main-content {
@@ -427,56 +440,107 @@
             }
         }
 
-        @media (max-width: 767.98px) {
+        @media (max-width: 991.98px) {
             /* Reset desktop zoom on phones */
             html {
                 font-size: 16px !important;
             }
             body {
                 zoom: 1 !important;
+                overflow-x: hidden;
             }
 
             .sidebar {
-                width: 88px;
+                width: min(290px, 82vw);
+                transform: translateX(-100%);
+                transition: transform 0.24s ease, box-shadow 0.24s ease;
+                z-index: 2100;
+                box-shadow: none;
             }
 
             .sidebar-logo {
-                padding: 24px 18px 22px;
-                justify-content: center;
+                padding: 24px 52px 22px 22px;
+                justify-content: flex-start;
             }
 
             .sidebar-nav,
             .sidebar-footer {
-                padding-inline: 10px;
+                padding-inline: 12px;
             }
 
             .sidebar .nav-link {
-                justify-content: center;
-                padding-inline: 0;
+                justify-content: flex-start;
+                padding-inline: 14px;
+                min-height: 48px;
             }
 
             .sidebar-logo-copy,
             .nav-link-label,
             .sidebar-section-label,
             .sidebar-admin-badge {
-                opacity: 0;
-                width: 0;
-                overflow: hidden;
-                pointer-events: none;
+                opacity: 1;
+                width: auto;
+                overflow: visible;
+                pointer-events: auto;
             }
 
             .main-content {
-                margin-left: 88px;
-                padding: 22px 18px;
+                margin-left: 0;
+                padding: 76px 14px 24px;
+            }
+
+            .sidebar-toggle {
+                position: fixed;
+                top: 16px;
+                left: 14px;
+                right: auto;
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
+                transform: none;
+                z-index: 2200;
+                background: rgba(255, 255, 255, 0.94);
+                box-shadow: 0 10px 26px rgba(15, 23, 42, 0.12);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+            }
+
+            .sidebar-toggle:hover {
+                transform: none;
+            }
+
+            .profile-sidebar-backdrop {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(15, 23, 42, 0.42);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.24s ease;
+                z-index: 2050;
+            }
+
+            body.mobile-sidebar-open {
+                overflow: hidden;
+            }
+
+            body.mobile-sidebar-open .sidebar {
+                transform: translateX(0);
+                box-shadow: 12px 0 32px rgba(15, 23, 42, 0.18);
+            }
+
+            body.mobile-sidebar-open .profile-sidebar-backdrop {
+                opacity: 1;
+                pointer-events: auto;
             }
 
             .profile-header {
-                padding: 6px 0 18px;
+                padding: 4px 0 16px;
             }
 
             .profile-hero-layout {
                 flex-direction: column;
-                gap: 20px;
+                gap: 16px;
                 align-items: flex-start;
             }
 
@@ -487,6 +551,24 @@
 
             .welcome-text h1 {
                 display: block;
+                font-size: clamp(2rem, 11vw, 2.7rem);
+                line-height: 0.95;
+                margin-bottom: 0.65rem;
+            }
+
+            .profile-meta-row {
+                gap: 0.7rem;
+                margin-bottom: 0.9rem;
+            }
+
+            .welcome-text p {
+                font-size: 0.95rem;
+                line-height: 1.45;
+            }
+
+            .profile-highlight-chip {
+                padding: 0.55rem 0.85rem;
+                font-size: 0.88rem;
             }
         }
 
@@ -1768,4 +1850,161 @@
 .privacy-control.updating {
     opacity: 0.6;
     pointer-events: none;
+}
+
+@media (max-width: 991.98px) {
+    .row.mb-4 > [class*="col-"],
+    .row.mt-4 > [class*="col-"] {
+        margin-bottom: 14px;
+    }
+
+    .stats-card {
+        padding: 18px 16px;
+        border-radius: 16px;
+        margin-bottom: 0;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .stats-card h5 {
+        font-size: 1rem;
+        line-height: 1.35;
+        margin-bottom: 0.7rem;
+    }
+
+    .stats-value {
+        font-size: 1.6rem;
+        margin: 8px 0;
+    }
+
+    .study-time-breakdown {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    .breakdown-item {
+        min-width: 0;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .goal-settings-btn {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .study-goals-card .d-flex.justify-content-between.align-items-center,
+    .topic-review-item .d-flex.justify-content-between.align-items-center,
+    .leaderboard-header,
+    .profile-toggle-group,
+    .leaderboard-header .profile-toggle-group {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    .study-goals-card .d-flex.justify-content-between.align-items-center {
+        gap: 14px;
+    }
+
+    .study-goals-card .d-flex.align-items-baseline.gap-3 {
+        flex-wrap: wrap;
+        gap: 0.35rem 0.75rem !important;
+    }
+
+    .study-goals-card .ms-4 {
+        margin-left: 0 !important;
+    }
+
+    .chart-container {
+        height: 220px;
+        padding: 10px 0 0;
+    }
+
+    .topic-review-item .d-flex.justify-content-between.align-items-center {
+        gap: 12px !important;
+    }
+
+    .topic-review-item .d-flex.align-items-center.gap-2.flex-shrink-0,
+    .topic-review-item .d-flex.align-items-center.gap-3 {
+        width: 100%;
+        justify-content: stretch;
+        flex-wrap: wrap;
+        gap: 8px !important;
+    }
+
+    .topic-review-item .btn,
+    .privacy-control {
+        width: 100%;
+        min-height: 46px;
+    }
+
+    .privacy-control {
+        justify-content: space-between;
+        padding: 10px 12px;
+    }
+
+    .leaderboard-header {
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .leaderboard-header h5 {
+        font-size: 1rem;
+        line-height: 1.35;
+    }
+
+    .profile-toggle-group {
+        justify-content: stretch;
+        gap: 8px;
+    }
+
+    .rank-emoji {
+        min-width: 20px !important;
+    }
+
+    .list-group-item.topic-review-item {
+        padding: 0.9rem 0.85rem;
+    }
+
+    .list-group-item.topic-review-item > .d-flex.justify-content-between.align-items-center {
+        align-items: flex-start !important;
+    }
+
+    .xp-counter {
+        font-size: 0.9rem !important;
+    }
+
+    .row.mb-4 > .col-md-3,
+    .row.mt-4 > .col-md-4,
+    .row.mt-4 > .col-md-6,
+    .row.mt-4 > .col-md-8 {
+        width: 100%;
+    }
+
+    .study-goals-card .badge {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 479.98px) {
+    .main-content {
+        padding: 72px 12px 20px;
+    }
+
+    .stats-card {
+        padding: 16px 14px;
+    }
+
+    .study-time-breakdown {
+        grid-template-columns: 1fr;
+    }
+
+    .welcome-text h1 {
+        font-size: clamp(1.85rem, 10.5vw, 2.35rem);
+    }
+
+    .welcome-text p {
+        font-size: 0.92rem;
+    }
 }

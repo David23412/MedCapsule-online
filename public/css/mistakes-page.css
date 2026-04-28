@@ -1952,3 +1952,86 @@ body.mistakes-sidebar-open { overflow: hidden; }
     .mistake-card { padding: 1rem 0.875rem; }
     .question-text { font-size: 0.95rem !important; }
 }
+
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: rgba(37, 99, 235, 0.12);
+}
+
+@media (max-width: 767.98px) {
+    html {
+        scroll-padding-top: calc(64px + env(safe-area-inset-top, 0px));
+    }
+
+    .mistakes-mobile-header {
+        height: calc(56px + env(safe-area-inset-top, 0px));
+        padding: env(safe-area-inset-top, 0px) 1rem 0;
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: saturate(180%) blur(12px);
+        -webkit-backdrop-filter: saturate(180%) blur(12px);
+    }
+
+    .mistakes-mobile-hamburger,
+    .mistakes-mobile-home,
+    .mistakes-sidebar-close-btn,
+    .flashcard-mode-toggle,
+    .learn-mistakes-btn,
+    .filter-section .btn-outline-secondary,
+    .form-check-label,
+    .remove-question {
+        touch-action: manipulation;
+    }
+
+    .main-content,
+    body.sidebar-collapsed .main-content {
+        padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .filter-section {
+        border-radius: 18px;
+        padding: 0.95rem;
+    }
+
+    .mistake-card {
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+
+    .form-check-label,
+    .flashcard-mode-toggle,
+    .learn-mistakes-btn {
+        min-height: 48px;
+    }
+}
+
+@media (hover: none) and (pointer: coarse) {
+    .mistake-card:hover,
+    .learn-mistakes-btn:hover,
+    .flashcard-mode-toggle:hover,
+    .remove-question:hover {
+        transform: none;
+    }
+
+    .mistake-card::before {
+        transition: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
