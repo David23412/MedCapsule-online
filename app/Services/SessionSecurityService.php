@@ -15,6 +15,8 @@ class SessionSecurityService
     private array $fingerprintCache = [];
     private const HARD_LOCK_THRESHOLD = 3;
     private const HARD_LOCK_PERIOD = 86400 * 30; // 30 days
+    private const ACTIVITY_WINDOW_SECONDS = 300;
+    private const ACTIVITY_REQUEST_THRESHOLD = 240;
 
     /**
      * In-memory debounce map: userId → unix timestamp of last trackActivity execution.
@@ -415,8 +417,26 @@ class SessionSecurityService
         $cacheKey = "activity_count_{$userId}";
         $count = Cache::get($cacheKey, 0);
         
-        // More than 100 requests in 5 minutes is suspicious
-        return $count > 100;
+        // Keep the threshold high enough to tolerate legitimate page loads,
+        // polling, and rich UI activity while still catching obvious abuse.
+        return $count > self::ACTIVITY_REQUEST_THRESHOLD;
+    }
+
+    /**
+     * Only count activity that materially reflects user navigation or a state-changing action.
+     * Background JSON polling was causing false positives for normal product usage.
+     */
+    public function shouldTrackActivity(Request $request): bool
+    {
+        if ($request->isMethod('HEAD') || $request->isMethod('OPTIONS')) {
+            return false;
+        }
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return !$request->isMethod('GET');
+        }
+
+        return true;
     }
 
     /**
@@ -442,14 +462,14 @@ class SessionSecurityService
         // Track request count
         $activityKey = "activity_count_{$userId}";
         $count = Cache::get($activityKey, 0);
-        Cache::put($activityKey, $count + 1, 300); // 5 minutes
+        Cache::put($activityKey, $count + 1, self::ACTIVITY_WINDOW_SECONDS);
 
         // Track recent IPs
         $ipKey = "recent_ips_{$userId}";
         $ips = Cache::get($ipKey, []);
         $ips[] = $ip;
         $ips = array_unique(array_slice($ips, -5)); // Keep last 5 unique IPs
-        Cache::put($ipKey, $ips, 300); // 5 minutes
+        Cache::put($ipKey, $ips, self::ACTIVITY_WINDOW_SECONDS);
     }
 
     /**

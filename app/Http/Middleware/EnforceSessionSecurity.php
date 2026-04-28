@@ -34,6 +34,21 @@ class EnforceSessionSecurity
                 'action' => $validation['action'] ?? 'logout',
             ]);
 
+            if (($validation['action'] ?? null) === 'temporary_block') {
+                if ($request->expectsJson()) {
+                    return new JsonResponse([
+                        'message' => $validation['reason'] ?? 'Too much activity detected. Please slow down and try again shortly.',
+                    ], 429);
+                }
+
+                /** @var RedirectResponse $response */
+                $response = redirect()->back()->withErrors([
+                    'email' => $validation['reason'] ?? 'Too much activity detected. Please try again shortly.',
+                ]);
+
+                return $response;
+            }
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -52,7 +67,9 @@ class EnforceSessionSecurity
             return $response;
         }
 
-        $this->sessionSecurityService->trackActivity($user->id, (string) $request->ip());
+        if ($this->sessionSecurityService->shouldTrackActivity($request)) {
+            $this->sessionSecurityService->trackActivity($user->id, (string) $request->ip());
+        }
 
         return $next($request);
     }
