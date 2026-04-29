@@ -871,12 +871,12 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     '<td>' + quizCell + '</td>' +
                     '<td><span class="activity-status ' + escHtml(u.status) + '"><span class="status-dot"></span>' + escHtml(statusLabel) + '</span></td>' +
                     '<td>' +
-                        '<div class="d-flex gap-2 flex-wrap">' +
-                            '<a href="' + escHtml(profileUrl) + '" class="btn btn-sm btn-outline-primary" title="Open full student profile">' +
-                                '<i class="fas fa-user me-1"></i>Profile' +
+                        '<div class="d-flex gap-1 flex-wrap">' +
+                            '<a href="' + escHtml(profileUrl) + '" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;padding:0;" title="Open full student profile" aria-label="Open full student profile">' +
+                                '<i class="fas fa-user"></i>' +
                             '</a>' +
-                            '<button type="button" class="btn btn-sm btn-outline-danger last-active-delete-btn" data-user-id="' + escHtml(String(u.id)) + '" data-user-name="' + safeName + '" data-delete-url="' + escHtml(deleteUrl) + '" title="Delete this account">' +
-                                '<i class="fas fa-trash-alt me-1"></i>Delete' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger last-active-delete-btn d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;padding:0;" data-user-id="' + escHtml(String(u.id)) + '" data-user-name="' + safeName + '" data-delete-url="' + escHtml(deleteUrl) + '" title="Delete this account" aria-label="Delete this account">' +
+                                '<i class="fas fa-trash-alt"></i>' +
                             '</button>' +
                         '</div>' +
                     '</td>' +
