@@ -181,9 +181,9 @@
         </li>
         <li><hr class="dropdown-divider"></li>
         <li class="px-2 py-1">
-            <button type="button" class="admin-theme-toggle w-100 justify-content-center" data-admin-theme-toggle aria-pressed="false">
-                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
-                <span data-admin-theme-label>Dark mode</span>
+            <button type="button" class="admin-theme-toggle w-100 justify-content-center" data-theme-toggle aria-pressed="false">
+                <i class="fas fa-circle-half-stroke" data-theme-icon></i>
+                <span data-theme-label>Dark mode</span>
             </button>
         </li>
         <li>

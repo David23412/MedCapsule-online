@@ -141,10 +141,10 @@
             <div class="d-flex">
                 <button type="button"
                         class="admin-theme-icon-button me-2"
-                        data-admin-theme-toggle
+                        data-theme-toggle
                         aria-pressed="false"
                         aria-label="Toggle dark mode">
-                    <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                    <i class="fas fa-circle-half-stroke" data-theme-icon></i>
                 </button>
                 <a href="{{ route('login') }}" class="btn btn-outline-primary btn-sm">
                     Login

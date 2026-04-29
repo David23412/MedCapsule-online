@@ -3,7 +3,7 @@
     (function () {
         try {
             if (window.localStorage.getItem('medcapsule-theme') === 'dark') {
-                document.documentElement.setAttribute('data-admin-theme', 'dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
             }
         } catch (error) {
             console.warn('Unable to restore theme preference.', error);

@@ -54,6 +54,49 @@ class UltraConsolidatedCacheService
         $this->initializeRedisConnection();
     }
 
+    /**
+     * Clear caches that directly depend on a question record.
+     */
+    public function clearQuestionCaches(int $questionId, ?int $topicId = null): void
+    {
+        $exactKeys = [
+            "question_{$questionId}",
+        ];
+
+        $patterns = [
+            "question:{$questionId}:*",
+            "question_{$questionId}_*",
+        ];
+
+        if ($topicId) {
+            $exactKeys = array_merge($exactKeys, [
+                "topic_{$topicId}_questions",
+                "topic:{$topicId}:questions_count",
+                "topic:{$topicId}:all_questions",
+                "topic:{$topicId}:all_sources",
+                "api:topic:{$topicId}:question_counts",
+                "api:topic:{$topicId}:sources",
+            ]);
+
+            $patterns[] = "topic:{$topicId}:*";
+            $patterns[] = "topic_{$topicId}_*";
+        }
+
+        $this->forgetCacheEntries($exactKeys, $patterns);
+    }
+
+    /**
+     * Clear caches used by random quiz generation and stats.
+     */
+    public function clearRandomQuizCaches(): void
+    {
+        $this->forgetCacheEntries([], [
+            "random_quiz_stats_*",
+            "ultra_fast:quiz_questions:*",
+            "*random_quiz*",
+        ]);
+    }
+
     private function initializeRedisConnection(): void
     {
         try {

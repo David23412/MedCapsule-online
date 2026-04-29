@@ -238,8 +238,8 @@
         </ul>
         <hr class="sidebar-divider d-none d-md-block">
 
-        <button type="button" class="admin-theme-toggle admin-theme-toggle--sidebar" data-admin-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
-            <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+        <button type="button" class="admin-theme-toggle admin-theme-toggle--sidebar" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+            <i class="fas fa-circle-half-stroke" data-theme-icon></i>
         </button>
         
         <ul class="nav flex-column mt-auto">

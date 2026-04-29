@@ -40,10 +40,10 @@
                         <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-2 d-flex justify-content-center">
                             <button type="button"
                                     class="admin-theme-icon-button"
-                                    data-admin-theme-toggle
+                                    data-theme-toggle
                                     aria-pressed="false"
                                     aria-label="Toggle dark mode">
-                                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                                <i class="fas fa-circle-half-stroke" data-theme-icon></i>
                             </button>
                         </li>
                         <li class="nav-item mobile-nav-item">
@@ -56,10 +56,10 @@
                         <li class="nav-item pe-2 mobile-nav-item mt-lg-0 mt-2 d-flex justify-content-center">
                             <button type="button"
                                     class="admin-theme-icon-button"
-                                    data-admin-theme-toggle
+                                    data-theme-toggle
                                     aria-pressed="false"
                                     aria-label="Toggle dark mode">
-                                <i class="fas fa-circle-half-stroke" data-admin-theme-icon></i>
+                                <i class="fas fa-circle-half-stroke" data-theme-icon></i>
                             </button>
                         </li>
 

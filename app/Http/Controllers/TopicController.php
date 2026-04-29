@@ -761,6 +761,13 @@ class TopicController extends Controller
                             'question' => $cleanQ,
                             'correct_answer' => $actualAnswer,
                             'explanation' => $cleanE ?: 'No explanation available.',
+                            'question_type' => $q->question_type ?? 'multiple_choice',
+                            'raw_correct_answer' => $q->correct_answer,
+                            'alternative_answers' => $q->alternative_answers,
+                            'option_a' => $q->option_a,
+                            'option_b' => $q->option_b,
+                            'option_c' => $q->option_c,
+                            'option_d' => $q->option_d,
                             'topic_titles' => $topicTitles,
                             'search_blob' => $searchBlob,
                             'normalized_question' => strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ))

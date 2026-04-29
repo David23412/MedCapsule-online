@@ -9,21 +9,21 @@
         var root = document.documentElement;
 
         function isDarkModeEnabled() {
-            return root.getAttribute('data-admin-theme') === 'dark';
+            return root.getAttribute('data-theme') === 'dark';
         }
 
         function syncToggles() {
-            document.querySelectorAll('[data-admin-theme-toggle]').forEach(function (toggle) {
+            document.querySelectorAll('[data-theme-toggle]').forEach(function (toggle) {
                 var enabled = isDarkModeEnabled();
                 toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
                 toggle.classList.toggle('is-active', enabled);
 
-                var label = toggle.querySelector('[data-admin-theme-label]');
+                var label = toggle.querySelector('[data-theme-label]');
                 if (label) {
                     label.textContent = enabled ? 'Light mode' : 'Dark mode';
                 }
 
-                var icon = toggle.querySelector('[data-admin-theme-icon]');
+                var icon = toggle.querySelector('[data-theme-icon]');
                 if (icon) {
                     icon.className = enabled ? 'fas fa-moon' : 'fas fa-circle-half-stroke';
                 }
@@ -32,9 +32,9 @@
 
         function setTheme(nextTheme) {
             if (nextTheme === 'dark') {
-                root.setAttribute('data-admin-theme', 'dark');
+                root.setAttribute('data-theme', 'dark');
             } else {
-                root.removeAttribute('data-admin-theme');
+                root.removeAttribute('data-theme');
             }
 
             try {
@@ -50,7 +50,7 @@
         }
 
         document.addEventListener('click', function (event) {
-            var toggle = event.target.closest('[data-admin-theme-toggle]');
+            var toggle = event.target.closest('[data-theme-toggle]');
             if (!toggle) {
                 return;
             }

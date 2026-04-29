@@ -459,6 +459,105 @@
         </div>
     @endif
 
+    @if(Auth::user()->isAdmin())
+        <div class="sq-edit-overlay" id="sq-edit-overlay">
+            <div class="sq-edit-modal">
+                <div class="sq-header">
+                    <h5><i class="fas fa-pen"></i> Edit Question</h5>
+                    <button class="sq-close-btn" onclick="sqCloseModal()">&times;</button>
+                </div>
+
+                <div class="sq-body">
+                    <input type="hidden" id="sq-q-id">
+                    <input type="hidden" id="sq-q-type" value="multiple_choice">
+
+                    <div class="sq-field">
+                        <label><i class="fas fa-question-circle" style="color:#2563eb"></i> Question Text</label>
+                        <textarea id="sq-q-text" class="sq-input" rows="4" placeholder="Edit question text..."></textarea>
+                    </div>
+
+                    <div class="sq-type-switch">
+                        <button type="button" class="sq-type-btn active" id="sq-type-mcq" onclick="sqSwitchType('multiple_choice')">
+                            <i class="fas fa-list-ul"></i> Multiple Choice
+                        </button>
+                        <button type="button" class="sq-type-btn" id="sq-type-written" onclick="sqSwitchType('written')">
+                            <i class="fas fa-pen"></i> Written
+                        </button>
+                    </div>
+
+                    <div id="sq-mcq-section">
+                        <div class="sq-field">
+                            <label><i class="fas fa-a" style="color:#10b981"></i> Option A</label>
+                            <input id="sq-oa" class="sq-input" type="text" placeholder="Option A">
+                        </div>
+                        <div class="sq-field">
+                            <label><i class="fas fa-b" style="color:#f59e0b"></i> Option B</label>
+                            <input id="sq-ob" class="sq-input" type="text" placeholder="Option B">
+                        </div>
+                        <div class="sq-field">
+                            <label><i class="fas fa-c" style="color:#6366f1"></i> Option C</label>
+                            <input id="sq-oc" class="sq-input" type="text" placeholder="Option C">
+                        </div>
+                        <div class="sq-field">
+                            <label><i class="fas fa-d" style="color:#ef4444"></i> Option D</label>
+                            <input id="sq-od" class="sq-input" type="text" placeholder="Option D">
+                        </div>
+
+                        <div class="sq-field">
+                            <label><i class="fas fa-check" style="color:#16a34a"></i> Correct Answer</label>
+                            <div class="sq-correct-grid">
+                                <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-ca" value="A"> A</label>
+                                <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-cb" value="B"> B</label>
+                                <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-cc" value="C"> C</label>
+                                <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-cd" value="D"> D</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sq-written-section" style="display:none;">
+                        <div class="sq-field">
+                            <label><i class="fas fa-check" style="color:#16a34a"></i> Correct Answer</label>
+                            <textarea id="sq-correct-text" class="sq-input" rows="3" placeholder="Enter the expected correct answer..."></textarea>
+                        </div>
+                        <div class="sq-field">
+                            <label><i class="fas fa-random" style="color:#7c3aed"></i> Alternative Answers <span style="font-weight:400;color:#94a3b8">(one per line, optional)</span></label>
+                            <textarea id="sq-alt-answers" class="sq-input" rows="3" placeholder="Enter alternative answers, one per line..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="sq-field">
+                        <label><i class="fas fa-lightbulb" style="color:#d97706"></i> Explanation <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+                        <textarea id="sq-explanation" class="sq-input" rows="3" placeholder="Add an explanation..."></textarea>
+                    </div>
+                </div>
+
+                <div class="sq-del-confirm" id="sq-del-confirm">
+                    <p><i class="fas fa-exclamation-triangle"></i> Are you sure you want to permanently delete this question? This cannot be undone.</p>
+                    <div class="sq-del-actions">
+                        <button class="sq-btn sq-btn-delete" id="sq-confirm-del" onclick="sqConfirmDelete()"><i class="fas fa-trash"></i> Yes, Delete</button>
+                        <button class="sq-btn sq-btn-cancel" onclick="sqCancelDelete()">Cancel</button>
+                    </div>
+                </div>
+
+                <div class="sq-status" id="sq-status"></div>
+
+                <div class="sq-footer">
+                    <div class="sq-footer-left">
+                        <button class="sq-btn sq-btn-delete" id="sq-del-btn" onclick="sqPromptDelete()">
+                            <i class="fas fa-trash-alt"></i> Delete Question
+                        </button>
+                    </div>
+                    <div class="sq-footer-right">
+                        <button class="sq-btn sq-btn-cancel" onclick="sqCloseModal()">Cancel</button>
+                        <button class="sq-btn sq-btn-save" id="sq-save-btn" onclick="sqSaveEdit()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Source Selection Modal -->
     <div class="modal fade" id="sourceSelectionModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-md">
@@ -1110,6 +1209,8 @@
             const resultsContainer = document.getElementById('searchQuestionsResults');
             const spinner = document.getElementById('searchSpinner');
             const courseId = {{ $course->id }};
+            const canEditQuestions = {{ Auth::user()->isAdmin() ? 'true' : 'false' }};
+            const searchQuestionData = new Map();
             let searchTimeout;
 
             if (!searchInput || !resultsContainer) return;
@@ -1202,14 +1303,22 @@
                         return;
                     }
 
+                    data.questions.forEach((question) => {
+                        searchQuestionData.set(String(question.id), question);
+                    });
+
                     resultsContainer.innerHTML = data.questions.map(q => `
                         <div class="search-result-card" data-question-id="${q.id}">
                             <div class="search-result-content">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <div class="search-result-question flex-grow-1 me-3">${q.question}</div>
-                                    <div class="search-result-status-action">
-                                        ${q.is_already_mistake 
-                                            ? '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>' 
+                                    <div class="search-result-status-action d-flex align-items-start gap-2">
+                                        ${canEditQuestions
+                                            ? `<button class="btn btn-outline-primary btn-sm search-edit-question-btn" data-id="${q.id}" title="Edit Question"><i class="fas fa-pen"></i></button>`
+                                            : ''
+                                        }
+                                        ${q.is_already_mistake
+                                            ? '<div class="mistake-status-pill"><i class="fas fa-check-circle"></i></div>'
                                             : `<button class="btn add-mistake-minimal-btn" data-id="${q.id}" title="Add to Mistakes"><i class="fas fa-plus"></i></button>`
                                         }
                                     </div>
@@ -1238,6 +1347,14 @@
                             addQuestionToMistakes(qId, this);
                         });
                     });
+
+                    if (canEditQuestions) {
+                        resultsContainer.querySelectorAll('.search-edit-question-btn').forEach(btn => {
+                            btn.addEventListener('click', function() {
+                                openSearchQuestionEditModal(this.dataset.id);
+                            });
+                        });
+                    }
 
                 } catch (error) {
                     console.error('Search error:', error);
@@ -1307,6 +1424,259 @@
                     setTimeout(() => toast.remove(), 260);
                 }, 3000);
             }
+
+            if (!canEditQuestions) {
+                return;
+            }
+
+            const editBaseUrl = '/quiz/tutor/question/';
+            const editCsrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            window.openSearchQuestionEditModal = function(qId) {
+                const data = searchQuestionData.get(String(qId));
+                if (!data) {
+                    showToast('Error', 'Question data not available.', 'error');
+                    return;
+                }
+
+                document.getElementById('sq-q-id').value = qId;
+                document.getElementById('sq-q-text').value = data.question || '';
+                document.getElementById('sq-explanation').value = data.explanation === 'No explanation available.' ? '' : (data.explanation || '');
+                document.getElementById('sq-status').textContent = '';
+                document.getElementById('sq-status').className = 'sq-status';
+                document.getElementById('sq-del-confirm').classList.remove('show');
+                document.getElementById('sq-save-btn').disabled = false;
+                document.getElementById('sq-del-btn').style.display = '';
+
+                sqSwitchType(data.question_type === 'written' ? 'written' : 'multiple_choice', true, data);
+
+                document.getElementById('sq-edit-overlay').classList.add('show');
+                document.body.style.overflow = 'hidden';
+            };
+
+            window.sqSwitchType = function(type, populate, data) {
+                document.getElementById('sq-q-type').value = type;
+                const mcqButton = document.getElementById('sq-type-mcq');
+                const writtenButton = document.getElementById('sq-type-written');
+                const mcqSection = document.getElementById('sq-mcq-section');
+                const writtenSection = document.getElementById('sq-written-section');
+
+                if (type === 'written') {
+                    mcqButton.classList.remove('active');
+                    writtenButton.classList.add('active');
+                    mcqSection.style.display = 'none';
+                    writtenSection.style.display = 'block';
+
+                    if (populate && data) {
+                        document.getElementById('sq-correct-text').value = data.raw_correct_answer || '';
+                        document.getElementById('sq-alt-answers').value = data.alternative_answers || '';
+                    }
+                    return;
+                }
+
+                writtenButton.classList.remove('active');
+                mcqButton.classList.add('active');
+                writtenSection.style.display = 'none';
+                mcqSection.style.display = 'block';
+
+                if (populate && data) {
+                    document.getElementById('sq-oa').value = data.option_a || '';
+                    document.getElementById('sq-ob').value = data.option_b || '';
+                    document.getElementById('sq-oc').value = data.option_c || '';
+                    document.getElementById('sq-od').value = data.option_d || '';
+                    const radio = document.getElementById('sq-c' + String(data.raw_correct_answer || '').toLowerCase());
+                    if (radio) {
+                        radio.checked = true;
+                    }
+                }
+            };
+
+            window.sqCloseModal = function() {
+                document.getElementById('sq-edit-overlay').classList.remove('show');
+                document.body.style.overflow = '';
+            };
+
+            window.sqPromptDelete = function() {
+                document.getElementById('sq-del-confirm').classList.add('show');
+                document.getElementById('sq-save-btn').disabled = true;
+                document.getElementById('sq-del-btn').style.display = 'none';
+            };
+
+            window.sqCancelDelete = function() {
+                document.getElementById('sq-del-confirm').classList.remove('show');
+                document.getElementById('sq-save-btn').disabled = false;
+                document.getElementById('sq-del-btn').style.display = '';
+            };
+
+            window.sqSaveEdit = async function() {
+                const qId = document.getElementById('sq-q-id').value;
+                const qType = document.getElementById('sq-q-type').value;
+                const saveBtn = document.getElementById('sq-save-btn');
+                const questionText = document.getElementById('sq-q-text').value.trim();
+
+                if (!questionText) {
+                    sqSetStatus('Question text is required.', 'error');
+                    return;
+                }
+
+                let payload = {
+                    _method: 'PUT',
+                    question: questionText,
+                    question_type: qType,
+                    explanation: document.getElementById('sq-explanation').value.trim()
+                };
+
+                if (qType === 'written') {
+                    const correctAnswer = document.getElementById('sq-correct-text').value.trim();
+                    if (!correctAnswer) {
+                        sqSetStatus('Correct answer is required.', 'error');
+                        return;
+                    }
+
+                    payload.correct_answer = correctAnswer;
+                    payload.alternative_answers = document.getElementById('sq-alt-answers').value.trim();
+                } else {
+                    const checked = document.querySelector('input[name="sq-correct"]:checked');
+                    if (!checked) {
+                        sqSetStatus('Please select the correct answer.', 'error');
+                        return;
+                    }
+
+                    payload.correct_answer = checked.value;
+                    payload.option_a = document.getElementById('sq-oa').value.trim();
+                    payload.option_b = document.getElementById('sq-ob').value.trim();
+                    payload.option_c = document.getElementById('sq-oc').value.trim();
+                    payload.option_d = document.getElementById('sq-od').value.trim();
+                }
+
+                saveBtn.disabled = true;
+                sqSetStatus('Saving…', '');
+
+                try {
+                    const response = await fetch(editBaseUrl + qId, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': editCsrf,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        sqSetStatus(data.message || 'Error saving.', 'error');
+                        saveBtn.disabled = false;
+                        return;
+                    }
+
+                    const cachedQuestion = searchQuestionData.get(String(qId)) || {};
+                    const updatedQuestion = {
+                        ...cachedQuestion,
+                        question: payload.question,
+                        question_type: payload.question_type,
+                        explanation: payload.explanation || 'No explanation available.',
+                        raw_correct_answer: payload.correct_answer,
+                        alternative_answers: payload.alternative_answers || '',
+                        option_a: payload.option_a || '',
+                        option_b: payload.option_b || '',
+                        option_c: payload.option_c || '',
+                        option_d: payload.option_d || ''
+                    };
+
+                    if (payload.question_type === 'written') {
+                        updatedQuestion.correct_answer = payload.correct_answer;
+                    } else {
+                        const optionMap = {
+                            A: payload.option_a || '',
+                            B: payload.option_b || '',
+                            C: payload.option_c || '',
+                            D: payload.option_d || ''
+                        };
+                        updatedQuestion.correct_answer = `${payload.correct_answer}: ${optionMap[payload.correct_answer] || ''}`.trim();
+                    }
+
+                    searchQuestionData.set(String(qId), updatedQuestion);
+                    updateSearchQuestionCard(qId, updatedQuestion);
+                    sqSetStatus('✓ Saved!', 'success');
+                    setTimeout(sqCloseModal, 900);
+                } catch (error) {
+                    sqSetStatus('Network error: ' + error.message, 'error');
+                    saveBtn.disabled = false;
+                }
+            };
+
+            window.sqConfirmDelete = async function() {
+                const qId = document.getElementById('sq-q-id').value;
+                const button = document.getElementById('sq-confirm-del');
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
+                sqSetStatus('Deleting…', '');
+
+                try {
+                    const response = await fetch(editBaseUrl + qId, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': editCsrf,
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        sqSetStatus(data.message || 'Error deleting.', 'error');
+                        button.disabled = false;
+                        button.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
+                        return;
+                    }
+
+                    searchQuestionData.delete(String(qId));
+                    document.querySelector(`.search-result-card[data-question-id="${qId}"]`)?.remove();
+                    sqSetStatus('✓ Deleted.', 'success');
+                    setTimeout(sqCloseModal, 800);
+                } catch (error) {
+                    sqSetStatus('Network error: ' + error.message, 'error');
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
+                }
+            };
+
+            function updateSearchQuestionCard(qId, question) {
+                const card = document.querySelector(`.search-result-card[data-question-id="${qId}"]`);
+                if (!card) {
+                    return;
+                }
+
+                const questionText = card.querySelector('.search-result-question');
+                const answerText = card.querySelector('.search-result-answer-text');
+                const explanationText = card.querySelector('.search-result-explanation');
+
+                if (questionText) {
+                    questionText.textContent = question.question || '';
+                }
+
+                if (answerText) {
+                    answerText.textContent = question.correct_answer || '';
+                }
+
+                if (explanationText) {
+                    explanationText.textContent = question.explanation || 'No explanation available.';
+                }
+            }
+
+            function sqSetStatus(message, className) {
+                const status = document.getElementById('sq-status');
+                status.textContent = message;
+                status.className = 'sq-status' + (className ? ' ' + className : '');
+            }
+
+            document.getElementById('sq-edit-overlay')?.addEventListener('click', (event) => {
+                if (event.target.id === 'sq-edit-overlay') {
+                    sqCloseModal();
+                }
+            });
         })();
     @endif
     </script>

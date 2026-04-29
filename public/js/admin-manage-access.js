@@ -748,6 +748,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
     // ── Last Active Users ──────────────────────────────────────────────
     (function initLastActiveUsers() {
         var laState = { page: 1, search: '', debounce: null };
+        var studentProfileBaseUrl = MANAGE_ACCESS_CONFIG.studentProfileBaseUrl || '/student';
+        var deleteUserBaseUrl = MANAGE_ACCESS_CONFIG.deleteUserBaseUrl || '/admin/delete/user';
         var STATUS_LABELS = {
             online:    'Online',
             recent:    'Recently',
@@ -770,7 +772,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
             var tbody = $('#lastActiveBody');
             tbody.html(
-                '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                '<tr><td colspan="7" class="text-center py-4 text-muted">' +
                 '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i>' +
                 '<div>Loading user activity...</div></td></tr>'
             );
@@ -783,7 +785,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 success: function(resp) {
                     if (!resp.success) {
                         tbody.html(
-                            '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                            '<tr><td colspan="7" class="text-center py-4 text-muted">' +
                             '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
                             '<div>Failed to load data</div></td></tr>'
                         );
@@ -793,7 +795,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 },
                 error: function() {
                     tbody.html(
-                        '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                        '<tr><td colspan="7" class="text-center py-4 text-muted">' +
                         '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
                         '<div>Failed to load data</div></td></tr>'
                     );
@@ -807,7 +809,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
             if (!data.users || data.users.length === 0) {
                 tbody.html(
-                    '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+                    '<tr><td colspan="7" class="text-center py-4 text-muted">' +
                     '<i class="fas fa-users fa-2x mb-2"></i>' +
                     '<div>No users found</div></td></tr>'
                 );
@@ -819,6 +821,8 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 var safeName = escHtml(u.name || 'Unknown');
                 var safeEmail = escHtml(u.email || '');
                 var initial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+                var profileUrl = studentProfileBaseUrl + '/' + encodeURIComponent(u.id) + '/profile';
+                var deleteUrl = deleteUserBaseUrl + '/' + encodeURIComponent(u.id);
                 var roleBadge = u.role === 1
                     ? '<span class="badge bg-danger">Admin</span>'
                     : u.role === 2
@@ -854,7 +858,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                                 '</div>' +
                             '</div>' +
                             '<div>' +
-                                '<div class="fw-medium">' + safeName + '</div>' +
+                                '<div class="fw-medium"><a href="' + escHtml(profileUrl) + '" class="text-decoration-none">' + safeName + '</a></div>' +
                                 '<small class="text-muted">' + safeEmail + '</small>' +
                             '</div>' +
                         '</div>' +
@@ -866,6 +870,16 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                     '</td>' +
                     '<td>' + quizCell + '</td>' +
                     '<td><span class="activity-status ' + escHtml(u.status) + '"><span class="status-dot"></span>' + escHtml(statusLabel) + '</span></td>' +
+                    '<td>' +
+                        '<div class="d-flex gap-2 flex-wrap">' +
+                            '<a href="' + escHtml(profileUrl) + '" class="btn btn-sm btn-outline-primary" title="Open full student profile">' +
+                                '<i class="fas fa-user me-1"></i>Profile' +
+                            '</a>' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger last-active-delete-btn" data-user-id="' + escHtml(String(u.id)) + '" data-user-name="' + safeName + '" data-delete-url="' + escHtml(deleteUrl) + '" title="Delete this account">' +
+                                '<i class="fas fa-trash-alt me-1"></i>Delete' +
+                            '</button>' +
+                        '</div>' +
+                    '</td>' +
                     '</tr>'
                 );
             });
@@ -901,6 +915,47 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
         $('#lastActiveNext').on('click', function() {
             loadLastActive(laState.page + 1, laState.search);
+        });
+
+        $('#lastActiveBody').on('click', '.last-active-delete-btn', function() {
+            var $button = $(this);
+            var userId = $button.data('user-id');
+            var userName = $button.data('user-name') || 'this user';
+            var deleteUrl = $button.data('delete-url');
+
+            if (!deleteUrl) {
+                showNotification('error', 'Delete Failed', 'Missing delete endpoint for this user.');
+                return;
+            }
+
+            var confirmed = window.confirm('Delete ' + userName + ' and all related data? This cannot be undone.');
+            if (!confirmed) {
+                return;
+            }
+
+            $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Deleting');
+
+            $.ajax({
+                url: deleteUrl,
+                method: 'DELETE',
+                data: { _token: MANAGE_ACCESS_CONFIG.csrfToken },
+                headers: {
+                    'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(resp) {
+                    var remainingRows = $('#lastActiveBody tr[data-loaded="1"]').length;
+                    var nextPage = remainingRows === 1 && laState.page > 1 ? laState.page - 1 : laState.page;
+                    showNotification('success', 'User Deleted', resp.message || 'The account was deleted successfully.');
+                    loadLastActive(nextPage, laState.search);
+                },
+                error: function(xhr) {
+                    var message = xhr.responseJSON?.message || 'Failed to delete the user account.';
+                    showNotification('error', 'Delete Failed', message);
+                    $button.prop('disabled', false).html('<i class="fas fa-trash-alt me-1"></i>Delete');
+                }
+            });
         });
 
         // Auto-load on page ready (only if User Access tab is visible)

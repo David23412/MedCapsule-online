@@ -212,6 +212,15 @@ class DeleteActionController extends Controller
             $userEmail = $user->email;
 
             if ($user->id === auth()->id()) {
+                DB::rollBack();
+
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You cannot delete your own account.',
+                    ], 422);
+                }
+
                 return redirect()->back()
                     ->with('error', 'You cannot delete your own account.');
             }
@@ -238,9 +247,18 @@ class DeleteActionController extends Controller
 
             DB::commit();
 
+            $message = "User '{$userName}' ({$userEmail}) and all related data have been deleted successfully.";
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'user_id' => (int) $id,
+                ]);
+            }
 
             return redirect()->route('admin.delete.users')
-                ->with('success', "User '{$userName}' ({$userEmail}) and all related data have been deleted successfully.");
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -249,6 +267,13 @@ class DeleteActionController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to delete user. Error: ' . $e->getMessage(),
+                ], 500);
+            }
 
             return redirect()->back()
                 ->with('error', 'Failed to delete user. Error: ' . $e->getMessage());

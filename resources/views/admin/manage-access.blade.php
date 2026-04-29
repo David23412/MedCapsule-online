@@ -2338,11 +2338,12 @@
                                                 <th>Last Active</th>
                                                 <th>Last Quiz</th>
                                                 <th>Status</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody id="lastActiveBody">
                                             <tr>
-                                                <td colspan="6" class="text-center py-4 text-muted">
+                                                <td colspan="7" class="text-center py-4 text-muted">
                                                     <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
                                                     <div>Loading user activity...</div>
                                                 </td>
@@ -2965,6 +2966,8 @@
         window.MANAGE_ACCESS_CONFIG = {
             csrfToken: '{{ csrf_token() }}',
             activeTab: '{{ $activeTab ?? "" }}',
+            studentProfileBaseUrl: '{{ url('/student') }}',
+            deleteUserBaseUrl: '{{ url('/admin/delete/user') }}',
             courseOptions: {!! json_encode(
                 isset($courses) && $courses->count() > 0
                     ? $courses->map(fn ($c) => [
