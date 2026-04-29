@@ -4,485 +4,887 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $student->name }} - Accountability Report - MedCapsule</title>
+    <title>{{ $student->name }} - Student Overview - MedCapsule</title>
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    @php
+        $overview = $data['overview'] ?? [];
+        $studyPatterns = $data['study_patterns'] ?? [];
+        $realTimeStats = $data['real_time_stats'] ?? [];
+        $recentQuizzes = $data['recent_quizzes'] ?? [];
+        $strengthAreas = $realTimeStats['strength_areas'] ?? [];
+        $weaknessAreas = $realTimeStats['weakness_areas'] ?? [];
+        $improvementRate = $realTimeStats['improvement_rate'] ?? 0;
+        $lastActive = $overview['last_active'] ?? null;
+        $memberSince = $overview['member_since'] ?? null;
+        $disciplineLabels = [
+            'active' => 'On Track',
+            'at_risk' => 'Needs Attention',
+            'inactive' => 'Inactive',
+        ];
+        $disciplineClass = [
+            'active' => 'status-good',
+            'at_risk' => 'status-warn',
+            'inactive' => 'status-bad',
+        ][$discipline['status']] ?? 'status-warn';
+        $disciplineLabel = $disciplineLabels[$discipline['status']] ?? ucfirst(str_replace('_', ' ', $discipline['status']));
+        $trendLabel = ucfirst($studyPatterns['improvement_trend'] ?? 'stable');
+        $completedTasks = $planner['recent_outcomes']->where('is_completed', true)->count();
+    @endphp
 
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --slate-50: #f8fafc;
-            --slate-100: #f1f5f9;
-            --slate-200: #e2e8f0;
-            --slate-700: #334155;
-            --slate-900: #0f172a;
-            --radius: 16px;
-            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --bg: #f5f7fa;
+            --panel: #ffffff;
+            --panel-muted: #f8fafc;
+            --border: #dbe2ea;
+            --border-strong: #c8d3df;
+            --text: #15202b;
+            --text-muted: #5d6b79;
+            --accent: #1f4e79;
+            --accent-soft: #eaf1f7;
+            --good: #1f7a4f;
+            --good-soft: #e9f7ef;
+            --warn: #8a5a12;
+            --warn-soft: #fff6df;
+            --bad: #9f2d2d;
+            --bad-soft: #fdeeee;
+            --radius: 14px;
         }
+
+        * { box-sizing: border-box; }
 
         body {
-            background-color: #fbfcff;
-            font-family: 'Outfit', sans-serif;
-            color: var(--slate-900);
-            padding-bottom: 50px;
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Manrope', sans-serif;
+            line-height: 1.45;
         }
 
-        .glass-nav {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--slate-200);
-            padding: 15px 0;
+        .page-shell {
+            max-width: 1360px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .topbar {
             position: sticky;
             top: 0;
-            z-index: 1000;
+            z-index: 20;
+            background: rgba(245, 247, 250, 0.94);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(200, 211, 223, 0.85);
+            margin: 0 -24px 24px;
+            padding: 16px 24px;
         }
 
-        .container { max-width: 1200px; }
+        .topbar-inner,
+        .header-row,
+        .summary-grid,
+        .main-grid,
+        .meta-grid,
+        .metric-grid,
+        .compact-grid,
+        .area-list,
+        .table-meta {
+            display: grid;
+            gap: 16px;
+        }
 
-        .discipline-banner {
+        .topbar-inner {
+            max-width: 1360px;
+            margin: 0 auto;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+        }
+
+        .topbar-title {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .eyebrow {
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .topbar h1,
+        .panel-title {
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .topbar h1 { font-size: 1.1rem; }
+
+        .topbar-actions,
+        .header-actions,
+        .identity-badges,
+        .tag-list,
+        .row-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-minimal {
+            border: 1px solid var(--border-strong);
+            background: #fff;
+            color: var(--text);
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .btn-minimal:hover {
+            color: var(--text);
+            border-color: #aebccc;
+            background: #fbfcfd;
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn-accent:hover {
+            color: #fff;
+            background: #183d5f;
+            border-color: #183d5f;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 20px;
-            margin-bottom: 30px;
+        }
+
+        .panel-muted {
+            background: var(--panel-muted);
+        }
+
+        .header-row {
+            grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+            align-items: stretch;
+            margin-bottom: 16px;
+        }
+
+        .student-identity {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: var(--shadow);
-            border: 1px solid rgba(255,255,255,0.3);
-            position: relative;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
             overflow: hidden;
-        }
-
-        .discipline-banner::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(45deg, rgba(255,255,255,0.1), transparent);
-            pointer-events: none;
-        }
-
-        .discipline-banner.bg-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; }
-        .discipline-banner.bg-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; }
-        .discipline-banner.bg-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important; }
-
-        .banner-content { color: white; }
-        .banner-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-        .banner-desc { opacity: 0.9; font-size: 0.95rem; }
-
-        .whatsapp-btn {
-            background: #25d366;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);
-        }
-
-        .whatsapp-btn:hover {
-            transform: scale(1.05);
-            background: #128c7e;
-            color: white;
-            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.6);
-        }
-
-        .profile-card {
-            background: white;
-            border-radius: var(--radius);
-            padding: 30px;
-            border: 1px solid var(--slate-100);
-            box-shadow: var(--shadow);
-            margin-bottom: 30px;
-        }
-
-        .avatar-lg {
-            width: 100px; height: 100px;
-            border-radius: 50%;
-            border: 4px solid var(--slate-100);
-            object-fit: cover;
-        }
-
-        .placeholder-avatar {
-            width: 100px; height: 100px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
+            background: var(--accent-soft);
+            color: var(--accent);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-size: 1.5rem;
+            font-weight: 800;
+            flex-shrink: 0;
+            border: 1px solid var(--border);
         }
 
-        .stat-card {
-            background: var(--slate-50);
-            padding: 20px;
-            border-radius: var(--radius);
-            border: 1px solid var(--slate-200);
-            transition: all 0.3s ease;
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
-        .stat-card:hover { background: white; border-color: var(--primary); transform: translateY(-3px); }
-        .stat-icon { font-size: 1.5rem; color: var(--primary); margin-bottom: 12px; }
-        .stat-value { font-size: 1.8rem; font-weight: 700; display: block; }
-        .stat-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--slate-700); font-weight: 600; }
-
-        .matrix-container {
-            background: white;
-            border-radius: var(--radius);
-            padding: 25px;
-            border: 1px solid var(--slate-100);
-            box-shadow: var(--shadow);
+        .student-name {
+            margin: 0 0 6px;
+            font-size: 1.7rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
         }
 
-        .section-title {
-            font-weight: 700;
-            font-size: 1.25rem;
-            margin-bottom: 20px;
-            display: flex;
+        .student-subtitle {
+            color: var(--text-muted);
+            margin: 0 0 12px;
+            font-size: 0.96rem;
+        }
+
+        .identity-badge {
+            display: inline-flex;
             align-items: center;
-            gap: 10px;
-            color: var(--slate-900);
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            font-weight: 600;
         }
 
-        .table-custom { margin: 0; }
-        .table-custom thead th {
-            background: var(--slate-50);
-            border-bottom: 2px solid var(--slate-200);
-            color: var(--slate-700);
-            font-weight: 600;
+        .meta-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin-top: 18px;
+        }
+
+        .meta-item {
+            border-top: 1px solid var(--border);
+            padding-top: 14px;
+        }
+
+        .meta-label {
+            color: var(--text-muted);
+            font-size: 0.76rem;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.5px;
-            padding: 15px;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            margin-bottom: 6px;
         }
 
-        .table-custom tbody td {
-            padding: 18px 15px;
-            vertical-align: middle;
-            border-bottom: 1px solid var(--slate-100);
-            font-size: 0.95rem;
+        .meta-value {
+            font-size: 0.96rem;
+            font-weight: 700;
         }
 
-        .score-pill {
-            padding: 4px 12px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        .score-pill.excellent { background: #dcfce7; color: #166534; }
-        .score-pill.good { background: #eff6ff; color: #1e40af; }
-        .score-pill.poor { background: #fef2f2; color: #991b1b; }
-
-        .progress-compact {
-            height: 8px;
-            background: var(--slate-100);
-            border-radius: 10px;
-            overflow: hidden;
-            width: 100px;
-        }
-
-        .progress-compact-bar { height: 100%; border-radius: 10px; }
-
-        .planner-stat {
+        .status-block {
             display: flex;
+            flex-direction: column;
+            gap: 16px;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .status-pill {
+            display: inline-flex;
             align-items: center;
-            gap: 15px;
-            padding: 15px;
-            background: var(--slate-50);
-            border-radius: var(--radius);
+            gap: 8px;
+            width: fit-content;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .status-good { background: var(--good-soft); color: var(--good); }
+        .status-warn { background: var(--warn-soft); color: var(--warn); }
+        .status-bad { background: var(--bad-soft); color: var(--bad); }
+
+        .status-copy {
+            color: var(--text-muted);
+            margin: 0;
+            font-size: 0.94rem;
+        }
+
+        .summary-grid {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            margin-bottom: 16px;
+        }
+
+        .metric-card {
+            padding: 18px;
+            border-radius: 14px;
+            background: #fff;
+            border: 1px solid var(--border);
+        }
+
+        .metric-label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 0.72rem;
+            font-weight: 700;
             margin-bottom: 10px;
         }
 
-        .planner-icon {
-            width: 45px; height: 45px;
-            border-radius: 12px;
-            background: white;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin-bottom: 4px;
         }
 
-        .nudge-float {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1001;
+        .metric-note {
+            color: var(--text-muted);
+            font-size: 0.84rem;
+        }
+
+        .main-grid {
+            grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.9fr);
+            align-items: start;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+        }
+
+        .panel-subtitle {
+            color: var(--text-muted);
+            font-size: 0.86rem;
+            margin: 4px 0 0;
+        }
+
+        .table-shell {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background: #f8fafc;
+            color: var(--text-muted);
+            text-align: left;
+            font-size: 0.74rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 800;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody td {
+            padding: 14px;
+            border-bottom: 1px solid #edf2f7;
+            font-size: 0.92rem;
+            vertical-align: middle;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .topic-name,
+        .row-title {
+            font-weight: 700;
+        }
+
+        .muted {
+            color: var(--text-muted);
+        }
+
+        .score-chip,
+        .mode-chip,
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .score-good { background: var(--good-soft); color: var(--good); }
+        .score-mid { background: var(--accent-soft); color: var(--accent); }
+        .score-low { background: var(--bad-soft); color: var(--bad); }
+        .mode-chip { background: #f1f5f9; color: #445566; }
+        .status-chip { background: #f3f4f6; color: #4b5563; }
+        .status-mastered { background: var(--good-soft); color: var(--good); }
+        .status-progress { background: var(--warn-soft); color: var(--warn); }
+        .status-idle { background: #f3f4f6; color: #677484; }
+
+        .progress-track {
+            width: 100%;
+            max-width: 120px;
+            height: 8px;
+            border-radius: 999px;
+            background: #e8eef4;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #587ea3;
+            border-radius: inherit;
+        }
+
+        .compact-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .mini-stat {
+            padding: 16px;
+            border-radius: 12px;
+            background: var(--panel-muted);
+            border: 1px solid var(--border);
+        }
+
+        .mini-stat-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 4px;
+        }
+
+        .mini-stat-label {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .divider {
+            border-top: 1px solid var(--border);
+            margin: 18px 0;
+        }
+
+        .area-list {
+            gap: 10px;
+        }
+
+        .area-item,
+        .assignment-item {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            background: #fff;
+        }
+
+        .area-item-head,
+        .assignment-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .assignment-item {
+            background: var(--panel-muted);
+        }
+
+        .empty-state {
+            padding: 16px;
+            border: 1px dashed var(--border-strong);
+            border-radius: 12px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            background: #fbfcfd;
         }
 
         @media print {
-            .glass-nav, .nudge-float, .whatsapp-btn, .back-btn { display: none !important; }
-            body { background: white; padding: 0; }
-            .profile-card, .matrix-container { border: none; box-shadow: none; }
+            .topbar,
+            .header-actions {
+                display: none !important;
+            }
+
+            .page-shell {
+                max-width: none;
+                padding: 0;
+            }
+
+            .panel,
+            .metric-card {
+                box-shadow: none;
+                break-inside: avoid;
+            }
+        }
+
+        @media (max-width: 1199px) {
+            .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .main-grid,
+            .header-row { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 767px) {
+            .page-shell { padding: 16px; }
+            .topbar { margin: 0 -16px 16px; padding: 14px 16px; }
+            .topbar-inner,
+            .student-identity { grid-template-columns: 1fr; }
+            .meta-grid,
+            .summary-grid,
+            .compact-grid { grid-template-columns: 1fr 1fr; }
+            .student-identity { display: block; }
+            .avatar { margin-bottom: 14px; }
+        }
+
+        @media (max-width: 575px) {
+            .meta-grid,
+            .summary-grid,
+            .compact-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-
-<nav class="glass-nav mb-4">
-    <div class="container d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('tutor.dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill back-btn">
-                <i class="fas fa-arrow-left me-1"></i> Dashboard
-            </a>
-            <h5 class="mb-0 fw-bold">Student Accountability Report</h5>
-        </div>
-        <div class="d-flex gap-2">
-            <button onclick="window.print()" class="btn btn-light btn-sm rounded-pill">
-                <i class="fas fa-print me-1"></i> Print
-            </button>
-            <div class="dropdown">
-                <button class="btn btn-light btn-sm rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    Quick Actions
+    <div class="topbar">
+        <div class="topbar-inner">
+            <div class="topbar-title">
+                <span class="eyebrow">Tutor Workspace</span>
+                <h1>Student Overview</h1>
+            </div>
+            <div class="topbar-actions">
+                <a href="{{ route('tutor.dashboard') }}" class="btn-minimal">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+                <button onclick="window.print()" class="btn-minimal">
+                    <i class="fas fa-print me-2"></i>Print
                 </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">Assign Task</a></li>
-                    <li><a class="dropdown-item" href="#">Lock Topic</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#">Reset Progress</a></li>
-                </ul>
             </div>
         </div>
     </div>
-</nav>
 
-<div class="container">
-    <!-- Discipline Banner -->
-    <div class="discipline-banner bg-{{ $discipline['color'] }} fade-in">
-        <div class="banner-content">
-            <div class="banner-title">
-                @if($discipline['status'] == 'active')
-                    <i class="fas fa-check-circle"></i> DISCIPLINE STATUS: EXCELLENT
-                @elseif($discipline['status'] == 'at_risk')
-                    <i class="fas fa-exclamation-triangle"></i> DISCIPLINE STATUS: ATTENTION REQUIRED
-                @else
-                    <i class="fas fa-times-circle"></i> DISCIPLINE STATUS: INACTIVE / STALLED
-                @endif
-            </div>
-            <div class="banner-desc">{{ $discipline['reason'] }}</div>
-        </div>
-        <a href="{{ $discipline['whatsapp_link'] }}" target="_blank" class="whatsapp-btn">
-            <i class="fab fa-whatsapp"></i> MESSAGE STUDENT
-        </a>
-    </div>
-
-    <div class="row">
-        <!-- Sidebar Info -->
-        <div class="col-lg-4">
-            <div class="profile-card text-center">
-                <div class="mb-4 d-flex justify-content-center">
-                    @if($student->profile_picture_url)
-                        <img src="{{ \App\Models\User::getProfileImageUrlFor($student) }}" class="avatar-lg">
-                    @else
-                        <div class="placeholder-avatar">{{ substr($student->name, 0, 1) }}</div>
-                    @endif
-                </div>
-                <h3 class="fw-bold mb-1">{{ $student->name }}</h3>
-                <p class="text-muted small mb-3">{{ $student->university }}</p>
-                <div class="d-flex justify-content-center gap-2 mb-4">
-                    <span class="badge bg-light text-dark rounded-pill border">{{ $student->number }}</span>
-                    <span class="badge bg-light text-dark rounded-pill border">ID: #{{ $student->id }}</span>
-                </div>
-
-                <hr class="my-4 opacity-50">
-
-                <div class="row g-3">
-                    <div class="col-6">
-                        <div class="stat-card">
-                            <i class="fas fa-fire stat-icon" style="color: #f97316"></i>
-                            <span class="stat-value">{{ $student->study_streak_days }}</span>
-                            <span class="stat-label">Streak</span>
-                        </div>
+    <div class="page-shell">
+        <div class="header-row">
+            <section class="panel">
+                <div class="student-identity">
+                    <div class="avatar">
+                        @if($student->profile_picture_url)
+                            <img src="{{ \App\Models\User::getProfileImageUrlFor($student) }}" alt="{{ $student->name }}">
+                        @else
+                            {{ strtoupper(substr($student->name, 0, 1)) }}
+                        @endif
                     </div>
-                    <div class="col-6">
-                        <div class="stat-card">
-                            <i class="fas fa-star stat-icon" style="color: #fbbf24"></i>
-                            <span class="stat-value">{{ $student->xp }}</span>
-                            <span class="stat-label">Total XP</span>
+                    <div class="w-100">
+                        <h2 class="student-name">{{ $student->name }}</h2>
+                        <p class="student-subtitle">
+                            {{ $student->email }}
+                            @if($student->university)
+                                • {{ $student->university }}
+                            @endif
+                        </p>
+                        <div class="identity-badges">
+                            <span class="identity-badge">ID #{{ $student->id }}</span>
+                            @if($student->number)
+                                <span class="identity-badge">{{ $student->number }}</span>
+                            @endif
+                            <span class="identity-badge">{{ count($timeline) }} tracked topics</span>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="stat-card">
-                            <i class="fas fa-bullseye stat-icon"></i>
-                            <span class="stat-value">{{ $planner['completion_rate'] }}%</span>
-                            <span class="stat-label">Planner Adherence</span>
+
+                        <div class="meta-grid">
+                            <div class="meta-item">
+                                <div class="meta-label">Last Active</div>
+                                <div class="meta-value">{{ $lastActive ? \Carbon\Carbon::parse($lastActive)->diffForHumans() : 'No activity recorded' }}</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Member Since</div>
+                                <div class="meta-value">{{ $memberSince ? \Carbon\Carbon::parse($memberSince)->format('M Y') : 'Unknown' }}</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Most Active Day</div>
+                                <div class="meta-value">{{ $studyPatterns['most_active_day'] ?? 'N/A' }}</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-label">Average Session</div>
+                                <div class="meta-value">{{ round($realTimeStats['average_session_time'] ?? 0, 1) }} min</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Dashboard Analytics -->
-            <div class="matrix-container mb-4">
-                <h5 class="section-title"><i class="fas fa-chart-pie"></i> Activity Breakdown</h5>
-                <div class="planner-stat">
-                    <div class="planner-icon text-success"><i class="fas fa-tasks"></i></div>
+            <aside class="panel panel-muted">
+                <div class="status-block">
                     <div>
-                        <div class="fw-bold">{{ $planner['recent_outcomes']->where('is_completed', true)->count() }} / {{ $planner['recent_outcomes']->count() }}</div>
-                        <div class="text-muted small">Tasks completed (last 14 days)</div>
+                        <span class="status-pill {{ $disciplineClass }}">{{ $disciplineLabel }}</span>
+                        <h3 class="panel-title mt-3">Accountability Status</h3>
+                        <p class="status-copy">{{ $discipline['reason'] }}</p>
+                    </div>
+                    <div class="header-actions">
+                        <a href="{{ $discipline['whatsapp_link'] }}" target="_blank" class="btn-minimal btn-accent">
+                            <i class="fab fa-whatsapp me-2"></i>Message Student
+                        </a>
                     </div>
                 </div>
-                <div class="planner-stat">
-                    <div class="planner-icon text-primary"><i class="fas fa-video"></i></div>
-                    <div>
-                        <div class="fw-bold">{{ collect($timeline)->where('video_percentage', '>', 0)->count() }}</div>
-                        <div class="text-muted small">Topics Watched</div>
-                    </div>
-                </div>
-                <div class="planner-stat">
-                    <div class="planner-icon text-warning"><i class="fas fa-pen-nib"></i></div>
-                    <div>
-                        <div class="fw-bold">{{ $student->total_questions_attempted }}</div>
-                        <div class="text-muted small">Questions Solved</div>
-                    </div>
-                </div>
-            </div>
+            </aside>
         </div>
 
-        <!-- Main Data -->
-        <div class="col-lg-8">
-            <!-- Topic Matrix -->
-            <div class="matrix-container mb-4">
-                <h5 class="section-title"><i class="fas fa-list-ul"></i> Topic Progress Matrix</h5>
-                <div class="table-responsive">
-                    <table class="table table-custom">
-                        <thead>
-                            <tr>
-                                <th>Topic</th>
-                                <th>Solve Mode</th>
-                                <th>Quiz %</th>
-                                <th>Video %</th>
-                                <th>Last Active</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($timeline as $item)
+        <section class="summary-grid">
+            <div class="metric-card">
+                <div class="metric-label">Accuracy</div>
+                <div class="metric-value">{{ round($overview['accuracy_rate'] ?? 0, 1) }}%</div>
+                <div class="metric-note">{{ $overview['total_correct_answers'] ?? 0 }} correct of {{ $overview['total_questions_attempted'] ?? 0 }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Average Quiz Score</div>
+                <div class="metric-value">{{ round($overview['average_score'] ?? 0, 1) }}%</div>
+                <div class="metric-note">Best score {{ round($overview['best_score'] ?? 0, 1) }}%</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Quiz Volume</div>
+                <div class="metric-value">{{ $overview['total_quizzes'] ?? 0 }}</div>
+                <div class="metric-note">{{ $overview['recent_activity_count'] ?? 0 }} quizzes in last 30 days</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Planner Adherence</div>
+                <div class="metric-value">{{ round($planner['completion_rate'] ?? 0, 1) }}%</div>
+                <div class="metric-note">{{ $completedTasks }} completed of {{ $planner['recent_outcomes']->count() }} recent tasks</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Study Time</div>
+                <div class="metric-value">{{ round($realTimeStats['total_study_time'] ?? 0) }} min</div>
+                <div class="metric-note">Across recorded quiz sessions</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Performance Trend</div>
+                <div class="metric-value">{{ $trendLabel }}</div>
+                <div class="metric-note">{{ $improvementRate >= 0 ? '+' : '' }}{{ round($improvementRate, 1) }} pts vs earlier attempts</div>
+            </div>
+        </section>
+
+        <div class="main-grid">
+            <div>
+                <section class="panel mb-3">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Topic Progress</h3>
+                            <p class="panel-subtitle">Topic-level quiz performance, video completion, and most recent activity.</p>
+                        </div>
+                    </div>
+                    <div class="table-shell">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td><span class="fw-bold">{{ $item['name'] }}</span></td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border rounded-pill">
-                                            {{ strtoupper($item['quiz_mode'] ?? 'N/A') }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if($item['quiz_score'] !== null)
-                                            <span class="score-pill {{ $item['quiz_score'] >= 80 ? 'excellent' : ($item['quiz_score'] >= 60 ? 'good' : 'poor') }}">
-                                                {{ round($item['quiz_score'], 1) }}%
-                                            </span>
-                                        @else
-                                            <span class="text-muted small">Not attempted</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="progress-compact">
-                                                <div class="progress-compact-bar bg-success" style="width: {{ $item['video_percentage'] }}%"></div>
-                                            </div>
-                                            <span class="small fw-bold">{{ round($item['video_percentage']) }}%</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="small text-muted">{{ \Carbon\Carbon::parse($item['last_activity'])->diffForHumans() }}</div>
-                                    </td>
+                                    <th>Topic</th>
+                                    <th>Mode</th>
+                                    <th>Quiz</th>
+                                    <th>Video</th>
+                                    <th>Status</th>
+                                    <th>Last Active</th>
                                 </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                @forelse($timeline as $item)
+                                    @php
+                                        $topicStatus = 'Not Started';
+                                        $topicStatusClass = 'status-idle';
+                                        if (($item['quiz_score'] ?? null) !== null && ($item['quiz_score'] ?? 0) >= 80 && ($item['video_percentage'] ?? 0) >= 90) {
+                                            $topicStatus = 'Mastered';
+                                            $topicStatusClass = 'status-mastered';
+                                        } elseif (($item['quiz_score'] ?? null) !== null || ($item['video_percentage'] ?? 0) > 0) {
+                                            $topicStatus = 'In Progress';
+                                            $topicStatusClass = 'status-progress';
+                                        }
+                                        $quizClass = ($item['quiz_score'] ?? 0) >= 80 ? 'score-good' : (($item['quiz_score'] ?? 0) >= 60 ? 'score-mid' : 'score-low');
+                                    @endphp
+                                    <tr>
+                                        <td>
+                                            <div class="topic-name">{{ $item['name'] }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="mode-chip">{{ strtoupper($item['quiz_mode'] ?? 'N/A') }}</span>
+                                        </td>
+                                        <td>
+                                            @if($item['quiz_score'] !== null)
+                                                <span class="score-chip {{ $quizClass }}">{{ round($item['quiz_score'], 1) }}%</span>
+                                            @else
+                                                <span class="muted">Not attempted</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress-track">
+                                                    <div class="progress-bar" style="width: {{ max(0, min(100, round($item['video_percentage'] ?? 0))) }}%"></div>
+                                                </div>
+                                                <span class="muted">{{ round($item['video_percentage'] ?? 0) }}%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="status-chip {{ $topicStatusClass }}">{{ $topicStatus }}</span>
+                                        </td>
+                                        <td class="muted">
+                                            {{ !empty($item['last_activity']) ? \Carbon\Carbon::parse($item['last_activity'])->diffForHumans() : 'No recent activity' }}
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="muted">No topic activity recorded yet.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Recent Quiz Sessions</h3>
+                            <p class="panel-subtitle">Latest scored sessions with timing and question count.</p>
+                        </div>
+                    </div>
+                    @if(count($recentQuizzes) > 0)
+                        <div class="table-shell">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Topic</th>
+                                        <th>Score</th>
+                                        <th>Questions</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($recentQuizzes as $quiz)
+                                        @php
+                                            $quizClass = ($quiz['score'] ?? 0) >= 80 ? 'score-good' : (($quiz['score'] ?? 0) >= 60 ? 'score-mid' : 'score-low');
+                                        @endphp
+                                        <tr>
+                                            <td class="muted">{{ \Carbon\Carbon::parse($quiz['date'])->format('d M Y') }}</td>
+                                            <td>
+                                                <div class="row-title">{{ $quiz['topic'] }}</div>
+                                            </td>
+                                            <td><span class="score-chip {{ $quizClass }}">{{ round($quiz['score'] ?? 0, 1) }}%</span></td>
+                                            <td>{{ $quiz['correct_answers'] ?? 0 }} / {{ $quiz['questions_attempted'] ?? 0 }}</td>
+                                            <td class="muted">{{ round(($quiz['duration'] ?? 0) / 60, 1) }} min</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="empty-state">No quiz sessions have been recorded for this student yet.</div>
+                    @endif
+                </section>
             </div>
 
-            <!-- Performance Trend -->
-            @if(count($data['recent_quizzes']) > 0)
-            <div class="matrix-container">
-                <h5 class="section-title"><i class="fas fa-chart-line"></i> Performance Trend</h5>
-                <div style="height: 300px;">
-                    <canvas id="performanceChart"></canvas>
-                </div>
+            <div>
+                <section class="panel mb-3">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Study Summary</h3>
+                            <p class="panel-subtitle">A compact view of workload, consistency, and momentum.</p>
+                        </div>
+                    </div>
+                    <div class="compact-grid">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ $student->study_streak_days ?? 0 }} days</div>
+                            <div class="mini-stat-label">Current study streak</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ $student->xp ?? 0 }}</div>
+                            <div class="mini-stat-label">Total XP</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ collect($timeline)->where('video_percentage', '>', 0)->count() }}</div>
+                            <div class="mini-stat-label">Topics with video progress</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ $overview['total_questions_attempted'] ?? 0 }}</div>
+                            <div class="mini-stat-label">Questions attempted</div>
+                        </div>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="area-list">
+                        <div>
+                            <div class="meta-label">Strength Areas</div>
+                            @if(count($strengthAreas) > 0)
+                                @foreach($strengthAreas as $area)
+                                    <div class="area-item">
+                                        <div class="area-item-head">
+                                            <div class="row-title">{{ $area['topic'] }}</div>
+                                            <span class="score-chip score-good">{{ round($area['average_score'], 1) }}%</span>
+                                        </div>
+                                        <div class="muted">Strong recent average in this topic.</div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="empty-state">Not enough quiz data to identify strengths yet.</div>
+                            @endif
+                        </div>
+
+                        <div>
+                            <div class="meta-label">Weakness Areas</div>
+                            @if(count($weaknessAreas) > 0)
+                                @foreach($weaknessAreas as $area)
+                                    <div class="area-item">
+                                        <div class="area-item-head">
+                                            <div class="row-title">{{ $area['topic'] }}</div>
+                                            <span class="score-chip score-low">{{ round($area['average_score'], 1) }}%</span>
+                                        </div>
+                                        <div class="muted">Topic may need revision or follow-up support.</div>
+                                    </div>
+                                @endforeach
+                            @else
+                                <div class="empty-state">Not enough repeated attempts to identify weak areas yet.</div>
+                            @endif
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Assignments</h3>
+                            <p class="panel-subtitle">Current assignment load and most recent items.</p>
+                        </div>
+                    </div>
+
+                    <div class="compact-grid mb-3">
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ $assignments['active_count'] ?? 0 }}</div>
+                            <div class="mini-stat-label">Active</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ $assignments['completed_count'] ?? 0 }}</div>
+                            <div class="mini-stat-label">Completed</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ $assignments['overdue_count'] ?? 0 }}</div>
+                            <div class="mini-stat-label">Overdue</div>
+                        </div>
+                        <div class="mini-stat">
+                            <div class="mini-stat-value">{{ round($assignments['average_score'] ?? 0, 1) }}%</div>
+                            <div class="mini-stat-label">Average score</div>
+                        </div>
+                    </div>
+
+                    <div class="area-list">
+                        @forelse(array_slice($assignments['all_assignments'] ?? [], 0, 5) as $assignment)
+                            @php
+                                $assignmentStatusClass = $assignment['is_overdue'] ? 'status-bad' : ($assignment['is_completed'] ? 'status-good' : 'status-warn');
+                                $assignmentStatusLabel = $assignment['is_overdue'] ? 'Overdue' : ucfirst($assignment['status']);
+                            @endphp
+                            <div class="assignment-item">
+                                <div class="assignment-head">
+                                    <div>
+                                        <div class="row-title">{{ $assignment['title'] }}</div>
+                                        <div class="muted">{{ $assignment['topic'] }} • {{ $assignment['course'] }}</div>
+                                    </div>
+                                    <span class="status-pill {{ $assignmentStatusClass }}">{{ $assignmentStatusLabel }}</span>
+                                </div>
+                                <div class="table-meta">
+                                    <div class="muted">Deadline: {{ $assignment['deadline'] ? \Carbon\Carbon::parse($assignment['deadline'])->format('d M Y, H:i') : 'No deadline' }}</div>
+                                    <div class="muted">Score: {{ $assignment['score_percentage'] !== null ? round($assignment['score_percentage'], 1) . '%' : 'Not graded' }}</div>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="empty-state">No assignments found for this student.</div>
+                        @endforelse
+                    </div>
+                </section>
             </div>
-            @endif
         </div>
     </div>
-</div>
 
-<div class="nudge-float">
-    <a href="{{ $discipline['whatsapp_link'] }}" target="_blank" class="whatsapp-btn">
-        <i class="fab fa-whatsapp"></i> NUDGE STUDENT
-    </a>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-@if(count($data['recent_quizzes']) > 0)
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('performanceChart').getContext('2d');
-        
-        const quizData = @json(array_reverse(array_slice($data['recent_quizzes'], 0, 10)));
-        
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: quizData.map(quiz => new Date(quiz.date).toLocaleDateString(undefined, {month:'short', day:'numeric'})),
-                datasets: [{
-                    label: 'Score %',
-                    data: quizData.map(quiz => quiz.score),
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    borderWidth: 4,
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#6366f1',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 3,
-                    pointRadius: 6,
-                    pointHoverRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        padding: 12,
-                        backgroundColor: '#0f172a',
-                        titleFont: { size: 14, weight: 'bold' },
-                        bodyFont: { size: 13 }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: { borderDash: [5, 5], color: '#e2e8f0' },
-                        ticks: { stepSize: 20 }
-                    },
-                    x: {
-                        grid: { display: false }
-                    }
-                }
-            }
-        });
-    });
-</script>
-@endif
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
