@@ -14,7 +14,8 @@ class TutorDashboardViewController extends Controller
 
     public function __construct(\App\Services\StudentAnalyticsService $analyticsService)
     {
-        $this->middleware(['auth', 'tutor']);
+        $this->middleware('auth');
+        $this->middleware('tutor')->only('index');
         $this->analyticsService = $analyticsService;
     }
 

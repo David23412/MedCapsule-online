@@ -2966,7 +2966,7 @@
         window.MANAGE_ACCESS_CONFIG = {
             csrfToken: '{{ csrf_token() }}',
             activeTab: '{{ $activeTab ?? "" }}',
-            studentProfileBaseUrl: '{{ url('/student') }}',
+            studentProfileBaseUrl: '{{ url('/tutor/student') }}',
             deleteUserBaseUrl: '{{ url('/admin/delete/user') }}',
             courseOptions: {!! json_encode(
                 isset($courses) && $courses->count() > 0
