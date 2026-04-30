@@ -12,8 +12,10 @@ use Illuminate\Http\Request;
 use App\Services\PaymentService;
 use App\Services\PaymentSecurityService;
 use App\Services\AdvancedCacheService;
+use App\Services\BladeAssetService;
 use App\Services\NavigationViewDataService;
 use App\Services\PerformanceMonitorService;
+use App\Services\StudentViewDataService;
 use App\Models\Question;
 use App\Observers\QuestionObserver;
 use Illuminate\Support\Str;
@@ -42,8 +44,16 @@ class AppServiceProvider extends ServiceProvider
             return new AdvancedCacheService();
         });
 
+        $this->app->singleton(BladeAssetService::class, function ($app) {
+            return new BladeAssetService();
+        });
+
         $this->app->singleton(PerformanceMonitorService::class, function ($app) {
             return new PerformanceMonitorService();
+        });
+
+        $this->app->singleton(StudentViewDataService::class, function ($app) {
+            return new StudentViewDataService();
         });
 
         // FIXED: Register existing services for compatibility
@@ -76,6 +86,12 @@ class AppServiceProvider extends ServiceProvider
             'components.notification-bell',
             'partials.profile-picture-upload',
             'components.responsive-navigation',
+            'courses',
+            'topics_for_course',
+            'solve_quiz',
+            'mistakes',
+            'mistakes.learn',
+            'profile',
         ], function ($view): void {
             // Use request attributes as a true per-request store (safe for both FPM and Octane).
             $req = request();
@@ -83,6 +99,7 @@ class AppServiceProvider extends ServiceProvider
                 $req->attributes->set('_nav_shared_data', app(NavigationViewDataService::class)->getSharedData(auth()->user()));
             }
             $view->with($req->attributes->get('_nav_shared_data'));
+            $view->with('bladeAsset', app(BladeAssetService::class));
         });
     }
 

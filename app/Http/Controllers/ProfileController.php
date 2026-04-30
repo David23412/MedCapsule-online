@@ -15,6 +15,7 @@ use App\Models\QuizAttempt;
 use App\Models\User;
 use App\Services\PerformanceTrackingService;
 use App\Services\SecureFileUploadService;
+use App\Services\StudentViewDataService;
 
 class ProfileController extends Controller
 {
@@ -22,7 +23,8 @@ class ProfileController extends Controller
     private static ?bool $hasLeaderboardColumn = null;
 
     public function __construct(
-        private PerformanceTrackingService $performanceTrackingService
+        private PerformanceTrackingService $performanceTrackingService,
+        private StudentViewDataService $studentViewDataService
     )
     {
         // Apply auth middleware
@@ -278,14 +280,8 @@ class ProfileController extends Controller
         });
 
         $tenthPlaceXp = count($leaderboard) >= 10 ? $leaderboard[9]->xp : 0;
-        $currentUserView = [
-            'name' => $user->name,
-            'role' => $user->role,
-            'is_admin' => $user->isAdmin(),
-            'profile_image_url' => $user->getProfileImageUrl(),
-            'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+        $currentUserView = $this->studentViewDataService->buildCurrentUserView($user, [
             'member_since' => $user->created_at->format('F Y'),
-            'xp' => (int) ($user->xp ?? 0),
             'weekly_goal' => (int) $weeklyGoal,
             'weekly_questions' => (int) $weeklyQuestions,
             'weekly_progress_percent' => $progressPercent,
@@ -301,7 +297,7 @@ class ProfileController extends Controller
             'repair_mode' => $user->repair_mode,
             'mistake_mastery_mode' => $user->mistake_mastery_mode,
             'show_on_leaderboard' => $hasLeaderboardColumn ? (bool) $user->show_on_leaderboard : true,
-        ];
+        ]);
 
         return view('profile', compact(
             'accuracyRate',

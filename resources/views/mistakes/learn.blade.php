@@ -7,12 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Learn From Mistakes - MedCapsule</title>
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.favicon')
     @include('partials.admin-dark-mode-head')
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -90,7 +85,7 @@
     <!-- 💀 NUCLEAR SPEED OPTIMIZATIONS 💀 -->
     <link rel="preconnect" href="{{ url('/') }}">
     <link rel="dns-prefetch" href="{{ url('/') }}">
-    <link rel="stylesheet" href="{{ asset('css/mistakes-learn-page.css') }}">
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/mistakes-learn-page.css') }}">
     
     {{-- Responsive Navigation CSS --}}
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
@@ -101,46 +96,6 @@
 <body>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
     @include('components.lightning-preloader')
-
-    @php
-        $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
-        $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
-        $selectedTopicNames = collect($selectedTopicNames ?? []);
-        $isTopicFocusedSession = $selectedTopicNames->isNotEmpty();
-        $topicSessionTitle = $selectedTopicNames->count() === 1
-            ? $selectedTopicNames->first() . ' Mistake Session'
-            : 'Focused Topic Mistake Session';
-        $sessionLoadedCount = $mistakes->count();
-        $coveragePercent = $totalMistakesCount > 0 ? (int) round(($sessionLoadedCount / $totalMistakesCount) * 100) : 0;
-        $coursesCollection = collect($courses ?? []);
-        $activeCourseName = 'All Courses';
-        $sessionNow = now();
-        $dueNowCount = $mistakes->filter(function ($mistake) use ($sessionNow) {
-            return !(bool) $mistake->skipped
-                && (!$mistake->next_review_at || $mistake->next_review_at->lte($sessionNow));
-        })->count();
-        $highRiskCount = $mistakes->filter(function ($mistake) {
-            return !(bool) $mistake->skipped && (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9) <= 0.55;
-        })->count();
-        $stabilizingCount = $mistakes->filter(function ($mistake) {
-            return !(bool) $mistake->skipped
-                && (float) ($mistake->stability ?? 0) >= 1.5
-                && (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9) > 0.55;
-        })->count();
-        $averageIntervalDays = round($mistakes->avg(fn ($mistake) => (float) ($mistake->interval_days ?? 0)) ?? 0, 1);
-        $averageRetrievability = (int) round(($mistakes->avg(fn ($mistake) => (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9)) ?? 0.9) * 100);
-        $upNextMistake = $mistakes
-            ->filter(fn ($mistake) => !(bool) $mistake->skipped && $mistake->next_review_at)
-            ->sortBy('next_review_at')
-            ->first();
-        $queueLeadText = $dueNowCount > 0
-            ? "{$dueNowCount} due now"
-            : ($upNextMistake ? 'Next review ' . $upNextMistake->next_review_at->diffForHumans() : 'Queue is clear');
-
-        if (!empty($courseFilter)) {
-            $activeCourseName = optional($coursesCollection->firstWhere('id', (int) $courseFilter))->name ?? 'Custom Filter';
-        }
-    @endphp
 
     <div class="sidebar">
         <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
@@ -220,16 +175,16 @@
                             <span class="sidebar-mode-chip" id="sidebarModeValue" data-mode="pending">Pick mode</span>
                         </div>
                         <p class="sidebar-insight-copy">
-                            @if($isTopicFocusedSession)
-                                {{ $topicSessionTitle }}
+                            @if($learnPageView['is_topic_focused_session'])
+                                {{ $learnPageView['topic_session_title'] }}
                             @else
                                 Adaptive review across your active mistake bank.
                             @endif
                         </p>
                         <div class="sidebar-chip-list">
-                            <span class="sidebar-chip">{{ $activeCourseName }}</span>
-                            <span class="sidebar-chip">{{ $sessionLoadedCount }} loaded</span>
-                            <span class="sidebar-chip">{{ $coveragePercent }}% coverage</span>
+                            <span class="sidebar-chip">{{ $learnPageView['active_course_name'] }}</span>
+                            <span class="sidebar-chip">{{ $learnPageView['session_loaded_count'] }} loaded</span>
+                            <span class="sidebar-chip">{{ $learnPageView['coverage_percent'] }}% coverage</span>
                         </div>
                     </div>
 
@@ -253,7 +208,7 @@
                             </div>
                             <div class="sidebar-stat-card sidebar-stat-card-cold">
                                 <span class="sidebar-stat-label">Active</span>
-                                <strong id="sidebarRemainingCount">{{ $sessionLoadedCount }}</strong>
+                                <strong id="sidebarRemainingCount">{{ $learnPageView['session_loaded_count'] }}</strong>
                                 <small>Still in rotation</small>
                             </div>
                         </div>
@@ -267,14 +222,14 @@
                             <span class="nav-link-label">Current Target</span>
                         </div>
                         <p class="sidebar-insight-copy">
-                            @if($isTopicFocusedSession)
+                            @if($learnPageView['is_topic_focused_session'])
                                 Focused repair on the topic{{ $selectedTopicNames->count() === 1 ? '' : 's' }} you picked.
                             @else
                                 Balanced review across the mistakes most likely to slow your next quiz.
                             @endif
                         </p>
                         <div class="sidebar-chip-list">
-                            <span class="sidebar-chip">{{ $activeCourseName }}</span>
+                            <span class="sidebar-chip">{{ $learnPageView['active_course_name'] }}</span>
                             @forelse($selectedTopicNames->take(2) as $topicName)
                                 <span class="sidebar-chip">{{ $topicName }}</span>
                             @empty
@@ -286,24 +241,14 @@
             </div>
         </div>
 
-        <div class="sidebar-footer">
-            <a href="{{ route('profile') }}" class="sidebar-profile-link">
-                <span class="sidebar-profile-avatar">
-                    <img src="{{ $profileImageUrl }}" alt="Profile Picture" onerror="this.src='{{ $profileFallbackUrl }}'">
-                </span>
-                <span class="sidebar-profile-copy">
-                    <span class="sidebar-profile-name">{{ Auth::user()->name }}</span>
-                    <span class="sidebar-profile-meta">Study profile</span>
-                </span>
-            </a>
-            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
-                @csrf
-                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
-                    <i class="fas fa-arrow-right-from-bracket nav-icon"></i>
-                    <span class="nav-link-label">Sign Out</span>
-                </button>
-            </form>
-        </div>
+        @include('partials.student-sidebar-profile', [
+            'profileUrl' => route('profile'),
+            'profileName' => $currentUserView['name'],
+            'profileMeta' => 'Study profile',
+            'profileImageUrl' => $currentUserView['profile_image_url'],
+            'profileFallbackUrl' => $currentUserView['profile_fallback_url'],
+            'logoutAction' => secure_url(route('logout', [], false)),
+        ])
     </div>
 
     <div class="main-content">
@@ -328,11 +273,11 @@
                 <a href="{{ route('courses.index') }}" class="btn btn-primary" style="background: #f0f9ff; color: #0284c7; padding: 0.6rem 1.4rem; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 0.95rem; border: 1px solid #bae6fd; transition: all 0.2s ease; display: inline-block; animation: buttonPulse 2s infinite;">Back to Home</a>
             </div>
         @else
-            @if($isTopicFocusedSession)
+            @if($learnPageView['is_topic_focused_session'])
                 <div class="focused-session-bar" style="background: rgba(248, 250, 252, 0.6); border: 1px solid #e2e8f0; border-radius: 999px; padding: 0.5rem 1.5rem; margin: 0 auto 2rem; display: flex; align-items: center; justify-content: center; gap: 12px; width: fit-content; max-width: 900px; backdrop-filter: blur(8px);">
                     <i class="fas fa-crosshairs" style="color: #3b82f6; font-size: 0.8rem;"></i>
                     <div style="font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
-                        <span style="font-weight: 600; color: #334155;">{{ $topicSessionTitle }}</span>
+                        <span style="font-weight: 600; color: #334155;">{{ $learnPageView['topic_session_title'] }}</span>
                         <span style="color: #e2e8f0;">•</span>
                         <span>{{ $selectedTopicNames->count() === 1 ? $selectedTopicNames->first() : $selectedTopicNames->count() . ' topics' }}</span>
                         <span style="color: #e2e8f0;">•</span>
@@ -356,8 +301,8 @@
 
             <div class="difficulty-overlay"></div>
             <div class="difficulty-selector">
-                <h2 class="difficulty-title">{{ $isTopicFocusedSession ? $topicSessionTitle : 'Choose Your Difficulty Level' }}</h2>
-                @if($isTopicFocusedSession)
+                <h2 class="difficulty-title">{{ $learnPageView['is_topic_focused_session'] ? $learnPageView['topic_session_title'] : 'Choose Your Difficulty Level' }}</h2>
+                @if($learnPageView['is_topic_focused_session'])
                     <p style="text-align: center; color: #64748b; margin: -8px 0 24px;">
                         Start a focused mistake-review run for {{ $selectedTopicNames->count() === 1 ? $selectedTopicNames->first() : 'these selected topics' }}.
                     </p>
@@ -415,12 +360,12 @@
                         <h3>Hard</h3>
                         <p>Get each mistake right three times for a deeper review.</p>
                     </div>
-                    <div class="difficulty-option difficulty-option-spaced @if(!($currentUserView['is_admin'] ?? Auth::check() && Auth::user()->isAdmin())) sidebar-coming-soon @endif" data-mode="spaced">
-                        <div class="@if(!($currentUserView['is_admin'] ?? Auth::check() && Auth::user()->isAdmin())) sidebar-blur-container @endif">
+                    <div class="difficulty-option difficulty-option-spaced @if(!($currentUserView['is_admin'] ?? false)) sidebar-coming-soon @endif" data-mode="spaced">
+                        <div class="@if(!($currentUserView['is_admin'] ?? false)) sidebar-blur-container @endif">
                             <h3>Spaced Repetition</h3>
                             <p>Focus on the mistakes you're most likely to forget first.</p>
                         </div>
-                        @if(!($currentUserView['is_admin'] ?? Auth::check() && Auth::user()->isAdmin()))
+                        @if(!($currentUserView['is_admin'] ?? false))
                         <div class="coming-soon-overlay">
                             <i class="fas fa-lock blue-lock-icon"></i>
                         </div>

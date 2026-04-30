@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mistake;
 use App\Models\Course;
 use App\Models\QuizAttempt;
+use App\Services\StudentViewDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -17,8 +18,9 @@ use Illuminate\Support\Facades\DB;
  */
 class QuizMistakeController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private StudentViewDataService $studentViewDataService
+    ) {
         $this->middleware(['auth']);
     }
 
@@ -182,6 +184,19 @@ class QuizMistakeController extends Controller
 
             $executionTime = (microtime(true) - $startTime) * 1000;
 
+            $mistakeStats = [
+                'active_review_label' => !empty($courseFilter)
+                    ? (optional($availableCourses->firstWhere('id', (int) $courseFilter))->name ?? 'Filtered Course')
+                    : 'All Courses',
+                'stale_count' => $mistakes->filter(fn ($mistake) => $mistake->last_attempt_date && $mistake->last_attempt_date->lt(now()->subDays(7)))->count(),
+                'cold_review_count' => $mistakes->filter(fn ($mistake) => (int) $mistake->correct_streak === 0)->count(),
+                'close_review_count' => $mistakes->filter(fn ($mistake) => (int) $mistake->correct_streak >= 3)->count(),
+                'written_count' => $mistakes->filter(fn ($mistake) => ($mistake->question->question_type ?? null) === 'written')->count(),
+                'top_weak_course' => $availableCourses->sortByDesc('mistake_count')->first(),
+                'oldest_mistake' => $mistakes->sortBy('last_attempt_date')->first(),
+                'available_courses_sorted' => $availableCourses->sortBy('name')->values(),
+            ];
+
             return view('mistakes', [
                 'mistakes' => $mistakes,
                 'mistakesByCourse' => $mistakesByCourse,
@@ -190,10 +205,8 @@ class QuizMistakeController extends Controller
                 'recentCourse' => $recentCourse,
                 'totalMistakesCount' => $supportingData['total_count'],
                 'skippedCount' => $supportingData['skipped_count'],
-                'currentUserView' => [
-                    'profile_image_url' => $user->getProfileImageUrl(),
-                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
-                ],
+                'mistakeStats' => $mistakeStats,
+                'currentUserView' => $this->studentViewDataService->buildCurrentUserView($user),
                 'performance_metrics' => [
                     'execution_time_ms' => round($executionTime, 2),
                     'mistakes_count' => $mistakes->count(),
@@ -219,10 +232,17 @@ class QuizMistakeController extends Controller
                 'recentCourse' => null,
                 'totalMistakesCount' => 0,
                 'skippedCount' => 0,
-                'currentUserView' => [
-                    'profile_image_url' => $user->getProfileImageUrl(),
-                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
+                'mistakeStats' => [
+                    'active_review_label' => 'All Courses',
+                    'stale_count' => 0,
+                    'cold_review_count' => 0,
+                    'close_review_count' => 0,
+                    'written_count' => 0,
+                    'top_weak_course' => null,
+                    'oldest_mistake' => null,
+                    'available_courses_sorted' => collect(),
                 ],
+                'currentUserView' => $this->studentViewDataService->buildCurrentUserView($user),
                 'error' => 'An error occurred while loading your mistakes. Please try again.'
             ]);
         }

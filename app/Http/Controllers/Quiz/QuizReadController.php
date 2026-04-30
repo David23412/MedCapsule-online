@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\QuizExecutionRequest;
 use App\Services\UltraFastQuizService;
 use App\Services\PerformanceMonitorService;
+use App\Services\StudentViewDataService;
 use App\Models\Topic;
 use App\Models\Course;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,8 @@ class QuizReadController extends Controller
 
     public function __construct(
         UltraFastQuizService $ultraFastQuizService,
-        PerformanceMonitorService $performanceMonitor
+        PerformanceMonitorService $performanceMonitor,
+        private StudentViewDataService $studentViewDataService
     ) {
         $this->middleware('auth');
         $this->ultraFastQuizService = $ultraFastQuizService;
@@ -223,6 +225,27 @@ class QuizReadController extends Controller
                 // Convert array to object if needed (for cached data)
                 return is_array($question) ? (object) $question : $question;
             });
+
+            $assignmentDurationSeconds = 0;
+            $assignmentTimerMode = 'countup';
+            $assignmentTimerInitial = '00:00';
+
+            $solveQuizQuestionIds = $questionsCollection
+                ->map(fn ($question) => $question->id ?? null)
+                ->filter()
+                ->values()
+                ->all();
+
+            $solveQuizQuestionData = $questionsCollection
+                ->mapWithKeys(fn ($question) => [
+                    $question->id => [
+                        'correct_answer' => $question->correct_answer ?? '',
+                        'explanation' => $question->explanation ?? '',
+                        'question_type' => $question->question_type ?? 'multiple_choice',
+                    ],
+                ])
+                ->all();
+
             $viewData = [
                 'topic' => $topicModel,
                 'course' => $topicModel->course,
@@ -237,10 +260,15 @@ class QuizReadController extends Controller
                     'total' => $totalQuestionsInTopic,
                     'percentage' => $totalQuestionsInTopic > 0 ? round(($totalCorrectQuestions / $totalQuestionsInTopic) * 100, 1) : 0
                 ],
-                'currentUserView' => [
-                    'profile_image_url' => auth()->user()->getProfileImageUrl(),
-                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',
+                'solveQuizView' => [
+                    'assignment_timer_mode' => $assignmentTimerMode,
+                    'assignment_timer_initial' => $assignmentTimerInitial,
+                    'assignment_duration_seconds' => $assignmentDurationSeconds,
+                    'question_ids' => $solveQuizQuestionIds,
+                    'question_data' => $solveQuizQuestionData,
+                    'can_edit_questions' => $user->isAdmin(),
                 ],
+                'currentUserView' => $this->studentViewDataService->buildCurrentUserView($user),
             ];
 
             // ✅ ZERO N+1 BADGE ENRICHMENT

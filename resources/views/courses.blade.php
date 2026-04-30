@@ -20,12 +20,7 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.favicon')
     @include('partials.admin-dark-mode-head')
 
     <!-- RUTHLESS: Resource hints for faster loading -->
@@ -50,16 +45,7 @@
     </style>
     
     <!-- SUPER FAST IMAGE PRELOADING - ONLY FIRST 2 VISIBLE IMAGES -->
-    @foreach ($courses->take(2) as $course)
-        @php
-            $imageUrl = $course->image_url;
-            // AGGRESSIVE image optimization - updated dimensions
-            if (str_contains($imageUrl, 'unsplash.com')) {
-                $imageUrl = str_replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=60&fm=webp&', $imageUrl);
-            } elseif (str_contains($imageUrl, 'picsum.photos')) {
-                $imageUrl = str_replace('picsum.photos/', 'picsum.photos/465/670/', $imageUrl) . '?blur=1';
-            }
-        @endphp
+    @foreach ($preloadedImageUrls as $imageUrl)
         <link rel="preload" as="image" href="{{ $imageUrl }}" fetchpriority="high">
     @endforeach
     
@@ -71,12 +57,7 @@
     <link rel="preconnect" href="https://code.jquery.com" crossorigin>
     
     <!-- ONLY PRECONNECT TO ACTIVE IMAGE DOMAINS -->
-    @if($courses->isNotEmpty())
-        @php
-            $imageDomains = $courses->pluck('image_url')->map(function($url) {
-                return parse_url($url, PHP_URL_HOST);
-            })->unique()->take(2); // Only first 2 domains
-        @endphp
+    @if($imageDomains->isNotEmpty())
         @foreach($imageDomains as $domain)
             <link rel="preconnect" href="https://{{ $domain }}" crossorigin>
         @endforeach
@@ -105,8 +86,8 @@
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"></noscript>
 
-    <link rel="stylesheet" href="{{ asset('css/courses-page.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/free-course-survey.css') }}">
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/courses-page.css') }}">
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/free-course-survey.css') }}">
 </head>
 <body>
     <!-- 🔥 SCROLL PROGRESS BAR -->
@@ -162,10 +143,10 @@
                     @else
                         <li class="nav-item dropdown me-1">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                {{ $currentUserView['name'] ?? Auth::user()->name }}
-                                @if($currentUserView['is_admin'] ?? Auth::user()->isAdmin())
+                                {{ $currentUserView['name'] }}
+                                @if($currentUserView['is_admin'])
                                     <span class="badge bg-warning ms-1">Admin</span>
-                                @elseif($currentUserView['is_tutor'] ?? Auth::user()->isTutor())
+                                @elseif($currentUserView['is_tutor'])
                                     <span class="badge bg-info ms-1">Tutor</span>
                                 @else
                                     <span class="badge bg-primary ms-1">Student</span>
@@ -173,16 +154,16 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li class="d-flex justify-content-center">
-                                    <div class="streak-indicator" data-streak="{{ $currentUserView['study_streak_days'] ?? 0 }}">
+                                    <div class="streak-indicator" data-streak="{{ $currentUserView['study_streak_days'] }}">
                                         <div class="streak-circle">
                                             <svg viewBox="0 0 100 100">
                                                 <circle class="streak-progress" cx="50" cy="50" r="45"></circle>
                                             </svg>
                                             <div class="streak-content">
-                                                <div class="streak-value">{{ $currentUserView['study_streak_days'] ?? 0 }}</div>
+                                                <div class="streak-value">{{ $currentUserView['study_streak_days'] }}</div>
                                                 <div class="streak-label">Streak</div>
                                             </div>
-                                            @if(($currentUserView['study_streak_days'] ?? 0) > 0)
+                                            @if($currentUserView['study_streak_days'] > 0)
                                                 <div class="streak-fire">
                                                     <i class="fas fa-fire"></i>
                                                 </div>
@@ -200,7 +181,7 @@
                                         <i class="fab fa-telegram-plane me-2"></i>Join Support
                                     </a>
                                 </li>
-                                @if($currentUserView['is_admin'] ?? Auth::user()->isAdmin())
+                                @if($currentUserView['is_admin'])
                                     <li><hr class="dropdown-divider"></li>
                                     <li class="dropdown-header">
                                         <i class="fas fa-crown me-2 text-warning"></i>Admin Controls
@@ -247,7 +228,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if($currentUserView['is_tutor'] ?? Auth::user()->isTutor())
+                                @if($currentUserView['is_tutor'])
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item" href="{{ route('tutor.dashboard') }}">
@@ -282,17 +263,13 @@
                         </li>
                         
                         <li class="nav-item me-5">
-                            @php
-                                $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
-                                $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
-                            @endphp
                             <a href="{{ route('profile') }}" class="profile-circle">
-                                <img src="{{ $profileImageUrl }}"
+                                <img src="{{ $currentUserView['profile_image_url'] }}"
                                      alt="Profile Picture"
                                      class="profile-image"
                                      loading="lazy"
                                      decoding="async"
-                                     onerror="this.src='{{ $profileFallbackUrl }}'">
+                                     onerror="this.src='{{ $currentUserView['profile_fallback_url'] }}'">
                             </a>
                         </li>
                     @endguest
@@ -411,24 +388,11 @@
         <div class="semester-pills">
             <select class="semester-dropdown" id="semesterDropdown" onchange="filterCoursesByAcademicYear()" aria-label="Filter courses by academic year">
                 <option value="">All Courses</option>
-                @php
-                    // Get unique academic years directly from courses table
-                    $academicYears = $courses->pluck('academic_year')->filter()->unique()->sort();
-
-                    // Debug: Show academic years in console
-                    $debugYears = $courses->pluck('academic_year')->toArray();
-                @endphp
-
-                @if($academicYears->isNotEmpty())
+                @if($academicYearOptions->isNotEmpty())
                     <optgroup label="Academic Years">
-                        @foreach($academicYears as $year)
-                            @php
-                                // Format the year to be more readable
-                                $readableYear = ucwords(strtolower(str_replace('_', ' ', $year)));
-                                $readableYear = str_replace(['Year', 'Semester'], ['Year', 'Semester'], $readableYear);
-                            @endphp
-                            <option value="{{ $year }}" {{ ($selectedYear ?? '') == $year ? 'selected' : '' }}>
-                                {{ $readableYear }}
+                        @foreach($academicYearOptions as $yearOption)
+                            <option value="{{ $yearOption['value'] }}" {{ ($selectedYear ?? '') == $yearOption['value'] ? 'selected' : '' }}>
+                                {{ $yearOption['label'] }}
                             </option>
                         @endforeach
                     </optgroup>
@@ -456,20 +420,11 @@
                      data-academic-year="{{ $course->academic_year }}"
                      data-course-id="{{ $course->id }}"
                      data-semester="{{ $course->semester }}">
-                    @php
-                        $optimizedImageUrl = $course->image_url;
-                        // Apply same optimization as preload - updated dimensions
-                        if (str_contains($optimizedImageUrl, 'unsplash.com')) {
-                            $optimizedImageUrl = str_replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=75&fm=webp&', $optimizedImageUrl);
-                        } elseif (str_contains($optimizedImageUrl, 'picsum.photos')) {
-                            $optimizedImageUrl = str_replace('picsum.photos/', 'picsum.photos/465/670/', $optimizedImageUrl);
-                        }
-                    @endphp
                     <div class="course-image"
                          role="img"
                          aria-label="{{ $course->name }} course image"
-                         style="background-image: url('{{ $optimizedImageUrl }}');"
-                         data-bg-image="{{ $optimizedImageUrl }}"
+                         style="background-image: url('{{ $course->optimized_image_url }}');"
+                         data-bg-image="{{ $course->optimized_image_url }}"
                          data-course-name="{{ $course->name }}">
                         <div class="info-icon" role="button" tabindex="0" aria-label="Course information">
                             <i class="fas fa-info" aria-hidden="true"></i>
@@ -634,24 +589,17 @@
     @auth
         @include('components.free-course-survey-lock')
     @endauth
-
     <!-- Milestone Progress - BACKEND OPTIMIZED -->
-    @php
-        // RUTHLESS: Cache calculations to avoid repeated database queries
-        $totalCorrectAnswers = $currentUserView['total_correct_answers'] ?? (Auth::check() ? Auth::user()->getTotalCorrectAnswers() : 0);
-        $progressPercentage = min(($totalCorrectAnswers % 100), 100);
-    @endphp
-    
     <div class="milestone-container">
         <div class="milestone-stats">
-            <span class="correct-count" id="correctCount">{{ $totalCorrectAnswers }}</span>
+            <span class="correct-count" id="correctCount">{{ $currentUserView['total_correct_answers'] ?? 0 }}</span>
             <span class="separator">/</span>
             <span class="goal-count" id="goalCount">100</span>
             <span class="questions-text">questions solved</span>
         </div>
         <div class="milestone-progress">
             <div class="liquid-progress">
-                <div class="liquid-fill" id="progressFill" style="width: {{ $progressPercentage }}%">
+                <div class="liquid-fill" id="progressFill" style="width: {{ min((($currentUserView['total_correct_answers'] ?? 0) % 100), 100) }}%">
                     <div class="liquid-wave"></div>
                     <div class="liquid-wave"></div>
                     <div class="liquid-wave"></div>
@@ -659,7 +607,7 @@
             </div>
             <div class="milestone-marks">
                 @for ($i = 1; $i <= 5; $i++)
-                    <div class="milestone-mark {{ $totalCorrectAnswers >= ($i * 20) ? 'active' : '' }}" 
+                    <div class="milestone-mark {{ ($currentUserView['total_correct_answers'] ?? 0) >= ($i * 20) ? 'active' : '' }}" 
                          style="left: {{ $i * 20 }}%" 
                          id="mark-{{ $i * 20 }}">
                         <i class="fas fa-check"></i>
@@ -673,12 +621,12 @@
 
     <script>
         window.CoursesPageConfig = {
-            correctAnswersInitial: {{ $currentUserView['total_correct_answers'] ?? (auth()->check() ? auth()->user()->getTotalCorrectAnswers() : 0) }},
+            correctAnswersInitial: {{ $currentUserView['total_correct_answers'] ?? 0 }},
             profileRoute: @json(route('profile')),
-            user: @json(auth()->user() ? ['id' => auth()->id(), 'name' => auth()->user()->name] : null),
+            user: @json(isset($currentUserView) ? ['id' => $currentUserView['id'], 'name' => $currentUserView['name']] : null),
             authUserId: @json(auth()->id()),
             freeCourseSurvey: {
-                enabled: @json(auth()->check() && !($currentUserView['free_courses_unlocked'] ?? false)),
+                enabled: @json(isset($currentUserView) && !($currentUserView['free_courses_unlocked'] ?? false)),
                 draftUrl: @json(route('free-course-survey.draft')),
                 submitUrl: @json(route('free-course-survey.submit')),
                 redirectTo: @json(request()->query('redirect_to')),
@@ -691,8 +639,8 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="{{ asset('js/courses-page.js') }}?v={{ filemtime(public_path('js/courses-page.js')) }}" defer></script>
-    <script src="{{ asset('js/free-course-survey.js') }}?v={{ filemtime(public_path('js/free-course-survey.js')) }}" defer></script>
+    <script src="{{ $bladeAsset->url('js/courses-page.js') }}" defer></script>
+    <script src="{{ $bladeAsset->url('js/free-course-survey.js') }}" defer></script>
 
     <!-- Floating Contact Button -->
     <div class="floating-contact">

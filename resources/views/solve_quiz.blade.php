@@ -8,12 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.favicon')
     @include('partials.admin-dark-mode-head')
 
     <style>
@@ -1430,15 +1425,11 @@
             <a class="navbar-brand" href="/">MedCapsule</a>
             <div class="nav-links">
                 <a href="{{ route('topics.forCourse', $course->id) }}" class="nav-link">← Back</a>
-                @php
-                    $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
-                    $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
-                @endphp
                 <a href="{{ route('profile') }}" class="profile-circle">
-                    <img src="{{ $profileImageUrl }}"
+                    <img src="{{ $currentUserView['profile_image_url'] }}"
                          alt="Profile Picture"
                          class="profile-image"
-                         onerror="this.src='{{ $profileFallbackUrl }}'">
+                         onerror="this.src='{{ $currentUserView['profile_fallback_url'] }}'">
                 </a>
             </div>
         </div>
@@ -1522,7 +1513,7 @@
                                             </div>
                                             
                                             <div class="ms-2 d-flex flex-column align-items-end gap-1">
-                                                @if(auth()->check() && auth()->user()->isAdmin())
+                                                @if($currentUserView['is_admin'] ?? false)
                                                     <button class="btn-admin-edit" onclick="openQuizEditModal({{ $question->id }})" title="Edit Question">
                                                         <i class="fas fa-pen"></i> Edit
                                                     </button>
@@ -1554,15 +1545,12 @@
 
                                         {{-- Options will be rendered here --}}
                                         <div class="options">
-                                            @php
-                                                $rawOptions = [
-                                                    'A' => $question->option_a,
-                                                    'B' => $question->option_b,
-                                                    'C' => $question->option_c,
-                                                    'D' => $question->option_d
-                                                ];
-                                            @endphp
-                                            @foreach($rawOptions as $key => $optionValue)
+                                            @foreach([
+                                                'A' => $question->option_a,
+                                                'B' => $question->option_b,
+                                                'C' => $question->option_c,
+                                                'D' => $question->option_d,
+                                            ] as $key => $optionValue)
                                                 @if(!empty($optionValue))
                                                     <div class="form-check">
                                                         <input class="form-check-input" type="radio" 
@@ -1667,10 +1655,7 @@
     <script>
         window.SolveQuizPageConfig = {
             draftKey: @json('solve-quiz:' . request()->fullUrl()),
-            questionIds: @json(($questions ?? collect())->map(function ($question) {
-                $qObj = is_array($question) ? $question['question'] : $question;
-                return $qObj->id ?? null;
-            })->filter()->values()->all())
+            questionIds: @json($solveQuizView['question_ids'] ?? [])
         };
     </script>
 
@@ -1793,14 +1778,7 @@
             console.log('🔥 PRELOADING QUESTION DATA FOR INSTANT CHECKING...');
             
             // Extract question data from DOM
-            @foreach($questions as $index => $question)
-                @php $qObj = is_array($question) ? $question['question'] : $question; @endphp
-                questionData[{{ $qObj->id ?? 0 }}] = {
-                    correct_answer: '{{ $qObj->correct_answer ?? '' }}',
-                    explanation: `{{ addslashes($qObj->explanation ?? '') }}`,
-                    question_type: '{{ $qObj->question_type ?? 'multiple_choice' }}'
-                };
-            @endforeach
+            questionData = @json($solveQuizView['question_data'] ?? {});
             
             console.log('✅ Question data preloaded for', Object.keys(questionData).length, 'questions');
             
@@ -2989,7 +2967,7 @@
         }
     </script>
 
-    @if(auth()->check() && auth()->user()->isAdmin())
+    @if($currentUserView['is_admin'] ?? false)
     {{-- ======================================================
          ADMIN QUESTION EDIT MODAL — solve_quiz.blade.php
          Supports MCQ + Written + Delete

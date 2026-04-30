@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Topic;
 use App\Services\Learning\MistakeManagementService;
 use App\Services\Learning\StudyTrackingService;
+use App\Services\StudentViewDataService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -13,14 +14,17 @@ class LearnController extends Controller
 {
     protected $mistakeService;
     protected $studyTrackingService;
+    protected StudentViewDataService $studentViewDataService;
 
     public function __construct(
         MistakeManagementService $mistakeService,
-        StudyTrackingService $studyTrackingService
+        StudyTrackingService $studyTrackingService,
+        StudentViewDataService $studentViewDataService
     ) {
         $this->middleware(['auth']);
         $this->mistakeService = $mistakeService;
         $this->studyTrackingService = $studyTrackingService;
+        $this->studentViewDataService = $studentViewDataService;
     }
 
     /**
@@ -74,6 +78,50 @@ class LearnController extends Controller
 
             $executionTime = (microtime(true) - $startTime) * 1000;
 
+            $selectedTopicNames = !empty($topicIds)
+                ? Topic::whereIn('id', $topicIds)->orderBy('name')->pluck('name')->values()
+                : collect();
+
+            $sessionNow = now();
+            $dueNowCount = $mistakes->filter(function ($mistake) use ($sessionNow) {
+                return !(bool) $mistake->skipped
+                    && (!$mistake->next_review_at || $mistake->next_review_at->lte($sessionNow));
+            })->count();
+            $highRiskCount = $mistakes->filter(function ($mistake) {
+                return !(bool) $mistake->skipped
+                    && (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9) <= 0.55;
+            })->count();
+            $stabilizingCount = $mistakes->filter(function ($mistake) {
+                return !(bool) $mistake->skipped
+                    && (float) ($mistake->stability ?? 0) >= 1.5
+                    && (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9) > 0.55;
+            })->count();
+            $upNextMistake = $mistakes
+                ->filter(fn ($mistake) => !(bool) $mistake->skipped && $mistake->next_review_at)
+                ->sortBy('next_review_at')
+                ->first();
+
+            $learnPageView = [
+                'selected_topic_names' => $selectedTopicNames,
+                'is_topic_focused_session' => $selectedTopicNames->isNotEmpty(),
+                'topic_session_title' => $selectedTopicNames->count() === 1
+                    ? $selectedTopicNames->first() . ' Mistake Session'
+                    : 'Focused Topic Mistake Session',
+                'session_loaded_count' => $mistakes->count(),
+                'coverage_percent' => $totalMistakesCount > 0 ? (int) round(($mistakes->count() / $totalMistakesCount) * 100) : 0,
+                'active_course_name' => !empty($courseFilter)
+                    ? (optional(collect($courses ?? [])->firstWhere('id', (int) $courseFilter))->name ?? 'Custom Filter')
+                    : 'All Courses',
+                'due_now_count' => $dueNowCount,
+                'high_risk_count' => $highRiskCount,
+                'stabilizing_count' => $stabilizingCount,
+                'average_interval_days' => round($mistakes->avg(fn ($mistake) => (float) ($mistake->interval_days ?? 0)) ?? 0, 1),
+                'average_retrievability' => (int) round(($mistakes->avg(fn ($mistake) => (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9)) ?? 0.9) * 100),
+                'queue_lead_text' => $dueNowCount > 0
+                    ? "{$dueNowCount} due now"
+                    : ($upNextMistake ? 'Next review ' . $upNextMistake->next_review_at->diffForHumans() : 'Queue is clear'),
+            ];
+
             return view('mistakes.learn', [
                 'mistakes' => $mistakes,
                 'courses' => $courses,
@@ -82,19 +130,15 @@ class LearnController extends Controller
                 'autoStartLearnMode' => $autoStart ? $mode : null,
                 'selectedQuestionType' => $questionType,
                 'selectedTopicIds' => $topicIds,
-                'selectedTopicNames' => !empty($topicIds)
-                    ? Topic::whereIn('id', $topicIds)->orderBy('name')->pluck('name')->values()
-                    : collect(),
+                'selectedTopicNames' => $selectedTopicNames,
                 'selectedTopicMistakeCount' => $mistakes->count(),
                 'totalMistakesCount' => $cachedData['total_mistakes_count'] ?? 0,
                 'skippedCount' => $cachedData['skipped_count'] ?? 0,
                 'courseCounts' => $cachedData['course_counts'] ?? [],
                 'topicCounts' => $cachedData['topic_counts'] ?? [],
                 'topics' => $cachedData['topics'] ?? collect(),
-                'currentUserView' => [
-                    'profile_image_url' => auth()->user()->getProfileImageUrl(),
-                    'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff',
-                ],
+                'learnPageView' => $learnPageView,
+                'currentUserView' => $this->studentViewDataService->buildCurrentUserView(auth()->user()),
             ]);
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;

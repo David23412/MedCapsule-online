@@ -21,6 +21,7 @@ use App\Http\Controllers\Topic\TopicViewController;
 use App\Http\Controllers\Topic\TopicActionController;
 use App\Services\TopicProgressService;
 use App\Services\StudyGamePlanService;
+use App\Services\StudentViewDataService;
 use App\Services\TutorSourceProgressService;
 
 /**
@@ -39,11 +40,13 @@ class TopicController extends Controller
     protected $actionController;
     protected TopicProgressService $topicProgressService;
     protected StudyGamePlanService $studyGamePlanService;
+    protected StudentViewDataService $studentViewDataService;
     protected TutorSourceProgressService $tutorSourceProgressService;
 
     public function __construct(
         TopicProgressService $topicProgressService,
         StudyGamePlanService $studyGamePlanService,
+        StudentViewDataService $studentViewDataService,
         TutorSourceProgressService $tutorSourceProgressService
     )
     {
@@ -80,6 +83,7 @@ class TopicController extends Controller
         $this->actionController = new TopicActionController();
         $this->topicProgressService = $topicProgressService;
         $this->studyGamePlanService = $studyGamePlanService;
+        $this->studentViewDataService = $studentViewDataService;
         $this->tutorSourceProgressService = $tutorSourceProgressService;
     }
 
@@ -298,6 +302,124 @@ class TopicController extends Controller
                 ->values();
         }
 
+        $topics = $topics->values();
+        $topicProgressSegments = $topics
+            ->take(10)
+            ->values()
+            ->map(function ($topic, $index) {
+                $topicProgress = $topic->userProgress->first();
+                $isMastered = $topicProgress && ($topicProgress->percentage_grade ?? 0) >= 80;
+
+                return [
+                    'id' => $topic->id,
+                    'index' => $index,
+                    'is_mastered' => $isMastered,
+                ];
+            });
+
+        $masteredCount = $topics->filter(function ($topic) {
+            $userProgress = $topic->userProgress->first();
+
+            return $userProgress && ($userProgress->percentage_grade ?? 0) >= 80;
+        })->count();
+
+        $customCategoryIcons = [
+            'homework' => 'fas fa-pencil-alt',
+            'lab' => 'fas fa-microscope',
+            'reading' => 'fas fa-book-open',
+            'project' => 'fas fa-project-diagram',
+            'assignment' => 'fas fa-tasks',
+            'exercise' => 'fas fa-dumbbell',
+            'tutorial' => 'fas fa-play-circle',
+            'lecture' => 'fas fa-chalkboard-teacher',
+            'exam' => 'fas fa-clipboard-check',
+            'test' => 'fas fa-file-alt',
+            'review' => 'fas fa-eye',
+            'practice' => 'fas fa-repeat',
+            'study' => 'fas fa-graduation-cap',
+            'notes' => 'fas fa-sticky-note',
+            'video' => 'fas fa-video',
+            'audio' => 'fas fa-volume-up',
+            'discussion' => 'fas fa-comments',
+            'forum' => 'fas fa-comment-dots',
+            'workshop' => 'fas fa-tools',
+            'seminar' => 'fas fa-users',
+        ];
+
+        $topicCategoryOptions = $course->type === 'custom'
+            ? $topics
+                ->pluck('case_type')
+                ->filter()
+                ->unique()
+                ->values()
+                ->map(fn ($category) => [
+                    'filter' => strtolower((string) $category),
+                    'label' => ucfirst((string) $category),
+                    'count' => $topics->where('case_type', $category)->count(),
+                    'icon' => $customCategoryIcons[strtolower((string) $category)] ?? 'fas fa-tag',
+                ])
+            : collect([
+                ['filter' => 'cases', 'label' => 'Cases', 'count' => $topics->where('case_type', 'cases')->count(), 'icon' => 'fas fa-file-alt'],
+                ['filter' => 'practical', 'label' => 'Practical', 'count' => $topics->where('case_type', 'practical')->count(), 'icon' => 'fas fa-flask'],
+                ['filter' => 'quiz', 'label' => 'Quiz', 'count' => $topics->where('case_type', 'quiz')->count(), 'icon' => 'fas fa-question-circle'],
+            ])->filter(fn ($category) => $category['count'] > 0)->values();
+
+        $resolvedPlannerSettings = $gamePlan['settings']['resolved_settings'] ?? [];
+        $dailyProgress = $gamePlan['daily_progress'] ?? [];
+        $topicsPageView = [
+            'mastered_count' => $masteredCount,
+            'mastered_percentage' => $topics->count() > 0 ? (int) round(($masteredCount / $topics->count()) * 100) : 0,
+            'collapsed_task_dots' => collect($gamePlan['tasks'] ?? [])
+                ->take(3)
+                ->map(fn ($task) => !empty($task['completed']))
+                ->pad(3, false)
+                ->values()
+                ->all(),
+            'planner_focus_label' => ucwords(str_replace('_', ' ', (string) ($resolvedPlannerSettings['planner_focus'] ?? ($gamePlan['settings']['planner_focus'] ?? 'balanced')))),
+            'tracked_minutes_today' => (int) ($dailyProgress['tracked_minutes'] ?? 0),
+            'target_minutes_today' => (int) ($dailyProgress['target_minutes'] ?? ($resolvedPlannerSettings['allocated_minutes'] ?? 0)),
+            'study_progress_percent' => (int) ($dailyProgress['progress_percent'] ?? 0),
+            'planner_debug' => $gamePlan['debug'] ?? null,
+            'can_view_planner_debug' => $user->isAdmin() || $user->isTutor(),
+            'topic_progress_segments' => $topicProgressSegments,
+            'category_options' => $topicCategoryOptions,
+            'assignments_count' => $assignments->count(),
+        ];
+
+        $assignmentViewData = $assignments->mapWithKeys(function ($assignment) use ($topics, $user) {
+            $topic = $topics->firstWhere('id', $assignment->topic_id);
+            if (!$topic) {
+                return [];
+            }
+
+            $isCompleted = $assignment->isCompletedByUser($user->id);
+            $isLocked = $assignment->isLockedForUser($user->id);
+            $status = $assignment->status_string;
+
+            return [$assignment->id => [
+                'topic' => $topic,
+                'progress' => (float) ($assignment->user_progress['percentage'] ?? 0),
+                'status' => $status,
+                'quiz_url' => secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id, 'assignment_id' => $assignment->id], false)),
+                'is_locked' => $isLocked,
+                'is_completed' => $isCompleted,
+                'display_state' => $isCompleted ? 'completed' : ($status === 'overdue' ? 'overdue' : 'active'),
+            ]];
+        });
+
+        $topicCardData = $topics->mapWithKeys(function ($topic) {
+            $userProgress = $topic->userProgress->first();
+            $percentageGrade = $userProgress ? $userProgress->percentage_grade : null;
+            $hasAttemptedTopic = $topic->last_attempt_date !== null || $userProgress?->last_attempt_date !== null;
+
+            return [$topic->id => [
+                'percentage_grade' => $percentageGrade,
+                'has_attempted' => $hasAttemptedTopic,
+                'quiz_url' => secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false)),
+                'is_preview_locked' => (bool) ($topic->is_preview_locked ?? false),
+            ]];
+        });
+
         return view('topics_for_course', [
             'course' => $course,
             'topics' => $topics,
@@ -306,13 +428,10 @@ class TopicController extends Controller
             'hasFullCourseAccess' => $hasFullCourseAccess,
             'previewTopicLimit' => $previewTopicLimit,
             'gamePlan' => $gamePlan,
-            'currentUserView' => [
-                'name' => $user->name,
-                'profile_image_url' => $user->getProfileImageUrl(),
-                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
-                'level' => $user->getCurrentLevel(),
-                'xp' => (int) ($user->xp ?? 0),
-            ],
+            'topicsPageView' => $topicsPageView,
+            'assignmentViewData' => $assignmentViewData,
+            'topicCardData' => $topicCardData,
+            'currentUserView' => $this->studentViewDataService->buildCurrentUserView($user),
         ]);
     }
 

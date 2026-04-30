@@ -19,12 +19,7 @@
     <!-- Disable source maps -->
     <meta name="devtools-disable-sourcemaps" content="true">
     <title>MedCapsule</title>
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.favicon')
     @include('partials.admin-dark-mode-head')
     <!-- 🚀 OPTIMIZED: Preload critical resources -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -33,9 +28,9 @@
     <noscript><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet"></noscript>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ asset('css/topics.css') }}?v=1.8">
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/topics.css') }}">
 
-    <link rel="stylesheet" href="{{ asset('css/topics-for-course-page.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/topics-for-course-page.css') }}">
     
     {{-- Responsive Navigation CSS --}}
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
@@ -55,29 +50,6 @@
     </header>
     {{-- Offcanvas backdrop --}}
     <div class="topics-sidebar-backdrop" id="topicsSidebarBackdrop" aria-hidden="true"></div>
-    @php
-        $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
-        $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
-        $masteredCount = $topics->filter(function ($topic) {
-            $userProgress = $topic->userProgress->first();
-            return $userProgress && ($userProgress->percentage_grade ?? 0) >= 80;
-        })->count();
-        $masteredPercentage = $topics->count() > 0 ? round(($masteredCount / $topics->count()) * 100) : 0;
-        $collapsedTaskDots = collect($gamePlan['tasks'] ?? [])
-            ->take(3)
-            ->map(fn ($task) => !empty($task['completed']))
-            ->pad(3, false)
-            ->values();
-        $resolvedPlannerSettings = $gamePlan['settings']['resolved_settings'] ?? [];
-        $plannerFocusLabel = ucwords(str_replace('_', ' ', (string) ($resolvedPlannerSettings['planner_focus'] ?? ($gamePlan['settings']['planner_focus'] ?? 'balanced'))));
-        $dailyProgress = $gamePlan['daily_progress'] ?? [];
-        $trackedMinutesToday = (int) ($dailyProgress['tracked_minutes'] ?? 0);
-        $targetMinutesToday = (int) ($dailyProgress['target_minutes'] ?? ($resolvedPlannerSettings['allocated_minutes'] ?? 0));
-        $studyProgressPercent = (int) ($dailyProgress['progress_percent'] ?? 0);
-        $plannerDebug = $gamePlan['debug'] ?? null;
-        $canViewPlannerDebug = Auth::user()->isAdmin() || Auth::user()->isTutor();
-    @endphp
-
     <div class="sidebar" id="topicsSidebar" role="navigation" aria-label="Course navigation">
         <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
             <span class="sidebar-toggle-chevron" aria-hidden="true">
@@ -159,7 +131,7 @@
 
                     <div class="sidebar-collapsed-task-indicator" aria-hidden="true">
                         <div class="sidebar-collapsed-task-indicator-shell">
-                            @foreach($collapsedTaskDots as $isCompleted)
+                            @foreach($topicsPageView['collapsed_task_dots'] as $isCompleted)
                                 <span class="sidebar-collapsed-task-dot{{ $isCompleted ? ' is-complete' : '' }}"></span>
                             @endforeach
                         </div>
@@ -171,7 +143,7 @@
                         <div class="sidebar-game-plan-title">Today&apos;s Plan</div>
                         <div class="sidebar-game-plan-sub">{{ $course->name }}</div>
                     </div>
-                    <div class="sidebar-game-plan-level">Lvl {{ $currentUserView['level'] ?? Auth::user()->getCurrentLevel() }}</div>
+                    <div class="sidebar-game-plan-level">Lvl {{ $currentUserView['level'] }}</div>
                 </div>
 
                 @if(session('status'))
@@ -187,18 +159,18 @@
 
                 <div class="sidebar-game-plan-meta" style="margin-top: 0.5rem; flex-direction: column; align-items: flex-start; gap: 0.2rem;">
                     <span>{{ $gamePlan['planned_minutes'] ?? 0 }} min planned · {{ $gamePlan['planned_questions'] ?? 0 }} questions</span>
-                    <span>Focus: {{ $plannerFocusLabel }}</span>
-                    @if(!empty($resolvedPlannerSettings['preferred_source'] ?? null))
-                        <span>Source: {{ $resolvedPlannerSettings['preferred_source'] }}</span>
+                    <span>Focus: {{ $topicsPageView['planner_focus_label'] }}</span>
+                    @if(!empty(($gamePlan['settings']['resolved_settings']['preferred_source'] ?? null)))
+                        <span>Source: {{ $gamePlan['settings']['resolved_settings']['preferred_source'] }}</span>
                     @endif
                 </div>
 
                 <div class="sidebar-game-plan-meta" style="margin-top: 0.75rem; flex-direction: column; align-items: flex-start; gap: 0.35rem;">
-                    <span>Today: {{ $trackedMinutesToday }}/{{ max($targetMinutesToday, 1) }} min</span>
+                    <span>Today: {{ $topicsPageView['tracked_minutes_today'] }}/{{ max($topicsPageView['target_minutes_today'], 1) }} min</span>
                     <div style="width: 100%; height: 6px; border-radius: 999px; background: #dbeafe; overflow: hidden;">
-                        <div style="height: 100%; width: {{ min(100, max(0, $studyProgressPercent)) }}%; border-radius: 999px; background: linear-gradient(90deg, #2563eb, #60a5fa);"></div>
+                        <div style="height: 100%; width: {{ min(100, max(0, $topicsPageView['study_progress_percent'])) }}%; border-radius: 999px; background: linear-gradient(90deg, #2563eb, #60a5fa);"></div>
                     </div>
-                    <span>{{ $dailyProgress['tracked_questions'] ?? 0 }} questions tracked today</span>
+                    <span>{{ $gamePlan['daily_progress']['tracked_questions'] ?? 0 }} questions tracked today</span>
                 </div>
 
                 <div class="sidebar-task-list">
@@ -229,20 +201,20 @@
                     @endforelse
                 </div>
 
-                @if($canViewPlannerDebug && is_array($plannerDebug))
+                @if($topicsPageView['can_view_planner_debug'] && is_array($topicsPageView['planner_debug']))
                     <details style="margin-top: 0.9rem; border: 1px solid rgba(37, 99, 235, 0.12); border-radius: 12px; background: rgba(239, 246, 255, 0.78);">
                         <summary style="cursor: pointer; padding: 0.75rem 0.9rem; font-size: 0.82rem; font-weight: 600; color: #1e3a8a;">
                             Planner Debug
                         </summary>
                         <div style="padding: 0 0.9rem 0.9rem; display: grid; gap: 0.8rem;">
                             <div style="font-size: 0.78rem; color: #1e40af;">
-                                Frontier topic: {{ $plannerDebug['frontier_topic_id'] ?? 'none' }}<br>
-                                Frontier stage: {{ $plannerDebug['frontier_stage'] ?? 'none' }}
+                                Frontier topic: {{ $topicsPageView['planner_debug']['frontier_topic_id'] ?? 'none' }}<br>
+                                Frontier stage: {{ $topicsPageView['planner_debug']['frontier_stage'] ?? 'none' }}
                             </div>
 
                             <div>
                                 <div style="font-size: 0.76rem; font-weight: 700; color: #1f2937; margin-bottom: 0.35rem;">Visible Tasks</div>
-                                @forelse(($plannerDebug['tasks'] ?? []) as $debugTask)
+                                @forelse(($topicsPageView['planner_debug']['tasks'] ?? []) as $debugTask)
                                     <div style="padding: 0.45rem 0.55rem; border-radius: 10px; background: #fff; border: 1px solid rgba(148, 163, 184, 0.2); font-size: 0.74rem; color: #334155; margin-bottom: 0.35rem;">
                                         <strong>{{ $debugTask['title'] ?? ($debugTask['id'] ?? 'task') }}</strong><br>
                                         <span>slot {{ $debugTask['slot_index'] ?? '-' }} · level {{ $debugTask['backfill_level'] ?? '-' }} · {{ $debugTask['type'] ?? 'unknown' }}</span><br>
@@ -258,7 +230,7 @@
 
                             <div>
                                 <div style="font-size: 0.76rem; font-weight: 700; color: #1f2937; margin-bottom: 0.35rem;">Topic States</div>
-                                @foreach(($plannerDebug['topics'] ?? []) as $debugTopic)
+                                @foreach(($topicsPageView['planner_debug']['topics'] ?? []) as $debugTopic)
                                     <div style="padding: 0.45rem 0.55rem; border-radius: 10px; background: #fff; border: 1px solid rgba(148, 163, 184, 0.2); font-size: 0.74rem; color: #334155; margin-bottom: 0.35rem;">
                                         <strong>{{ $debugTopic['display_order'] ?? '?' }}. {{ $debugTopic['topic_name'] ?? 'Topic' }}</strong><br>
                                         <span>{{ $debugTopic['progression_stage'] ?? 'unknown' }} · unlocked {{ !empty($debugTopic['curriculum_unlocked']) ? 'yes' : 'no' }} · priority {{ $debugTopic['priority_score'] ?? 0 }}</span>
@@ -274,24 +246,14 @@
             </div>
         </div>
 
-        <div class="sidebar-footer">
-            <a href="{{ route('profile') }}" class="sidebar-profile-link">
-                <span class="sidebar-profile-avatar">
-                    <img src="{{ $profileImageUrl }}" alt="Profile Picture" onerror="this.src='{{ $profileFallbackUrl }}'">
-                </span>
-                <span class="sidebar-profile-copy">
-                    <span class="sidebar-profile-name">{{ Auth::user()->name }}</span>
-                    <span class="sidebar-profile-meta">Study profile</span>
-                </span>
-            </a>
-            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
-                @csrf
-                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
-                    <i class="fas fa-arrow-right-from-bracket nav-icon"></i>
-                    <span class="nav-link-label">Sign Out</span>
-                </button>
-            </form>
-        </div>
+        @include('partials.student-sidebar-profile', [
+            'profileUrl' => route('profile'),
+            'profileName' => $currentUserView['name'],
+            'profileMeta' => 'Study profile',
+            'profileImageUrl' => $currentUserView['profile_image_url'],
+            'profileFallbackUrl' => $currentUserView['profile_fallback_url'],
+            'logoutAction' => secure_url(route('logout', [], false)),
+        ])
     </div>
 
     <main class="main-content">
@@ -459,7 +421,7 @@
         </div>
     @endif
 
-    @if(Auth::user()->isAdmin())
+    @if($currentUserView['is_admin'])
         <div class="sq-edit-overlay" id="sq-edit-overlay">
             <div class="sq-edit-modal">
                 <div class="sq-header">
@@ -646,8 +608,8 @@
             <div class="progress-heading-row">
                 <div class="progress-text-title">Topics Mastered</div>
                 <div class="progress-meta">
-                    <span class="progress-count">{{ $masteredCount }} of {{ $topics->count() }} complete</span>
-                    <span class="progress-percent">{{ $masteredPercentage }}%</span>
+                    <span class="progress-count">{{ $topicsPageView['mastered_count'] }} of {{ $topics->count() }} complete</span>
+                    <span class="progress-percent">{{ $topicsPageView['mastered_percentage'] }}%</span>
                 </div>
             </div>
             <div class="topics-progress-container" aria-label="Topics mastered progress">
@@ -656,27 +618,14 @@
                         <i class="fas fa-chevron-left"></i>
                     </button>
                     <div class="topics-progress-track" id="topicsProgressTrack">
-                        @php
-                            $allTopics = $topics->values();
-                            $totalTopics = $allTopics->count();
-                            $segmentsToShow = 10;
-                            $currentIndex = 0;
-                        @endphp
-                        @for($i = 0; $i < min($segmentsToShow, $totalTopics); $i++)
-                            @php
-                                $topicIndex = $i;
-                                $topic = $allTopics->get($topicIndex);
-                                if (!$topic) continue;
-                                $topicProgress = $topic->userProgress->first();
-                                $isMastered = $topicProgress && ($topicProgress->percentage_grade ?? 0) >= 80;
-                            @endphp
+                        @foreach($topicsPageView['topic_progress_segments'] as $segment)
                             <span
-                                class="topics-progress-segment{{ $isMastered ? ' is-mastered' : '' }}"
-                                data-topic-id="{{ $topic->id }}"
-                                data-index="{{ $topicIndex }}"
+                                class="topics-progress-segment{{ $segment['is_mastered'] ? ' is-mastered' : '' }}"
+                                data-topic-id="{{ $segment['id'] }}"
+                                data-index="{{ $segment['index'] }}"
                                 aria-hidden="true"
                             ></span>
-                        @endfor
+                        @endforeach
                     </div>
                     <button class="progress-nav-btn progress-nav-next" id="progressNextBtn" aria-label="Next topics">
                         <i class="fas fa-chevron-right"></i>
@@ -688,10 +637,6 @@
 
     <div class="case-filters">
         @if($course->type === 'custom')
-            @php
-                $categories = $topics->pluck('case_type')->unique()->filter()->values();
-            @endphp
-            
             {{-- Always show "All" pill for navigation --}}
             <div class="case-filter active" data-filter="all">
                 <i class="fas fa-th-large"></i>
@@ -699,49 +644,14 @@
                 <span class="count">{{ $topics->count() }}</span>
             </div>
             
-            @foreach($categories as $category)
-                @php
-                    $categoryCount = $topics->where('case_type', $category)->count();
-                    // Define icons for custom categories
-                    $categoryIcons = [
-                        'homework' => 'fas fa-pencil-alt',
-                        'lab' => 'fas fa-microscope',
-                        'reading' => 'fas fa-book-open',
-                        'project' => 'fas fa-project-diagram',
-                        'assignment' => 'fas fa-tasks',
-                        'exercise' => 'fas fa-dumbbell',
-                        'tutorial' => 'fas fa-play-circle',
-                        'lecture' => 'fas fa-chalkboard-teacher',
-                        'exam' => 'fas fa-clipboard-check',
-                        'test' => 'fas fa-file-alt',
-                        'review' => 'fas fa-eye',
-                        'practice' => 'fas fa-repeat',
-                        'study' => 'fas fa-graduation-cap',
-                        'notes' => 'fas fa-sticky-note',
-                        'video' => 'fas fa-video',
-                        'audio' => 'fas fa-volume-up',
-                        'discussion' => 'fas fa-comments',
-                        'forum' => 'fas fa-comment-dots',
-                        'workshop' => 'fas fa-tools',
-                        'seminar' => 'fas fa-users'
-                    ];
-                    $icon = $categoryIcons[strtolower($category)] ?? 'fas fa-tag';
-                @endphp
-                
-                <div class="case-filter{{ $categories->count() == 0 ? ' active' : '' }}" data-filter="{{ strtolower($category) }}">
-                    <i class="{{ $icon }}"></i>
-                    {{ ucfirst($category) }}
-                    <span class="count">{{ $categoryCount }}</span>
+            @foreach($topicsPageView['category_options'] as $category)
+                <div class="case-filter" data-filter="{{ $category['filter'] }}">
+                    <i class="{{ $category['icon'] }}"></i>
+                    {{ $category['label'] }}
+                    <span class="count">{{ $category['count'] }}</span>
                 </div>
             @endforeach
         @else
-            <!-- ========== MEDICAL COURSE CATEGORIZATION ========== -->
-            @php
-                $casesCount = $topics->where('case_type', 'cases')->count();
-                $practicalCount = $topics->where('case_type', 'practical')->count();
-                $quizCount = $topics->where('case_type', 'quiz')->count();
-            @endphp
-            
             {{-- Always show "All" pill for navigation --}}
             <div class="case-filter active" data-filter="all">
                 <i class="fas fa-th-large"></i>
@@ -749,29 +659,13 @@
                 <span class="count">{{ $topics->count() }}</span>
             </div>
             
-            @if($casesCount > 0)
-                <div class="case-filter" data-filter="cases">
-                    <i class="fas fa-file-alt"></i>
-                    Cases
-                    <span class="count">{{ $casesCount }}</span>
+            @foreach($topicsPageView['category_options'] as $category)
+                <div class="case-filter" data-filter="{{ $category['filter'] }}">
+                    <i class="{{ $category['icon'] }}"></i>
+                    {{ $category['label'] }}
+                    <span class="count">{{ $category['count'] }}</span>
                 </div>
-            @endif
-            
-            @if($practicalCount > 0)
-                <div class="case-filter" data-filter="practical">
-                    <i class="fas fa-flask"></i>
-                    Practical
-                    <span class="count">{{ $practicalCount }}</span>
-                </div>
-            @endif
-            
-            @if($quizCount > 0)
-                <div class="case-filter" data-filter="quiz">
-                    <i class="fas fa-question-circle"></i>
-                    Quiz
-                    <span class="count">{{ $quizCount }}</span>
-                </div>
-            @endif
+            @endforeach
         @endif
         
 
@@ -792,11 +686,11 @@
         @endif
         
         {{-- Assignment Icon in Red Circle - Only show if there are assignments --}}
-        @if(isset($assignments) && (is_array($assignments) ? count($assignments) : $assignments->count()) > 0)
+        @if($topicsPageView['assignments_count'] > 0)
             <div class="assignment-icon-circle" data-filter="assignments" style="order: 100;">
                 <div class="assignment-circle">
                     <i class="fas fa-tasks"></i>
-                    <span class="assignment-glow-count">{{ is_array($assignments) ? count($assignments) : $assignments->count() }}</span>
+                    <span class="assignment-glow-count">{{ $topicsPageView['assignments_count'] }}</span>
                 </div>
             </div>
         @endif
@@ -816,34 +710,12 @@
     <!-- Topics List -->
     <div class="topics-container">
         {{-- 🚀 LETHAL ASSIGNMENT OPTIMIZATION: Pre-calculated data --}}
-        @if(isset($assignments) && count($assignments) > 0)
-            @php
-                // 🚀 SURGICAL OPTIMIZATION: Pre-calculate ALL data ONCE
-                $assignmentData = $assignments->mapWithKeys(function($assignment) use ($topics) {
-                    $topic = $topics->firstWhere('id', $assignment->topic_id);
-                    if (!$topic) return [];
-                    
-                    return [$assignment->id => [
-                        'topic' => $topic,
-                        'progress' => $assignment->user_progress['percentage'] ?? 0,
-                        'status' => $assignment->status_string,
-                        'quizUrl' => secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id, 'assignment_id' => $assignment->id], false)),
-                        'isLocked' => in_array($assignment->status, ['locked', 'expired', 'completed']) || ($assignment->status === 'overdue'),
-                        'lockReason' => $assignment->getLockReason() ?? 'Assignment is locked'
-                    ]];
-                });
-            @endphp
-            
+        @if($assignments->count() > 0)
             @foreach($assignments as $assignment)
-                @php 
-                    $data = $assignmentData[$assignment->id] ?? null;
-                    if (!$data) continue;
-                    
-                    // SIMPLE: Just check if user has attempted this assignment
-                    $isLocked = $assignment->isLockedForUser(auth()->id());
-                @endphp
+                @php($data = $assignmentViewData[$assignment->id] ?? null)
+                @continue(!$data)
                 
-                <div class="topic-card assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($data['status'] === 'overdue' ? 'overdue' : 'active') }}" 
+                <div class="topic-card assignment-{{ $data['display_state'] }}" 
                      data-case-type="assignment" 
                      data-topic-id="{{ $data['topic']->id }}"
                      data-assignment-id="{{ $assignment->id }}"
@@ -854,12 +726,12 @@
                     {{-- Assignment Status Bar --}}
                     <div class="assignment-status-bar assignment-{{ $assignment->isCompletedByUser(auth()->id()) ? 'completed' : ($data['status'] === 'overdue' ? 'overdue' : 'active') }}">
                         <div class="assignment-info-minimal">
-                            @if($data['status'] === 'active' && !$assignment->isLockedForUser(auth()->id()))
+                            @if($data['status'] === 'active' && !$data['is_locked'])
                                 <span>Assignment Due:</span>
                                 <div class="assignment-countdown-minimal" 
                                      data-deadline="{{ $assignment->deadline }}"
                                      data-assignment-status="{{ $data['status'] }}"
-                                     data-is-locked="{{ $assignment->isLockedForUser(auth()->id()) ? 'true' : 'false' }}">
+                                     data-is-locked="{{ $data['is_locked'] ? 'true' : 'false' }}">
                                     <span class="countdown-display"></span>
                                 </div>
                             @endif
@@ -887,9 +759,9 @@
 
                     <div class="topic-actions">
                         <div class="stat-item">
-                            @if($assignment->isCompletedByUser(auth()->id()))
+                            @if($data['is_completed'])
                                 <i class="fas fa-check-circle text-success"></i>Assignment Completed
-                            @elseif($assignment->isLockedForUser(auth()->id()) || $data['status'] === 'overdue')
+                            @elseif($data['is_locked'] || $data['status'] === 'overdue')
                                 <i class="fas fa-times text-danger"></i>Assignment Overdue
                             @else
                                 <i class="fas fa-play text-primary"></i>Start Assignment
@@ -901,13 +773,13 @@
                             <div class="assignment-locked-icon" title="Assignment overdue">
                                 <i class="fas fa-lock"></i>
                             </div>
-                        @elseif($isLocked)
+                        @elseif($data['is_locked'])
                             {{-- RED LOCK for locked assignments --}}
                             <div class="assignment-locked-icon" title="Assignment not available">
                                 <i class="fas fa-lock"></i>
                             </div>
                         @else
-                            <a href="javascript:void(0)" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $data['topic']->id }}" data-course-id="{{ $data['topic']->course_id }}" data-quiz-url="{{ $data['quizUrl'] }}">
+                            <a href="javascript:void(0)" class="start-quiz-btn assignment-start-btn" data-topic-id="{{ $data['topic']->id }}" data-course-id="{{ $data['topic']->course_id }}" data-quiz-url="{{ $data['quiz_url'] }}">
                                 <span>Start Assignment</span>
                                 <i class="fas fa-arrow-right"></i>
                             </a>
@@ -921,10 +793,7 @@
         {{-- Regular Topic Cards Section --}}
         @if($topics->count() > 0)
             @foreach($topics as $topic)
-                @php
-                    $isLocked = isset($topic->is_locked) ? $topic->is_locked : false;
-                    $isPreviewLocked = (bool) ($topic->is_preview_locked ?? false);
-                @endphp
+                @php($topicView = $topicCardData[$topic->id] ?? null)
                 
                 {{-- Topic Card Container with Video Button --}}
                 <div class="topic-with-video-container">
@@ -957,11 +826,8 @@
                             @endif
                         </div>
                         
-                        @php
-                            $userProgress = $topic->userProgress->first();
-                            $percentageGrade = $userProgress ? $userProgress->percentage_grade : null;
-                            $hasAttemptedTopic = $topic->last_attempt_date !== null || $userProgress?->last_attempt_date !== null;
-                        @endphp
+                        @php($percentageGrade = $topicView['percentage_grade'] ?? null)
+                        @php($hasAttemptedTopic = $topicView['has_attempted'] ?? false)
                         @if($hasAttemptedTopic)
                             <div class="grade-badge 
                                 {{ $percentageGrade >= 100 ? 'grade-mastered' : 
@@ -1012,15 +878,12 @@
                             @endif
                         </div>
                         
-                        @if($isLocked)
+                        @if($topic->is_locked)
                             {{-- Show white button with red lock for locked topics --}}
-                            <div class="topic-locked-btn" title="{{ $isPreviewLocked ? 'Unlock the full course to access this topic' : 'Topic is locked' }}">
+                            <div class="topic-locked-btn" title="{{ ($topicView['is_preview_locked'] ?? false) ? 'Unlock the full course to access this topic' : 'Topic is locked' }}">
                                 <i class="fas fa-lock"></i>
                             </div>
                         @else
-                            @php
-                                $quizUrl = secure_url(route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id], false));
-                            @endphp
                             <a href="javascript:void(0)" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id]) }}">
                                 @if($hasAttemptedTopic)
                                     <span>Retake Quiz</span>
@@ -1035,7 +898,7 @@
                     </div>
                     
                     {{-- Video Play Button OUTSIDE the card --}}
-                    @if($topic->video && !$isLocked)
+                    @if($topic->video && !$topic->is_locked)
                         <a href="{{ route('video.show', ['topic' => $topic->id]) }}" class="video-play-btn" id="video-btn-{{ $topic->id }}">
                             <i class="fas fa-play"></i>
                         </a>
@@ -1055,7 +918,7 @@
     </main>
 
 
-    <script src="{{ asset('js/topics-optimized.js') }}?v=2.1"></script>
+    <script src="{{ $bladeAsset->url('js/topics-optimized.js') }}"></script>
 
     {{-- REMOVED: quiz-modal.js to prevent conflicts - unified in main script --}}
 
@@ -1082,7 +945,7 @@
             const resultsContainer = document.getElementById('searchQuestionsResults');
             const spinner = document.getElementById('searchSpinner');
             const courseId = {{ $course->id }};
-            const canEditQuestions = {{ Auth::user()->isAdmin() ? 'true' : 'false' }};
+            const canEditQuestions = {{ $currentUserView['is_admin'] ? 'true' : 'false' }};
             const searchQuestionData = new Map();
             let searchTimeout;
 

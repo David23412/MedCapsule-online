@@ -9,15 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    @include('partials.favicon')
     @include('partials.admin-dark-mode-head')
 
-    <link rel="stylesheet" href="{{ asset('css/mistakes-page.css') }}?v={{ filemtime(public_path('css/mistakes-page.css')) }}">
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/mistakes-page.css') }}">
     
     {{-- Desktop styles only --}}
 </head>
@@ -35,24 +30,6 @@
     <div class="mistakes-sidebar-backdrop" id="mistakesSidebarBackdrop" aria-hidden="true"></div>
     <!-- SAFE PRELOADER - WON'T BREAK ANYTHING -->
     @include('components.lightning-preloader')
-
-    @php
-        $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
-        $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
-        $mistakeCollection = collect($mistakes ?? []);
-        $coursesCollection = collect($availableCourses ?? []);
-        $activeReviewLabel = 'All Courses';
-        $staleCount = $mistakeCollection->filter(fn ($mistake) => $mistake->last_attempt_date && $mistake->last_attempt_date->lt(now()->subDays(7)))->count();
-        $coldReviewCount = $mistakeCollection->filter(fn ($mistake) => (int) $mistake->correct_streak === 0)->count();
-        $closeReviewCount = $mistakeCollection->filter(fn ($mistake) => (int) $mistake->correct_streak >= 3)->count();
-        $writtenCount = $mistakeCollection->filter(fn ($mistake) => ($mistake->question->question_type ?? null) === 'written')->count();
-        $topWeakCourse = $coursesCollection->sortByDesc('mistake_count')->first();
-        $oldestMistake = $mistakeCollection->sortBy('last_attempt_date')->first();
-
-        if (!empty($selectedCourse)) {
-            $activeReviewLabel = optional($coursesCollection->firstWhere('id', (int) $selectedCourse))->name ?? 'Filtered Course';
-        }
-    @endphp
 
     <div class="sidebar" id="mistakesSidebar" role="navigation" aria-label="Review navigation">
         <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
@@ -146,18 +123,18 @@
                             <span class="nav-link-label">Bank Health</span>
                         </div>
                         <p class="sidebar-insight-copy">
-                            {{ $mistakeCollection->count() }} cards are active in {{ strtolower($activeReviewLabel) }}.
+                            {{ $mistakes->count() }} cards are active in {{ strtolower($mistakeStats['active_review_label']) }}.
                         </p>
                         <div class="sidebar-chip-list">
-                            <span class="sidebar-chip">{{ $activeReviewLabel }}</span>
-                            <span class="sidebar-chip">{{ $totalMistakesCount ?? $mistakeCollection->count() }} total</span>
+                            <span class="sidebar-chip">{{ $mistakeStats['active_review_label'] }}</span>
+                            <span class="sidebar-chip">{{ $totalMistakesCount ?? $mistakes->count() }} total</span>
                         </div>
                     </div>
 
                     <div class="sidebar-stat-grid">
                         <div class="sidebar-stat-card sidebar-stat-card-loaded">
                             <span class="sidebar-stat-label">Queue</span>
-                            <strong>{{ $mistakeCollection->count() }}</strong>
+                            <strong>{{ $mistakes->count() }}</strong>
                             <small>Visible now</small>
                         </div>
                         <div class="sidebar-stat-card sidebar-stat-card-skipped">
@@ -167,12 +144,12 @@
                         </div>
                         <div class="sidebar-stat-card sidebar-stat-card-cold">
                             <span class="sidebar-stat-label">Stale</span>
-                            <strong>{{ $staleCount }}</strong>
+                            <strong>{{ $mistakeStats['stale_count'] }}</strong>
                             <small>7 days+</small>
                         </div>
                         <div class="sidebar-stat-card sidebar-stat-card-ready">
                             <span class="sidebar-stat-label">Close</span>
-                            <strong>{{ $closeReviewCount }}</strong>
+                            <strong>{{ $mistakeStats['close_review_count'] }}</strong>
                             <small>Near clear</small>
                         </div>
                     </div>
@@ -185,46 +162,35 @@
                             <span class="nav-link-label">Next Focus</span>
                         </div>
                         <p class="sidebar-insight-copy">
-                            @if($topWeakCourse)
-                                {{ $topWeakCourse->name }} is carrying the biggest review load.
+                            @if($mistakeStats['top_weak_course'])
+                                {{ $mistakeStats['top_weak_course']->name }} is carrying the biggest review load.
                             @else
                                 Your review queue is balanced across courses.
                             @endif
                         </p>
                         <div class="sidebar-chip-list">
-                            @if($topWeakCourse)
-                                <span class="sidebar-chip">{{ $topWeakCourse->name }}</span>
-                                <span class="sidebar-chip">{{ $topWeakCourse->mistake_count }} flagged</span>
+                            @if($mistakeStats['top_weak_course'])
+                                <span class="sidebar-chip">{{ $mistakeStats['top_weak_course']->name }}</span>
+                                <span class="sidebar-chip">{{ $mistakeStats['top_weak_course']->mistake_count }} flagged</span>
                             @endif
-                            <span class="sidebar-chip">{{ $coldReviewCount }} cold</span>
-                            <span class="sidebar-chip">{{ $writtenCount }} written</span>
-                            @if($oldestMistake && $oldestMistake->last_attempt_date)
-                                <span class="sidebar-chip">Oldest {{ $oldestMistake->last_attempt_date->diffForHumans() }}</span>
+                            <span class="sidebar-chip">{{ $mistakeStats['cold_review_count'] }} cold</span>
+                            <span class="sidebar-chip">{{ $mistakeStats['written_count'] }} written</span>
+                            @if($mistakeStats['oldest_mistake'] && $mistakeStats['oldest_mistake']->last_attempt_date)
+                                <span class="sidebar-chip">Oldest {{ $mistakeStats['oldest_mistake']->last_attempt_date->diffForHumans() }}</span>
                             @endif
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="sidebar-footer">
-            <a href="{{ route('profile') }}" class="sidebar-profile-link">
-                <span class="sidebar-profile-avatar">
-                    <img src="{{ $profileImageUrl }}" alt="Profile Picture" onerror="this.src='{{ $profileFallbackUrl }}'">
-                </span>
-                <span class="sidebar-profile-copy">
-                    <span class="sidebar-profile-name">{{ Auth::user()->name }}</span>
-                    <span class="sidebar-profile-meta">Study profile</span>
-                </span>
-            </a>
-            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
-                @csrf
-                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
-                    <i class="fas fa-arrow-right-from-bracket nav-icon"></i>
-                    <span class="nav-link-label">Sign Out</span>
-                </button>
-            </form>
-        </div>
+        @include('partials.student-sidebar-profile', [
+            'profileUrl' => route('profile'),
+            'profileName' => $currentUserView['name'],
+            'profileMeta' => 'Study profile',
+            'profileImageUrl' => $currentUserView['profile_image_url'],
+            'profileFallbackUrl' => $currentUserView['profile_fallback_url'],
+            'logoutAction' => secure_url(route('logout', [], false)),
+        ])
     </div>
 
     <div class="main-content">
@@ -281,8 +247,7 @@
                 <form id="robust-filter-form" action="{{ route('review.index') }}" method="GET" class="d-flex align-items-center w-100 gap-3" data-instant-submit="true">
                     <!-- Hidden inputs for form robustness -->
                     <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="filter_timestamp" value="{{ time() }}">
-                    
+
                     <div class="d-flex align-items-center flex-grow-1 flex-wrap">
                         <label for="courseFilter" class="me-3">
                             <i class="fas fa-filter me-2 text-primary"></i>
@@ -291,7 +256,7 @@
                         <div class="position-relative flex-grow-1">
                             <select id="courseFilter" name="course" class="form-select">
                                 <option value="">All Courses ({{ $totalMistakesCount ?? 0 }})</option>
-                                @foreach($availableCourses->sortBy('name') as $course)
+                                @foreach($mistakeStats['available_courses_sorted'] as $course)
                                     <option value="{{ $course->id }}" {{ $selectedCourse == $course->id ? 'selected' : '' }}>
                                         {{ $course->name }} ({{ $course->mistake_count ?? 0 }})
                                     </option>
@@ -443,7 +408,7 @@
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="{{ asset('js/mistakes-page.js') }}?v={{ filemtime(public_path('js/mistakes-page.js')) }}" defer></script>
+    <script src="{{ $bladeAsset->url('js/mistakes-page.js') }}" defer></script>
 
     <script>
     /* Mobile Sidebar (Offcanvas) Toggle — Mistakes Page */

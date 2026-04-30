@@ -37,7 +37,8 @@ class CourseService
     public function __construct(
         protected SecureFileUploadService $fileUploadService,
         protected PerformanceMonitorService $performanceMonitor,
-        protected FreeCourseSurveyService $freeCourseSurveyService
+        protected FreeCourseSurveyService $freeCourseSurveyService,
+        protected StudentViewDataService $studentViewDataService
     ) {}
 
     /**
@@ -72,17 +73,32 @@ class CourseService
                 return Course::distinct()->pluck('academic_year')->filter()->sort()->values();
             });
 
-            $currentUserView = $user ? [
-                'name' => $user->name,
-                'is_admin' => $user->isAdmin(),
-                'is_tutor' => $user->isTutor(),
-                'study_streak_days' => (int) ($user->study_streak_days ?? 0),
-                'profile_image_url' => $user->getProfileImageUrl(),
-                'profile_fallback_url' => 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&size=200&background=007bff&color=ffffff',
-                'total_correct_answers' => $user->getTotalCorrectAnswers(),
-                'survey_completed' => $user->hasCompletedFreeCourseSurvey(),
-                'free_courses_unlocked' => $user->hasUnlockedFreeCourses(),
-            ] : null;
+            $academicYearOptions = $availableYears
+                ->map(fn ($year) => [
+                    'value' => $year,
+                    'label' => $this->getFullLabel($year),
+                ])
+                ->values();
+
+            $preloadedImageUrls = $courses
+                ->take(2)
+                ->pluck('optimized_image_url')
+                ->filter()
+                ->values();
+
+            $imageDomains = $courses
+                ->pluck('image_url')
+                ->map(fn ($url) => parse_url((string) $url, PHP_URL_HOST))
+                ->filter()
+                ->unique()
+                ->take(2)
+                ->values();
+
+            $currentUserView = $user
+                ? $this->studentViewDataService->buildCurrentUserView($user, [
+                    'survey_completed' => $user->hasCompletedFreeCourseSurvey(),
+                ])
+                : null;
 
             $freeCoursesForSurveyUnlock = $this->freeCourseSurveyService->freeCourses()
                 ->map(fn (Course $course) => [
@@ -104,7 +120,17 @@ class CourseService
 
             return [
                 'success' => true,
-                'data' => compact('courses', 'availableYears', 'selectedYear', 'currentUserView', 'freeCoursesForSurveyUnlock', 'freeCourseSurveyDraftPayload')
+                'data' => compact(
+                    'courses',
+                    'availableYears',
+                    'academicYearOptions',
+                    'selectedYear',
+                    'currentUserView',
+                    'freeCoursesForSurveyUnlock',
+                    'freeCourseSurveyDraftPayload',
+                    'preloadedImageUrls',
+                    'imageDomains'
+                )
             ];
 
         } finally {
@@ -562,6 +588,7 @@ class CourseService
                 $course->has_pending_payment = false;
                 $course->completion_percentage = 0;
                 $course->mastered_topics_count = 0;
+                $course->optimized_image_url = $this->optimizeCourseImageUrl($course->image_url);
                 $course->is_free_course = $course->isSurveyUnlockable();
                 $course->requires_survey_unlock = false;
                 $course->access_level = null;
@@ -610,6 +637,7 @@ class CourseService
 
             $course->completion_percentage = $completionPercentages[$course->id] ?? 0;
             $course->mastered_topics_count = 0;
+            $course->optimized_image_url = $this->optimizeCourseImageUrl($course->image_url);
 
             // Format enrolled users for display (PRESERVED)
             $enrolledUsers = $previewUsersByCourse->get($course->id, collect());
@@ -623,6 +651,23 @@ class CourseService
             $course->has_more = ($course->enrolled_users_count ?? 0) > $previewLimit;
             $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
         }
+    }
+
+    private function optimizeCourseImageUrl(?string $imageUrl): ?string
+    {
+        if (!$imageUrl) {
+            return $imageUrl;
+        }
+
+        if (str_contains($imageUrl, 'unsplash.com')) {
+            return str_replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=75&fm=webp&', $imageUrl);
+        }
+
+        if (str_contains($imageUrl, 'picsum.photos')) {
+            return str_replace('picsum.photos/', 'picsum.photos/465/670/', $imageUrl);
+        }
+
+        return $imageUrl;
     }
 
     private function loadCourseCompletionPercentages(EloquentCollection $courses, int $userId): array
