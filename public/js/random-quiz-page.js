@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let selectedAnswers = {};
             const quizDraft = window.QuizSessionDraft?.create({
                 key: randomQuizPageConfig.draftKey,
-                questionIds: randomQuizPageConfig.questionIds || []
+                questionIds: randomQuizPageConfig.questionIds || [],
+                onExpire: () => window.location.reload()
             }) || null;
 
             function applyDraftAnswers(answers) {
@@ -53,11 +54,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     const textarea = document.querySelector(`.written-answer[data-question-id="${questionId}"]`);
                     if (textarea) {
                         textarea.value = normalizedAnswer;
+                        syncWrittenAnswerCharacterCount(textarea);
                         if (normalizedAnswer.trim() !== '') {
                             selectedAnswers[questionId] = normalizedAnswer;
                         }
                     }
                 });
+            }
+
+            function syncWrittenAnswerCharacterCount(textarea) {
+                if (!textarea) {
+                    return;
+                }
+
+                const targetId = textarea.getAttribute('data-char-count-target');
+                if (!targetId) {
+                    return;
+                }
+
+                const counter = document.getElementById(targetId);
+                if (counter) {
+                    counter.textContent = String((textarea.value || '').length);
+                }
             }
 
             function saveDraft() {
@@ -101,8 +119,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Handle written question answers
             document.querySelectorAll('.written-answer').forEach(textarea => {
+                syncWrittenAnswerCharacterCount(textarea);
                 textarea.addEventListener('input', function() {
                     const questionId = this.getAttribute('data-question-id');
+                    syncWrittenAnswerCharacterCount(this);
                     if (this.value.trim() !== '') {
                         selectedAnswers[questionId] = this.value;
                 } else {

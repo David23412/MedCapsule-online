@@ -15,8 +15,6 @@ return new class extends Migration {
             $table->id(); // Auto-incrementing primary key
             $table->foreignId('topic_id')->constrained()->onDelete('cascade'); // Foreign key to topics table
             $table->text('question'); // Question text
-            $table->text('explanation')->nullable(); // Optional explanation shown after answering
-            $table->string('image_url')->nullable(); // Optional image for the question
             $table->string('source')->nullable(); // Source of the question (e.g., 'Assuit', 'Cairo', etc.)
 
             // Add multiple-choice options - nullable for written questions
@@ -27,15 +25,18 @@ return new class extends Migration {
             
             // Store correct answer (e.g., 'A', 'B', 'C', 'D' for multiple choice, or full text for written)
             $table->text('correct_answer');
+
+            // Add question_type field and default existing questions to 'multiple_choice'
+            $table->string('question_type')->default('multiple_choice');
+
+            $table->text('explanation')->nullable(); // Optional explanation shown after answering
+            $table->string('image_url')->nullable(); // Optional image for the question
             
             // Add extra_topic field as string to natively support comma-separated "1,2,3" topic injections!
             $table->string('extra_topic')->nullable()->comment('Comma separated topic IDs, e.g., 1,2,3');
             
             // Add frequency count for Golden Standard recurrence tracking
             $table->integer('exam_appearances_count')->default(0);
-
-            // Add question_type field and default existing questions to 'multiple_choice'
-            $table->string('question_type')->default('multiple_choice');
             
             // Add field for alternative correct answers (TEXT field to store plain text)
             $table->text('alternative_answers')->nullable();

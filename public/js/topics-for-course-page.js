@@ -14,6 +14,10 @@
         const sourceSelectionForm = document.getElementById('sourceSelectionForm');
         const tutorScopeSection = document.getElementById('tutorScopeSection');
         const tutorScopeHint = document.getElementById('tutorScopeHint');
+        const mobileHamburger = document.getElementById('topicsMobileHamburger');
+        const mobileSidebar = document.getElementById('topicsSidebar');
+        const mobileSidebarBackdrop = document.getElementById('topicsSidebarBackdrop');
+        const mobileSidebarCloseBtn = document.getElementById('topicsSidebarCloseBtn');
         const randomQuizForm = document.getElementById('randomQuizForm');
         const randomQuizModal = document.getElementById('randomQuizModal');
         const assignmentIconCircle = document.querySelector('.assignment-icon-circle');
@@ -21,6 +25,9 @@
         const progressCountElement = document.querySelector('.progress-count');
         const progressPercentElement = document.querySelector('.progress-percent');
         const topicProgressSegments = Array.from(document.querySelectorAll('.topics-progress-segment[data-topic-id]'));
+        const progressPrevBtn = document.getElementById('progressPrevBtn');
+        const progressNextBtn = document.getElementById('progressNextBtn');
+        const topicsProgressTrack = document.getElementById('topicsProgressTrack');
         const questionLimit = document.getElementById('questionLimit');
         const timeLimit = document.getElementById('timeLimit');
         const courseCheckboxes = document.querySelectorAll('#randomQuizModal input[name="selected_courses[]"]');
@@ -73,6 +80,126 @@
                 applySidebarState(collapsed);
                 setStoredSidebarState(collapsed);
             });
+        }
+
+        function initializeMobileSidebar() {
+            if (!mobileHamburger || !mobileSidebar || !mobileSidebarBackdrop) {
+                return;
+            }
+
+            function openSidebar() {
+                mobileSidebar.classList.add('is-open');
+                mobileSidebarBackdrop.classList.add('is-visible');
+                document.body.classList.add('topics-sidebar-open');
+                mobileHamburger.setAttribute('aria-expanded', 'true');
+            }
+
+            function closeSidebar() {
+                mobileSidebar.classList.remove('is-open');
+                mobileSidebarBackdrop.classList.remove('is-visible');
+                document.body.classList.remove('topics-sidebar-open');
+                mobileHamburger.setAttribute('aria-expanded', 'false');
+            }
+
+            mobileHamburger.addEventListener('click', function() {
+                if (mobileSidebar.classList.contains('is-open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+            });
+
+            mobileSidebarBackdrop.addEventListener('click', closeSidebar);
+            mobileSidebarCloseBtn?.addEventListener('click', closeSidebar);
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeSidebar();
+                }
+            });
+        }
+
+        function initializeProgressTrackNavigation() {
+            if (!progressPrevBtn || !progressNextBtn || !topicsProgressTrack) {
+                return;
+            }
+
+            const allTopics = Array.isArray(topicsPageConfig.progressTopics)
+                ? topicsPageConfig.progressTopics
+                : [];
+            const totalTopics = allTopics.length;
+            const segmentsToShow = 10;
+            let currentIndex = 0;
+
+            function updateSegments() {
+                const endIndex = Math.min(currentIndex + segmentsToShow, totalTopics);
+                topicsProgressTrack.innerHTML = '';
+
+                for (let index = currentIndex; index < endIndex; index += 1) {
+                    const topic = allTopics[index];
+                    if (!topic) {
+                        continue;
+                    }
+
+                    const topicProgress = Array.isArray(topic.user_progress) ? topic.user_progress : [];
+                    const isMastered = topicProgress.length > 0 && Number(topicProgress[0]?.percentage_grade || 0) >= 80;
+
+                    const segment = document.createElement('span');
+                    segment.className = `topics-progress-segment${isMastered ? ' is-mastered' : ''}`;
+                    segment.setAttribute('data-topic-id', String(topic.id));
+                    segment.setAttribute('data-index', String(index));
+                    segment.setAttribute('aria-hidden', 'true');
+                    segment.style.cursor = 'pointer';
+                    segment.addEventListener('click', function() {
+                        const topicId = this.getAttribute('data-topic-id');
+                        const topicCard = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
+                        if (!topicCard) {
+                            return;
+                        }
+
+                        const allFilter = document.querySelector('.case-filter[data-filter="all"]');
+                        if (allFilter && !allFilter.classList.contains('active')) {
+                            allFilter.click();
+                        }
+
+                        const searchInput = document.getElementById('topicSearch');
+                        if (searchInput && searchInput.value) {
+                            searchInput.value = '';
+                            searchInput.dispatchEvent(new Event('input'));
+                        }
+
+                        window.setTimeout(() => {
+                            topicCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            topicCard.classList.add('topic-card-highlight');
+                            window.setTimeout(() => {
+                                topicCard.classList.remove('topic-card-highlight');
+                            }, 2000);
+                        }, 50);
+                    });
+
+                    topicsProgressTrack.appendChild(segment);
+                }
+
+                progressPrevBtn.disabled = currentIndex === 0;
+                progressNextBtn.disabled = endIndex >= totalTopics;
+                progressPrevBtn.style.opacity = currentIndex === 0 ? '0.3' : '1';
+                progressNextBtn.style.opacity = endIndex >= totalTopics ? '0.3' : '1';
+            }
+
+            progressPrevBtn.addEventListener('click', function() {
+                if (currentIndex > 0) {
+                    currentIndex = Math.max(0, currentIndex - segmentsToShow);
+                    updateSegments();
+                }
+            });
+
+            progressNextBtn.addEventListener('click', function() {
+                if (currentIndex + segmentsToShow < totalTopics) {
+                    currentIndex = Math.min(currentIndex + segmentsToShow, totalTopics - segmentsToShow);
+                    updateSegments();
+                }
+            });
+
+            updateSegments();
         }
 
         function showTaskCelebrationToast() {
@@ -531,6 +658,9 @@
                 }
             });
         }
+
+        initializeMobileSidebar();
+        initializeProgressTrackNavigation();
 
         if (topicSearch && clearSearch) {
             topicSearch.addEventListener('input', function() {

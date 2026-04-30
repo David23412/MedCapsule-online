@@ -25,19 +25,19 @@ class Question extends Model
     protected $fillable = [
         'topic_id',
         'question', // Actual database field name
-        'explanation',
-        'question_type',
+        'source',
         'option_a', // Actual database field names
         'option_b',
-        'option_c', 
+        'option_c',
         'option_d',
         'correct_answer',
+        'question_type',
+        'explanation',
         'image_url',
-        'source',
+        'extra_topic',
         'concept',
         'alternative_answers',
         'exam_appearances_count',
-        'extra_topic'
     ];
 
     protected $casts = [

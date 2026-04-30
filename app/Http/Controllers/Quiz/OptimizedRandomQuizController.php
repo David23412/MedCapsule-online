@@ -20,6 +20,8 @@ use Illuminate\Support\Collection;
  */
 class OptimizedRandomQuizController extends Controller
 {
+    private const RANDOM_SESSION_TTL_SECONDS = 1800;
+
     protected $quizService;
 
     public function __construct(QuizService $quizService)
@@ -389,7 +391,15 @@ class OptimizedRandomQuizController extends Controller
         int $questionCount,
         array $options
     ): array {
-        $storedQuestionIds = collect($request->session()->get("active_random_quizzes.{$sessionKey}.question_ids", []))
+        $sessionPayload = $request->session()->get("active_random_quizzes.{$sessionKey}", []);
+        $savedAt = $sessionPayload['saved_at'] ?? null;
+
+        if ($this->isRandomSessionExpired($savedAt)) {
+            $request->session()->forget("active_random_quizzes.{$sessionKey}");
+            $sessionPayload = [];
+        }
+
+        $storedQuestionIds = collect($sessionPayload['question_ids'] ?? [])
             ->map(fn ($id) => (int) $id)
             ->filter()
             ->values()
@@ -419,6 +429,19 @@ class OptimizedRandomQuizController extends Controller
         }
 
         return $result;
+    }
+
+    private function isRandomSessionExpired(?string $savedAt): bool
+    {
+        if (empty($savedAt)) {
+            return true;
+        }
+
+        try {
+            return now()->diffInSeconds(\Carbon\Carbon::parse($savedAt)) >= self::RANDOM_SESSION_TTL_SECONDS;
+        } catch (\Throwable $exception) {
+            return true;
+        }
     }
 
     private function fetchQuestionsInOrder(array $questionIds): Collection

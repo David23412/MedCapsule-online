@@ -22,7 +22,8 @@
                         class="form-control written-answer" 
                         rows="4" 
                         placeholder="Type your answer here..."
-                        data-question-id="{{ $question->id }}"></textarea>
+                        data-question-id="{{ $question->id }}"
+                        data-char-count-target="char_count_{{ $question->id }}"></textarea>
                     <div class="answer-feedback" id="feedback_{{ $question->id }}"></div>
                     <div class="answer-character-count">
                         <span id="char_count_{{ $question->id }}">0</span> characters
@@ -108,71 +109,3 @@
         margin-top: 5px;
     }
 </style>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const textarea = document.getElementById('written_answer_{{ $question->id }}');
-        const charCount = document.getElementById('char_count_{{ $question->id }}');
-        
-        textarea.addEventListener('input', function() {
-            const length = this.value.length;
-            charCount.textContent = length;
-            
-            // Add answer to the selectedAnswers object used by the main quiz script
-            if (typeof selectedAnswers !== 'undefined') {
-                selectedAnswers['{{ $question->id }}'] = this.value;
-                
-                // Trigger progress update if the progress update function exists
-                if (typeof updateProgress === 'function') {
-                    updateProgress();
-                }
-            }
-        });
-        
-        // After quiz submission, handle review display
-        if (typeof reviewButton !== 'undefined') {
-            reviewButton.addEventListener('click', function() {
-                const questionBox = document.querySelector('[data-question-id="{{ $question->id }}"]');
-                if (questionBox) {
-                    const feedbackElement = document.getElementById('feedback_{{ $question->id }}');
-                    const writtenAnswer = document.getElementById('written_answer_{{ $question->id }}');
-                    
-                    if (feedbackElement && writtenAnswer) {
-                        // Get stored correct answer from data attribute
-                        const storedAnswer = questionBox.getAttribute('data-correct-answer');
-                        const submittedAnswer = writtenAnswer.value;
-                        
-                        if (storedAnswer && typeof decodeHtmlEntities === 'function') {
-                            const decodedCorrectAnswer = decodeHtmlEntities(storedAnswer);
-                            
-                            // Check if answer was correct
-                            if (feedbackElement.textContent === 'Correct') {
-                                // Style for correct answer
-                                writtenAnswer.classList.add('correct');
-                                feedbackElement.classList.add('correct');
-                                
-                                // Still show the correct answer in a card for reference
-                                const correctAnswerCard = document.createElement('div');
-                                correctAnswerCard.className = 'correct-answer-card';
-                                correctAnswerCard.innerHTML = `Correct answer: <strong>${decodedCorrectAnswer}</strong>`;
-                                feedbackElement.innerHTML = 'Correct';
-                                feedbackElement.appendChild(correctAnswerCard);
-                            } else {
-                                // Style for incorrect answer
-                                writtenAnswer.classList.add('incorrect');
-                                feedbackElement.classList.add('incorrect');
-                                
-                                // Create a card for the correct answer
-                                const correctAnswerCard = document.createElement('div');
-                                correctAnswerCard.className = 'correct-answer-card';
-                                correctAnswerCard.innerHTML = `Correct answer: <strong>${decodedCorrectAnswer}</strong>`;
-                                feedbackElement.innerHTML = '';
-                                feedbackElement.appendChild(correctAnswerCard);
-                            }
-                        }
-                    }
-                }
-            });
-        }
-    });
-</script> 

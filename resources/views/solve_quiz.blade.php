@@ -1694,7 +1694,8 @@
             const solveQuizConfig = window.SolveQuizPageConfig || {};
             const quizDraft = window.QuizSessionDraft?.create({
                 key: solveQuizConfig.draftKey,
-                questionIds: solveQuizConfig.questionIds || []
+                questionIds: solveQuizConfig.questionIds || [],
+                onExpire: () => window.location.reload()
             }) || null;
             let startTime = new Date();
 
@@ -1715,11 +1716,28 @@
                     const textarea = document.querySelector(`.written-answer[data-question-id="${questionId}"]`);
                     if (textarea) {
                         textarea.value = normalizedAnswer;
+                        syncWrittenAnswerCharacterCount(textarea);
                         if (normalizedAnswer.trim() !== '') {
                             selectedAnswers[questionId] = normalizedAnswer;
                         }
                     }
                 });
+            }
+
+            function syncWrittenAnswerCharacterCount(textarea) {
+                if (!textarea) {
+                    return;
+                }
+
+                const targetId = textarea.getAttribute('data-char-count-target');
+                if (!targetId) {
+                    return;
+                }
+
+                const counter = document.getElementById(targetId);
+                if (counter) {
+                    counter.textContent = String((textarea.value || '').length);
+                }
             }
 
             function saveQuizDraft() {
@@ -1977,8 +1995,10 @@
 
                 // Handle written answers
                 document.querySelectorAll('.written-answer').forEach(textarea => {
+                    syncWrittenAnswerCharacterCount(textarea);
                     textarea.addEventListener('input', function() {
                         const questionId = this.getAttribute('data-question-id');
+                        syncWrittenAnswerCharacterCount(this);
                         if (this.value.trim() !== '') {
                             selectedAnswers[questionId] = this.value;
                         } else {
@@ -2731,42 +2751,6 @@
                 window.location.reload();
             });
 
-
-            // ============================================================================
-            // 💀 INACTIVITY WATCHDOG - 30 MIN TERMINATION 💀
-            // ============================================================================
-            let lastInactivityReset = Date.now();
-            const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30 minutes
-            
-            function resetInactivityWatchdog() {
-                lastInactivityReset = Date.now();
-            }
-
-            // Listen for any user presence indicators
-            ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
-                document.addEventListener(event, resetInactivityWatchdog, { passive: true });
-            });
-
-            // Check every minute if the session has timed out
-            const inactivityInterval = setInterval(() => {
-                const now = Date.now();
-                if (now - lastInactivityReset > INACTIVITY_LIMIT_MS) {
-                    console.warn('⚠️ Session terminated due to 30 minutes of inactivity');
-                    
-                    // Kill the interval
-                    clearInterval(inactivityInterval);
-                    
-                    // Nuclear draft clear
-                    if (quizDraft) {
-                        quizDraft.clear();
-                    }
-                    
-                    // Show lethal alert and force reload
-                    alert('Your session has expired due to 30 minutes of inactivity. To ensure server efficiency, the page will now reload with a fresh session.');
-                    window.location.reload();
-                }
-            }, 60000); // 1 minute check resolution
-
             viewProgressButton.addEventListener("click", function () {
                 window.location.href = "{{ route('topics.forCourse', $course->id) }}";
             });
@@ -3263,158 +3247,7 @@
         </div>
     </div>
 
-    <script>
-    (function() {
-        const _BASE    = '/quiz/tutor/question/';
-        const _CSRF    = document.querySelector('meta[name="csrf-token"]')?.content || '';
-
-        window.openQuizEditModal = function(qId) {
-            const d = window.QUIZ_QUESTION_DATA?.[qId];
-            if (!d) { alert('Question data not available.'); return; }
-
-            document.getElementById('sq-q-id').value   = qId;
-            document.getElementById('sq-q-type').value = d.question_type || 'multiple_choice';
-            document.getElementById('sq-q-text').value = d.question_text || '';
-            document.getElementById('sq-explanation').value = d.explanation || '';
-
-            const qType = d.question_type === 'written' ? 'written' : 'multiple_choice';
-            sqSwitchType(qType, true, d);
-
-            document.getElementById('sq-status').textContent = '';
-            document.getElementById('sq-status').className   = 'sq-status';
-            document.getElementById('sq-del-confirm').classList.remove('show');
-            document.getElementById('sq-save-btn').disabled  = false;
-            document.getElementById('sq-del-btn').style.display = '';
-
-            document.getElementById('sq-edit-overlay').classList.add('show');
-            document.body.style.overflow = 'hidden';
-        };
-
-        window.sqSwitchType = function(type, populate, d) {
-            document.getElementById('sq-q-type').value = type;
-            const mcqB = document.getElementById('sq-type-mcq');
-            const wrtB = document.getElementById('sq-type-written');
-            const mcqS = document.getElementById('sq-mcq-section');
-            const wrtS = document.getElementById('sq-written-section');
-
-            if (type === 'written') {
-                mcqB.classList.remove('active'); wrtB.classList.add('active');
-                mcqS.style.display = 'none'; wrtS.style.display = 'block';
-                if (populate && d) {
-                    document.getElementById('sq-correct-text').value = d.correct_answer      || '';
-                    document.getElementById('sq-alt-answers').value  = d.alternative_answers || '';
-                }
-            } else {
-                wrtB.classList.remove('active'); mcqB.classList.add('active');
-                wrtS.style.display = 'none'; mcqS.style.display = 'block';
-                if (populate && d) {
-                    document.getElementById('sq-oa').value = d.option_a || '';
-                    document.getElementById('sq-ob').value = d.option_b || '';
-                    document.getElementById('sq-oc').value = d.option_c || '';
-                    document.getElementById('sq-od').value = d.option_d || '';
-                    const r = document.getElementById('sq-c' + (d.correct_answer || '').toLowerCase());
-                    if (r) r.checked = true;
-                }
-            }
-        };
-
-        window.sqCloseModal = function() {
-            document.getElementById('sq-edit-overlay').classList.remove('show');
-            document.body.style.overflow = '';
-        };
-
-        window.sqSaveEdit = async function() {
-            const qId    = document.getElementById('sq-q-id').value;
-            const qType  = document.getElementById('sq-q-type').value;
-            const saveBtn = document.getElementById('sq-save-btn');
-            const qText  = document.getElementById('sq-q-text').value.trim();
-            if (!qText) { sqSetStatus('Question text is required.', 'error'); return; }
-
-            let payload = { _method:'PUT', question:qText, question_type:qType,
-                explanation: document.getElementById('sq-explanation').value.trim() };
-
-            if (qType === 'written') {
-                const ca = document.getElementById('sq-correct-text').value.trim();
-                if (!ca) { sqSetStatus('Correct answer is required.', 'error'); return; }
-                payload.correct_answer      = ca;
-                payload.alternative_answers = document.getElementById('sq-alt-answers').value.trim();
-            } else {
-                const chk = document.querySelector('input[name="sq-correct"]:checked');
-                if (!chk) { sqSetStatus('Please select the correct answer.', 'error'); return; }
-                payload.correct_answer = chk.value;
-                payload.option_a = document.getElementById('sq-oa').value.trim();
-                payload.option_b = document.getElementById('sq-ob').value.trim();
-                payload.option_c = document.getElementById('sq-oc').value.trim();
-                payload.option_d = document.getElementById('sq-od').value.trim();
-            }
-
-            saveBtn.disabled = true;
-            sqSetStatus('Saving…', '');
-
-            try {
-                const res  = await fetch(_BASE + qId, {
-                    method: 'POST',
-                    headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN':_CSRF, 'Accept':'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const json = await res.json();
-                if (json.success) {
-                    sqSetStatus('✓ Saved!', 'success');
-                    // Update live question text on the page
-                    document.querySelectorAll(`.question-box[data-question-id="${qId}"], .written-question[data-question-id="${qId}"]`).forEach(card => {
-                        const t = card.querySelector('.question-text'); if (t) t.textContent = payload.question;
-                    });
-                    // Update local cache
-                    if (window.QUIZ_QUESTION_DATA?.[qId]) Object.assign(window.QUIZ_QUESTION_DATA[qId], payload);
-                    setTimeout(sqCloseModal, 900);
-                } else {
-                    sqSetStatus(json.message || 'Error saving.', 'error');
-                    saveBtn.disabled = false;
-                }
-            } catch(e) { sqSetStatus('Network error: '+e.message,'error'); saveBtn.disabled=false; }
-        };
-
-        window.sqPromptDelete = function() {
-            document.getElementById('sq-del-confirm').classList.add('show');
-            document.getElementById('sq-save-btn').disabled = true;
-            document.getElementById('sq-del-btn').style.display = 'none';
-        };
-
-        window.sqCancelDelete = function() {
-            document.getElementById('sq-del-confirm').classList.remove('show');
-            document.getElementById('sq-save-btn').disabled = false;
-            document.getElementById('sq-del-btn').style.display = '';
-        };
-
-        window.sqConfirmDelete = async function() {
-            const qId = document.getElementById('sq-q-id').value;
-            const btn = document.getElementById('sq-confirm-del');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting…';
-            sqSetStatus('Deleting…', '');
-            try {
-                const res  = await fetch(_BASE + qId, { method:'DELETE', headers:{'X-CSRF-TOKEN':_CSRF,'Accept':'application/json'} });
-                const json = await res.json();
-                if (json.success) {
-                    sqSetStatus('✓ Deleted.', 'success');
-                    document.querySelectorAll(`[data-question-id="${qId}"]`).forEach(c => c.remove());
-                    setTimeout(sqCloseModal, 800);
-                } else {
-                    sqSetStatus(json.message || 'Error.', 'error');
-                    btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
-                }
-            } catch(e) { sqSetStatus('Network error: '+e.message,'error'); btn.disabled=false; btn.innerHTML='<i class="fas fa-trash"></i> Yes, Delete'; }
-        };
-
-        function sqSetStatus(msg, cls) {
-            const el = document.getElementById('sq-status');
-            el.textContent = msg;
-            el.className   = 'sq-status' + (cls ? ' '+cls : '');
-        }
-
-        document.getElementById('sq-edit-overlay')?.addEventListener('click', e => { if (e.target.id === 'sq-edit-overlay') sqCloseModal(); });
-    })();
-    </script>
+    <script src="{{ asset('js/solve-quiz-admin.js') }}" defer></script>
     @endif
     @include('partials.secure-study-protection', ['surfaceLabel' => 'quiz mode', 'hideOnBackground' => false])
 </body>

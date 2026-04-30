@@ -1064,6 +1064,7 @@
             randomQuizRoute: @json(route('quiz.random.show')),
             randomTutorRoute: @json(route('quiz.random.tutor')),
             recentProgressRoute: @json(route('progress.recent-updates')),
+            progressTopics: @json($topics->values()->toArray()),
             taskCelebration: @json([
                 'awarded_now' => $gamePlan['awarded_now'] ?? 0,
                 'just_completed_tasks' => $gamePlan['just_completed_tasks'] ?? [],
@@ -1072,136 +1073,7 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer crossorigin="anonymous"></script>
     <script src="{{ asset('js/topics-for-course-page.js') }}" defer></script>
-
-    <script>
-    /* Mobile Sidebar (Offcanvas) Toggle */
-    (function() {
-        var hamburger = document.getElementById('topicsMobileHamburger');
-        var sidebar   = document.getElementById('topicsSidebar');
-        var backdrop  = document.getElementById('topicsSidebarBackdrop');
-        var closeBtn  = document.getElementById('topicsSidebarCloseBtn');
-
-        function openSidebar() {
-            sidebar.classList.add('is-open');
-            backdrop.classList.add('is-visible');
-            document.body.classList.add('topics-sidebar-open');
-            hamburger && hamburger.setAttribute('aria-expanded', 'true');
-        }
-
-        function closeSidebar() {
-            sidebar.classList.remove('is-open');
-            backdrop.classList.remove('is-visible');
-            document.body.classList.remove('topics-sidebar-open');
-            hamburger && hamburger.setAttribute('aria-expanded', 'false');
-        }
-
-        hamburger  && hamburger.addEventListener('click', function() {
-            sidebar.classList.contains('is-open') ? closeSidebar() : openSidebar();
-        });
-        backdrop   && backdrop.addEventListener('click', closeSidebar);
-        closeBtn   && closeBtn.addEventListener('click', closeSidebar);
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') closeSidebar();
-        });
-    })();
-    
-    /* Topics Progress Navigation */
-    (function() {
-        const prevBtn = document.getElementById('progressPrevBtn');
-        const nextBtn = document.getElementById('progressNextBtn');
-        const track = document.getElementById('topicsProgressTrack');
-        
-        if (!prevBtn || !nextBtn || !track) return;
-        
-        const allTopics = @json($topics->values()->toArray());
-        const totalTopics = allTopics.length;
-        const segmentsToShow = 10;
-        let currentIndex = 0;
-        
-        function updateSegments() {
-            const endIndex = Math.min(currentIndex + segmentsToShow, totalTopics);
-            
-            // Clear current segments
-            track.innerHTML = '';
-            
-            // Add new segments
-            for (let i = currentIndex; i < endIndex; i++) {
-                const topic = allTopics[i];
-                if (!topic) continue;
-                
-                const isMastered = topic.user_progress && topic.user_progress.length > 0 && 
-                                 topic.user_progress[0].percentage_grade >= 80;
-                
-                const segment = document.createElement('span');
-                segment.className = 'topics-progress-segment' + (isMastered ? ' is-mastered' : '');
-                segment.setAttribute('data-topic-id', topic.id);
-                segment.setAttribute('data-index', i);
-                segment.setAttribute('aria-hidden', 'true');
-                segment.style.cursor = 'pointer';
-                
-                segment.addEventListener('click', function() {
-                    const topicId = this.getAttribute('data-topic-id');
-                    const topicCard = document.querySelector(`.topic-card[data-topic-id="${topicId}"]`);
-                    
-                    if (topicCard) {
-                        // Clear any active filters to ensure the topic is visible
-                        const allFilter = document.querySelector('.case-filter[data-filter="all"]');
-                        if (allFilter && !allFilter.classList.contains('active')) {
-                            allFilter.click();
-                        }
-
-                        // Also clear search if active
-                        const searchInput = document.getElementById('topicSearch');
-                        if (searchInput && searchInput.value) {
-                            searchInput.value = '';
-                            searchInput.dispatchEvent(new Event('input'));
-                        }
-
-                        // Small delay to ensure filter/search transitions complete
-                        setTimeout(() => {
-                            topicCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            
-                            // Temporary highlight pulse
-                            topicCard.classList.add('topic-card-highlight');
-                            setTimeout(() => {
-                                topicCard.classList.remove('topic-card-highlight');
-                            }, 2000);
-                        }, 50);
-                    }
-                });
-                
-                track.appendChild(segment);
-            }
-            
-            // Update button states
-            prevBtn.disabled = currentIndex === 0;
-            nextBtn.disabled = endIndex >= totalTopics;
-            
-            // Update button styles
-            prevBtn.style.opacity = currentIndex === 0 ? '0.3' : '1';
-            nextBtn.style.opacity = endIndex >= totalTopics ? '0.3' : '1';
-        }
-        
-        prevBtn.addEventListener('click', function() {
-            if (currentIndex > 0) {
-                currentIndex = Math.max(0, currentIndex - segmentsToShow);
-                updateSegments();
-            }
-        });
-        
-        nextBtn.addEventListener('click', function() {
-            if (currentIndex + segmentsToShow < totalTopics) {
-                currentIndex = Math.min(currentIndex + segmentsToShow, totalTopics - segmentsToShow);
-                updateSegments();
-            }
-        });
-        
-        // Initialize button states
-        updateSegments();
-    })();
-
     @if($hasFullCourseAccess)
         /* Search Questions Feature */
         (function() {

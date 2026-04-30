@@ -440,12 +440,23 @@
             unreadCount: 0,
             loading: false,
             lastFetched: 0,
+            pollTimer: null,
             init() {
                 // Fetch initial notifications immediately
                 this.fetchNotifications();
 
                 // Use simple polling for notifications
                 this.initializePolling();
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        this.fetchNotifications();
+                    }
+                });
+
+                window.addEventListener('pagehide', () => {
+                    this.cleanup();
+                });
 
                 // Add bell ring animation when new notifications arrive
                 this.$watch('unreadCount', (newValue, oldValue) => {
@@ -461,14 +472,26 @@
 
             // Simple polling for notifications
             initializePolling() {
+                if (this.pollTimer) {
+                    return;
+                }
+
                 // Poll every 60 seconds for notifications
-                setInterval(() => {
+                this.pollTimer = window.setInterval(() => {
+                    if (document.visibilityState !== 'visible') {
+                        return;
+                    }
+
                     this.fetchNotifications();
                 }, 60000);
             },
             
             // Fetch notifications from server with aggressive caching
             async fetchNotifications() {
+                if (this.loading) {
+                    return;
+                }
+
                 try {
                     this.loading = true;
                     const response = await fetch('/notifications', {
@@ -533,7 +556,10 @@
             
             // Simple cleanup function
             cleanup() {
-                // No WebSocket to cleanup - using polling
+                if (this.pollTimer) {
+                    window.clearInterval(this.pollTimer);
+                    this.pollTimer = null;
+                }
             },
             
             // Methods to filter notifications by type for better organization

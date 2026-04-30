@@ -33,7 +33,8 @@ let answerCache = {};
 let questionData = {};
 const tutorDraft = window.QuizSessionDraft?.create({
     key: TUTOR_CONFIG.draftKey,
-    questionIds: Object.keys(TUTOR_CONFIG.questionData || {})
+    questionIds: Object.keys(TUTOR_CONFIG.questionData || {}),
+    onExpire: () => window.location.reload()
 }) || null;
 let isRestoringTutorDraft = false;
 

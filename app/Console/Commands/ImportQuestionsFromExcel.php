@@ -104,16 +104,16 @@ class ImportQuestionsFromExcel extends Command
             // Prepare question data
             $questionData = [
                 'question' => trim($data['question_text'] ?? $data['question'] ?? ''),
+                'source' => trim($data['source'] ?? ''),
                 'option_a' => trim($data['option_a'] ?? ''),
                 'option_b' => trim($data['option_b'] ?? ''),
                 'option_c' => trim($data['option_c'] ?? ''),
                 'option_d' => trim($data['option_d'] ?? ''),
                 'correct_answer' => strtoupper(trim($data['correct_answer'] ?? 'A')),
-                'explanation' => trim($data['explanation'] ?? ''),
-                'source' => trim($data['source'] ?? ''),
-                'concept' => trim($data['concept'] ?? ''),
                 'question_type' => trim($data['question_type'] ?? 'multiple_choice'),
+                'explanation' => trim($data['explanation'] ?? ''),
                 'topic_id' => $data['topic_id'] ?? null,
+                'concept' => trim($data['concept'] ?? ''),
             ];
 
             // Handle extra topics for many-to-many relationships
