@@ -1778,7 +1778,7 @@
             console.log('🔥 PRELOADING QUESTION DATA FOR INSTANT CHECKING...');
             
             // Extract question data from DOM
-            questionData = @json($solveQuizView['question_data'] ?? {});
+            questionData = @json($solveQuizView['question_data'] ?? []);
             
             console.log('✅ Question data preloaded for', Object.keys(questionData).length, 'questions');
             

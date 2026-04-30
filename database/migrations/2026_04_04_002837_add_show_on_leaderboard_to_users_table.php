@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->boolean('show_on_leaderboard')->default(true)->after('survey_completed');
-        });
+        if (!Schema::hasColumn('users', 'show_on_leaderboard')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->boolean('show_on_leaderboard')->default(true)->after('survey_completed');
+            });
+        }
     }
 
     /**
