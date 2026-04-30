@@ -379,30 +379,15 @@
             </div>
 
             @foreach($mistakes as $index => $mistake)
-                @php
-                    $nextReviewAt = $mistake->next_review_at;
-                    $retrievability = (float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9);
-                    $stability = (float) ($mistake->stability ?? 0);
-                    $difficulty = (float) ($mistake->difficulty ?? 0);
-                    $fsrsState = $mistake->fsrs_state ?? ($mistake->learning_state ?: 'review');
-                    $memoryStatusLabel = !$nextReviewAt || $nextReviewAt->lte($sessionNow)
-                        ? 'Due now'
-                        : ($nextReviewAt->isToday() ? 'Later today' : ($nextReviewAt->isTomorrow() ? 'Tomorrow' : 'Scheduled'));
-                    $memoryStatusClass = !$nextReviewAt || $nextReviewAt->lte($sessionNow)
-                        ? 'is-due'
-                        : ($retrievability <= 0.55 ? 'is-risk' : 'is-scheduled');
-                    $stabilityLabel = $stability < 0.5 ? 'Fragile' : ($stability < 2 ? 'Building' : ($stability < 7 ? 'Settling' : 'Stable'));
-                    $difficultyLabel = $difficulty >= 8 ? 'Stubborn' : ($difficulty >= 6 ? 'Sticky' : ($difficulty >= 4 ? 'Improving' : 'Fluent'));
-                @endphp
-                <div class="card {{ $index === 0 ? 'active' : '' }}" 
+                <div class="card {{ $index === 0 ? 'active' : '' }}"
                     data-question-id="{{ $mistake->question_id }}"
                     data-stage="{{ $mistake->stage }}"
                     data-course-id="{{ $mistake->question->topic->course_id ?? 'all' }}"
                     data-next-review-at="{{ optional($mistake->next_review_at)->toIso8601String() }}"
                     data-interval-days="{{ (float) ($mistake->interval_days ?? 0) }}"
-                    data-stability="{{ round($stability, 2) }}"
-                    data-difficulty="{{ round($difficulty, 2) }}"
-                    data-retrievability="{{ round($retrievability, 4) }}"
+                    data-stability="{{ round((float) ($mistake->stability ?? 0), 2) }}"
+                    data-difficulty="{{ round((float) ($mistake->difficulty ?? 0), 2) }}"
+                    data-retrievability="{{ round((float) ($mistake->current_retrievability ?? $mistake->retrievability ?? 0.9), 4) }}"
                     data-review-count="{{ (int) ($mistake->review_count ?? 0) }}"
                     data-lapse-count="{{ (int) ($mistake->lapse_count ?? 0) }}"
                     data-review-streak="{{ (int) ($mistake->correct_streak ?? 0) }}"
@@ -410,10 +395,10 @@
                     data-concept-risk-score="{{ round((float) ($mistake->concept_risk_score ?? 0), 4) }}"
                     data-focus-concept-name="{{ $mistake->focus_concept_name ?? '' }}"
                     data-learning-state="{{ $mistake->learning_state ?? '' }}"
-                    data-fsrs-state="{{ $fsrsState }}"
+                    data-fsrs-state="{{ $mistake->fsrs_state ?? ($mistake->learning_state ?: 'review') }}"
                     data-same-day-relearn-step="{{ (int) ($mistake->same_day_relearn_step ?? 0) }}"
                     data-last-attempt-date="{{ optional($mistake->last_attempt_date)->toIso8601String() }}"
-                    data-is-due-now="{{ (!$nextReviewAt || $nextReviewAt->lte($sessionNow)) ? 'true' : 'false' }}"
+                    data-is-due-now="{{ $mistake->_is_due_now ? 'true' : 'false' }}"
                     data-skipped="{{ $mistake->skipped ? 'true' : 'false' }}">
                     <!-- Course: {{ $mistake->question->topic->course->name ?? 'Unknown' }} -->
 

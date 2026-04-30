@@ -101,6 +101,12 @@ class LearnController extends Controller
                 ->sortBy('next_review_at')
                 ->first();
 
+            // Pre-compute per-mistake display flags so the blade needs no @php block
+            $mistakes->each(function ($mistake) use ($sessionNow) {
+                $nextReviewAt = $mistake->next_review_at;
+                $mistake->_is_due_now = !$nextReviewAt || $nextReviewAt->lte($sessionNow);
+            });
+
             $learnPageView = [
                 'selected_topic_names' => $selectedTopicNames,
                 'is_topic_focused_session' => $selectedTopicNames->isNotEmpty(),
