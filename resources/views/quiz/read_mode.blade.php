@@ -368,10 +368,12 @@
             }
 
             .badge-stack {
-                align-items: stretch;
+                align-items: center;
                 flex-direction: row;
                 flex-wrap: wrap;
                 width: 100%;
+                margin-top: 16px;
+                gap: 10px;
             }
 
             .correct-answer {
@@ -395,8 +397,9 @@
             }
 
             .mistake-btn {
-                width: 100%;
-                min-width: 0;
+                width: 36px;
+                height: 36px;
+                margin: 0;
             }
         }
     </style>
