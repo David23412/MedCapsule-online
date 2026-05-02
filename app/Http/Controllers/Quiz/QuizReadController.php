@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\QuizExecutionRequest;
 use App\Services\UltraFastQuizService;
 use App\Services\PerformanceMonitorService;
+use App\Services\QuizService;
 use App\Services\StudentViewDataService;
 use App\Models\Topic;
+use App\Models\Question;
 use App\Models\Course;
+use App\Models\Mistake;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -25,6 +28,7 @@ class QuizReadController extends Controller
     public function __construct(
         UltraFastQuizService $ultraFastQuizService,
         PerformanceMonitorService $performanceMonitor,
+        private QuizService $quizService,
         private StudentViewDataService $studentViewDataService
     ) {
         $this->middleware('auth');
@@ -294,6 +298,71 @@ class QuizReadController extends Controller
             }
 
             abort(500, 'Failed to load quiz');
+        }
+    }
+
+    public function showReadMode(Request $request, $course, $topic)
+    {
+        $operationId = $this->performanceMonitor->startOperation('quiz_read_mode', [
+            'course_id' => $course,
+            'topic_id' => $topic,
+            'user_id' => auth()->id(),
+            'request_params' => $request->all(),
+        ]);
+
+        try {
+            $courseModel = Course::findOrFail((int) $course);
+            $topicModel = Topic::findOrFail((int) $topic);
+            $user = auth()->user();
+
+            $sources = $request->input('sources', ['all']);
+            if (!is_array($sources)) {
+                $sources = [$sources];
+            }
+
+            if (count($sources) === 1 && is_string($sources[0]) && str_contains($sources[0], ',')) {
+                $sources = array_map('trim', explode(',', $sources[0]));
+            }
+
+            $quizData = $this->quizService->initializeQuiz($user, $courseModel, $topicModel, $sources, 'read');
+            $questions = $quizData['questions'];
+
+            Question::enrichWithBadges($questions, $topicModel->id);
+
+            $performanceData = $this->performanceMonitor->endOperation($operationId, [
+                'topic_id' => $topicModel->id,
+                'question_count' => $questions->count(),
+                'cache_status' => 'read_mode',
+            ]);
+
+            return view('quiz.read_mode', [
+                'topic' => $quizData['topic'],
+                'course' => $quizData['course'],
+                'questions' => $questions,
+                'selected_sources' => $quizData['sources'],
+                'mistakeQuestionIds' => Mistake::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('question_id', $questions->pluck('id')->all())
+                    ->pluck('question_id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all(),
+                'currentUserView' => $this->studentViewDataService->buildCurrentUserView($user),
+                'performanceData' => $performanceData,
+            ]);
+        } catch (\Exception $e) {
+            $this->performanceMonitor->endOperation($operationId, ['error' => $e->getMessage()]);
+
+            Log::error('❌ READ MODE LOAD FAILED', [
+                'error' => $e->getMessage(),
+                'course_id' => $course,
+                'topic_id' => $topic,
+                'user_id' => auth()->id(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return redirect()
+                ->route('topics.forCourse', (int) $course)
+                ->with('error', $e instanceof \InvalidArgumentException ? $e->getMessage() : 'Failed to open read mode.');
         }
     }
 

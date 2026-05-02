@@ -552,6 +552,10 @@
                                 <label class="form-check-label" for="quizMode">Quiz Mode</label>
                             </div>
                             <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="quiz_mode" id="readMode" value="read">
+                                <label class="form-check-label" for="readMode">Read Mode</label>
+                            </div>
+                            <div class="form-check form-check-inline">
                                 <input class="form-check-input" type="radio" name="quiz_mode" id="tutorMode" value="tutor">
                                 <label class="form-check-label" for="tutorMode">Tutor Mode</label>
                             </div>

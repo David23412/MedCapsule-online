@@ -196,6 +196,10 @@ Route::group([], function () {
             ->name('start')
             ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
             ->middleware('free.course.survey');
+        Route::get('/{course}/{topic}/read', [App\Http\Controllers\Quiz\QuizReadController::class, 'showReadMode'])
+            ->name('read')
+            ->where(['course' => '[0-9]+', 'topic' => '[0-9]+'])
+            ->middleware('free.course.survey');
         Route::post('/{course}/{topic}/grade', [App\Http\Controllers\Quiz\QuizGradingController::class, 'submit'])
             ->name('grade')
             ->where(['course' => '[0-9]+', 'topic' => '[0-9]+']);

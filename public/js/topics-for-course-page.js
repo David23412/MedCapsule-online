@@ -933,7 +933,11 @@
             }, 0);
 
             if (selectedMode !== 'tutor') {
-                startSourceQuizBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
+                if (selectedMode === 'read') {
+                    startSourceQuizBtn.innerHTML = '<i class="fas fa-book-open me-2"></i>Open Read Mode';
+                } else {
+                    startSourceQuizBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Quiz';
+                }
                 return;
             }
 
@@ -956,7 +960,8 @@
 
                 try {
                     const mode = this.value;
-                    const data = await cachedFetchJson(`/topics/${topicId}/source-progress?mode=${mode}`, {
+                    const progressMode = mode === 'read' ? 'quiz' : mode;
+                    const data = await cachedFetchJson(`/topics/${topicId}/source-progress?mode=${progressMode}`, {
                         method: 'GET',
                         headers: {
                             'X-CSRF-TOKEN': csrfToken.content,
@@ -964,7 +969,7 @@
                             'Content-Type': 'application/json'
                         },
                         credentials: 'same-origin'
-                    }, 15000, `source-progress:${topicId}:${mode}`);
+                    }, 15000, `source-progress:${topicId}:${progressMode}`);
 
                     updateSourcesContainer(data);
                 } catch (error) {
@@ -1261,14 +1266,15 @@
             sourceSelectionForm.action = originalHref;
 
             const selectedMode = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
+            const progressMode = selectedMode === 'read' ? 'quiz' : selectedMode;
 
-            cachedFetchJson(`/topics/${topicId}/source-progress?mode=${selectedMode}`, {
+            cachedFetchJson(`/topics/${topicId}/source-progress?mode=${progressMode}`, {
                 method: 'GET',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken.content,
                     'Accept': 'application/json'
                 }
-            }, 15000, `source-progress:${topicId}:${selectedMode}`)
+            }, 15000, `source-progress:${topicId}:${progressMode}`)
                 .then(data => {
                     updateSourcesContainer(data);
                     modal.show();
@@ -1309,7 +1315,9 @@
             const sourceParams = selectedSources.map(s => `sources[]=${s}`).join('&');
             const baseUrl = selectedMode === 'tutor'
                 ? `/quiz/${courseId}/${topicId}/tutor`
-                : `/quiz/${courseId}/${topicId}`;
+                : (selectedMode === 'read'
+                    ? `/quiz/${courseId}/${topicId}/read`
+                    : `/quiz/${courseId}/${topicId}`);
             let extraParams = '';
 
             if (selectedMode === 'tutor') {
