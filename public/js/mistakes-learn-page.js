@@ -1698,6 +1698,7 @@ function initializeMistakesLearnPage() {
                     }
 
                     currentQuestionIndex = nextQuestionIndex;
+                    shuffleQuestionOptions(questionsData[currentQuestionIndex]);
 
                     document.querySelectorAll('.card').forEach(card => {
                         card.classList.remove('active');
@@ -1745,6 +1746,7 @@ function initializeMistakesLearnPage() {
 
                 // Update current question index
                 currentQuestionIndex = nextQuestionIndex;
+                shuffleQuestionOptions(questionsData[currentQuestionIndex]);
 
                 // Hide ALL cards in the DOM
                 document.querySelectorAll('.card').forEach(card => {
@@ -1761,6 +1763,27 @@ function initializeMistakesLearnPage() {
                 // Update progress
                 updateProgress();
                 updateStageIndicator();
+            }
+
+            function shuffleQuestionOptions(questionData) {
+                const optionsContainer = questionData?.element?.querySelector('.options');
+                if (!optionsContainer) {
+                    return;
+                }
+
+                const options = Array.from(optionsContainer.querySelectorAll('.option'));
+                if (options.length < 2) {
+                    return;
+                }
+
+                for (let i = options.length - 1; i > 0; i--) {
+                    const randomIndex = Math.floor(Math.random() * (i + 1));
+                    [options[i], options[randomIndex]] = [options[randomIndex], options[i]];
+                }
+
+                options.forEach((option) => {
+                    optionsContainer.appendChild(option);
+                });
             }
 
             function updateProgress() {

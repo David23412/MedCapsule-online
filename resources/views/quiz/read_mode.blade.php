@@ -22,28 +22,29 @@
         }
 
         .read-shell {
-            max-width: 1360px;
+            max-width: 1600px;
+            width: 95%;
             margin: 0 auto;
-            padding: 32px 20px 64px;
+            padding: 24px 10px 80px;
         }
 
         .back-link-wrap {
             position: sticky;
             top: 0;
             z-index: 30;
-            padding: 10px 0 14px;
-            margin-bottom: 8px;
-            background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(248, 250, 252, 0.88) 72%, rgba(248, 250, 252, 0) 100%);
-            backdrop-filter: blur(10px);
+            padding: 18px 40px;
+            margin-bottom: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
         }
 
         .read-header {
             background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 20px;
-            padding: 24px;
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
-            margin-bottom: 24px;
+            border: none;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 32px 40px;
+            margin-bottom: 0;
         }
 
         .read-kicker {
@@ -92,11 +93,23 @@
 
         .question-card {
             background: #ffffff;
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 32px 40px;
+            margin-bottom: 0;
+        }
+
+        .question-card:last-of-type {
+            border-bottom: none;
+            border-radius: 0 0 24px 24px;
+        }
+
+        .read-content-sheet {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
             border: 1px solid #e2e8f0;
-            border-radius: 20px;
-            padding: 24px;
-            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.05);
-            margin-bottom: 20px;
         }
 
         .question-top {
@@ -141,35 +154,39 @@
         }
 
         .mistake-btn {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            min-height: 40px;
-            padding: 10px 14px;
-            border-radius: 999px;
-            border: 1px solid #cbd5e1;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 0.9rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #e2e8f0;
             background: #ffffff;
-            color: #0f172a;
-            font-size: 0.85rem;
-            font-weight: 700;
-            line-height: 1;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
+            color: #64748b;
+            padding: 0;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
         }
 
-        .mistake-btn:hover {
-            border-color: #f59e0b;
-            color: #b45309;
-            background: #fffaf0;
+        .mistake-btn:hover:not(:disabled) {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            color: #0f172a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
         }
 
         .mistake-btn.is-saved {
-            border-color: #fed7aa;
-            background: #fff7ed;
-            color: #c2410c;
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #15803d;
+            cursor: default;
+            box-shadow: none;
         }
+
+
 
         .mistake-btn:disabled {
             cursor: default;
@@ -319,18 +336,27 @@
 
         @media (max-width: 768px) {
             .read-shell {
-                padding: 20px 14px 48px;
+                width: 100%;
+                padding: 0 0 48px;
+            }
+
+            .read-content-sheet {
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
             }
 
             .back-link-wrap {
                 top: 0;
-                padding: 8px 0 12px;
+                padding: 12px 16px;
+                border-bottom: 1px solid #f1f5f9;
             }
 
             .question-card,
             .read-header {
-                border-radius: 16px;
-                padding: 18px;
+                border-radius: 0;
+                padding: 24px 16px;
+                border-bottom: 1px solid #f1f5f9;
             }
 
             .question-top {
@@ -380,18 +406,18 @@
         $mistakeLookup = array_fill_keys($mistakeQuestionIds ?? [], true);
     @endphp
     <div class="read-shell">
-        <div class="back-link-wrap">
-            <a href="{{ route('topics.forCourse', $course->id) }}" class="back-link">
-                <i class="fas fa-arrow-left"></i>
-                <span>Back to Topics</span>
-            </a>
-        </div>
-
-        <section class="read-header">
-            <div class="read-kicker">
-                <i class="fas fa-book-open"></i>
-                <span>Read Mode</span>
+        <div class="read-content-sheet">
+            <div class="back-link-wrap">
+                <a href="{{ route('topics.forCourse', $course->id) }}" class="back-link">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Back to Topics</span>
+                </a>
             </div>
+            <section class="read-header">
+                <div class="read-kicker">
+                    <i class="fas fa-book-open"></i>
+                    <span>Read Mode</span>
+                </div>
             <h1>{{ $topic->name }}</h1>
             <div class="read-meta">
                 <span><strong>Course:</strong> {{ $course->name }}</span>
@@ -427,9 +453,9 @@
                             class="mistake-btn{{ $isMistakeSaved ? ' is-saved' : '' }}"
                             data-question-id="{{ $question->id }}"
                             data-add-mistake-url="{{ route('questions.add-mistake', $question->id) }}"
+                            title="{{ $isMistakeSaved ? 'In Mistakes' : 'Add to Mistakes' }}"
                             {{ $isMistakeSaved ? 'disabled' : '' }}>
                             <i class="fas {{ $isMistakeSaved ? 'fa-check' : 'fa-plus' }}"></i>
-                            <span>{{ $isMistakeSaved ? 'In Mistakes' : '+ Mistakes' }}</span>
                         </button>
                         @if(!empty($question->source))
                             <span class="badge text-bg-secondary">{{ $question->source }}</span>
@@ -496,21 +522,19 @@
                 </div>
             </article>
         @endforeach
+        </div>
     </div>
     <script>
         (function() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
-            function setMistakeButtonSavedState(button, labelText = 'In Mistakes') {
+            function setMistakeButtonSavedState(button) {
                 button.disabled = true;
                 button.classList.add('is-saved');
+                button.title = 'In Mistakes';
                 const icon = button.querySelector('i');
-                const text = button.querySelector('span');
                 if (icon) {
                     icon.className = 'fas fa-check';
-                }
-                if (text) {
-                    text.textContent = labelText;
                 }
             }
 
@@ -522,7 +546,7 @@
 
                     const originalHtml = button.innerHTML;
                     button.disabled = true;
-                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Saving...</span>';
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
                     try {
                         const response = await fetch(button.dataset.addMistakeUrl, {
