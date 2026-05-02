@@ -12,8 +12,6 @@ let audioPool = {
     perfect: [],
     partial: []
 };
-let poolReplenishmentTimer = null;
-let poolReplenishmentInterval = null;
 
 // Global variable declarations
 let firstAttemptAnswers = {};
@@ -26,11 +24,14 @@ let currentQuestionIndex = 1;
 let totalQuestions = TUTOR_CONFIG.totalQuestions;
 let correctAnswers = 0;
 let totalAnswers = 0;
+let correctAnswerStreak = 0;
+let lastCelebratedStreakMilestone = 0;
 let userAnswers = {};
 let questionResults = {};
 let timerInterval;
 let answerCache = {};
 let questionData = {};
+let streakRewardAudio = null;
 const tutorDraft = window.QuizSessionDraft?.create({
     key: TUTOR_CONFIG.draftKey,
     questionIds: Object.keys(TUTOR_CONFIG.questionData || {}),
@@ -99,6 +100,8 @@ function saveTutorDraft() {
         currentQuestionIndex,
         correctAnswers,
         totalAnswers,
+        correctAnswerStreak,
+        lastCelebratedStreakMilestone,
         userAnswers,
         questionStates,
         questionResults,
@@ -203,6 +206,8 @@ function restoreTutorDraftState() {
     currentQuestionIndex = Math.max(1, Number(savedDraft.currentQuestionIndex || 1));
     correctAnswers = Math.max(0, Number(savedDraft.correctAnswers || 0));
     totalAnswers = Math.max(0, Number(savedDraft.totalAnswers || 0));
+    correctAnswerStreak = Math.max(0, Number(savedDraft.correctAnswerStreak || 0));
+    lastCelebratedStreakMilestone = Math.max(0, Number(savedDraft.lastCelebratedStreakMilestone || 0));
     userAnswers = savedDraft.userAnswers && typeof savedDraft.userAnswers === 'object' ? savedDraft.userAnswers : {};
     questionStates = savedDraft.questionStates && typeof savedDraft.questionStates === 'object' ? savedDraft.questionStates : {};
     questionResults = savedDraft.questionResults && typeof savedDraft.questionResults === 'object' ? savedDraft.questionResults : {};
@@ -252,310 +257,86 @@ function restoreTutorDraftState() {
     isRestoringTutorDraft = false;
 }
 
-// LIGHTNING FAST FUNCTION DEFINITIONS 🚀
-window.selectOption = function selectOption(element) {
+function resetCorrectAnswerStreak() {
+    correctAnswerStreak = 0;
+}
+
+function playStreakRewardSound() {
     try {
-        const container = element.closest('.options-container');
-        if (!container) return;
+        if (!streakRewardAudio) {
+            streakRewardAudio = new Audio('/sounds/encouragement.mp3');
+            streakRewardAudio.preload = 'auto';
+            streakRewardAudio.volume = 0.68;
+        }
 
-        // OPTIMIZED: Remove selected from siblings only
-        const siblings = container.querySelectorAll('.option-card');
-        siblings.forEach(opt => opt.classList.remove('selected'));
-
-        // CLEAN SELECTION FEEDBACK
-        element.classList.add('selected');
-
+        streakRewardAudio.currentTime = 0;
+        streakRewardAudio.play().catch(() => {});
     } catch (error) {
-        console.error('selectOption error:', error);
+        console.log('ℹ️ Streak reward sound unavailable');
     }
-};
+}
 
-// Jump to specific question from sidebar
-window.jumpToQuestion = function (questionNumber) {
-    console.log(`🎯 Jumping to question ${questionNumber}`);
-
-    document.querySelectorAll('.question-card').forEach(card => {
-        card.style.display = 'none';
-    });
-
-    const targetQuestion = document.getElementById(`question-${questionNumber}`);
-    if (targetQuestion) {
-        targetQuestion.style.display = 'block';
-        currentQuestionIndex = questionNumber;
-        updateSidebarActiveState(questionNumber);
-        saveTutorDraft();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-};
-
-// Navigate to previous question
-window.navigatePrevious = function (currentNumber) {
-    if (currentNumber > 1) {
-        jumpToQuestion(currentNumber - 1);
-    }
-};
-
-// Navigate to next question
-window.navigateNext = function (currentNumber) {
-    if (currentNumber < totalQuestions) {
-        jumpToQuestion(currentNumber + 1);
-    }
-};
-
-// Handle "I Don't Know" button
-window.handleDontKnow = function (questionNumber, questionId) {
-    console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
-
-    if (questionStates[questionNumber]) {
-        console.log(`⚠️ Question ${questionNumber} already answered, ignoring`);
+function showStreakCelebration(streakCount) {
+    const celebration = document.getElementById('streak-celebration');
+    if (!celebration) {
         return;
     }
 
-    questionStates[questionNumber] = true;
-    firstAttemptAnswers[questionId] = 'Dont know';
+    const streakCountElement = celebration.querySelector('[data-streak-count]');
+    const streakMessageElement = celebration.querySelector('[data-streak-message]');
 
-    const qData = questionData[questionId];
-    if (!qData) {
-        console.error(`❌ Question data not found for ID ${questionId}`);
-        return;
+    if (streakCountElement) {
+        streakCountElement.textContent = `${streakCount} correct in a row`;
     }
 
-    totalAnswers++;
-    userAnswers[questionId] = 'dont_know';
-    questionResults[questionId] = {
-        type: 'dont_know',
-        is_correct: false,
-        correct_answer: qData.correct_answer,
-        explanation: qData.explanation || '',
-        showViewResultsButton: totalAnswers === TUTOR_CONFIG.totalQuestions
-    };
+    if (streakMessageElement) {
+        streakMessageElement.textContent = streakCount === 5
+            ? 'Clean run. Keep the pace steady.'
+            : `${streakCount} straight answers. Locked in.`;
+    }
 
-    updateSidebarCircleState(questionNumber, false);
+    celebration.classList.remove('show');
+    void celebration.offsetWidth;
+    celebration.classList.add('show');
 
-    const questionCard = document.getElementById(`question-${questionNumber}`);
-    if (questionCard) {
-        const feedbackDiv = questionCard.querySelector('.answer-feedback');
-        const alertDiv = feedbackDiv.querySelector('.alert');
+    playStreakRewardSound();
 
-        feedbackDiv.style.display = 'block';
-        alertDiv.className = 'alert alert-danger';
-        feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
-        feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                    <div class="explanation-with-icon">
-                        <div class="answer-header">
-                            <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                            <strong>Correct Answer: ${qData.correct_answer}</strong>
-                        </div>
-                        <div class="explanation-text">
-                            ${qData.explanation || 'No explanation available.'}
-                        </div>
-                    </div>
-                `;
-
-        // Highlight the correct answer option in green
-        questionCard.querySelectorAll('.option-card').forEach(opt => {
-            const optionLetter = opt.getAttribute('data-option');
-            if (optionLetter === qData.correct_answer) {
-                opt.classList.add('correct');
-            }
-            opt.style.pointerEvents = 'none';
-            opt.style.opacity = '0.6';
+    if (typeof confetti !== 'undefined') {
+        confetti({
+            particleCount: 42,
+            spread: 34,
+            startVelocity: 24,
+            ticks: 140,
+            gravity: 0.9,
+            drift: 0.15,
+            origin: { x: 0.5, y: 0.18 },
+            colors: ['#f59e0b', '#fbbf24', '#cbd5e1', '#94a3b8'],
+            scalar: 0.82,
+            zIndex: 11000
         });
-
-        const checkBtn = questionCard.querySelector('.check-answer');
-        const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
-        if (checkBtn) checkBtn.style.display = 'none';
-        if (dontKnowBtn) dontKnowBtn.style.display = 'none';
-
-        // Check if all questions are answered - if so, show View Results button
-        if (totalAnswers === TUTOR_CONFIG.totalQuestions) {
-            console.log('🔥 ALL QUESTIONS ANSWERED VIA I DONT KNOW: Showing View Results button');
-            const resultsBtn = questionCard.querySelector('.view-results');
-            if (resultsBtn) resultsBtn.style.display = 'inline-block';
-        } else {
-            const nextBtn = questionCard.querySelector('.next-question');
-            if (nextBtn) nextBtn.style.display = 'inline-block';
-        }
     }
 
-    updateProgress(totalAnswers, TUTOR_CONFIG.totalQuestions);
-    // 🎯 REMOVED INDIVIDUAL QUESTION SOUNDS - ONLY FINAL GRADING SOUND NOW
-};
+    window.clearTimeout(showStreakCelebration.hideTimer);
+    showStreakCelebration.hideTimer = window.setTimeout(() => {
+        celebration.classList.remove('show');
+    }, 2350);
+}
 
-window.checkAnswer = function checkAnswer(questionNumber, questionId) {
-    const startTime = performance.now();
-    console.log(`🚀 CHECKING ANSWER: Question ${questionNumber}, ID ${questionId}`);
-
-    // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
-    const processingKey = `processing_${questionNumber}`;
-    if (checkAnswer[processingKey]) {
-        console.log(`🔇 BULLETPROOF: Question ${questionNumber} already being processed, skipping duplicate`);
-        return;
-    }
-    checkAnswer[processingKey] = true;
-
-    // INSTANT DOM ACCESS
-    const questionCard = document.getElementById(`question-${questionNumber}`);
-    if (!questionCard) {
-        console.error(`❌ Question card not found: question-${questionNumber}`);
+function updateCorrectAnswerStreak(isCorrect) {
+    if (!isCorrect) {
+        resetCorrectAnswerStreak();
         return;
     }
 
-    const writtenAnswer = questionCard.querySelector('.written-answer');
-    const selectedOption = questionCard.querySelector('.option-card.selected');
-    const checkBtn = questionCard.querySelector('.check-answer');
+    correctAnswerStreak += 1;
 
-    // INSTANT ANSWER EXTRACTION
-    let answer = '';
-    if (writtenAnswer) {
-        answer = writtenAnswer.value.trim();
-    } else if (selectedOption) {
-        answer = selectedOption.getAttribute('data-option');
-    }
-
-    if (!answer) {
-        console.warn('⚠️ No answer selected');
-
-        // Show user-friendly warning message
-        const questionCard = document.getElementById(`question-${questionNumber}`);
-        if (questionCard) {
-            const feedbackDiv = questionCard.querySelector('.answer-feedback');
-
-            // Hide any existing feedback first
-            feedbackDiv.style.display = 'none';
-
-            // Clear processing flag to allow retry
-            delete checkAnswer[processingKey];
-
-            // Show warning after a brief delay
-            setTimeout(() => {
-                feedbackDiv.style.display = 'block';
-                const alertDiv = feedbackDiv.querySelector('.alert');
-                alertDiv.className = 'alert alert-warning';
-                feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
-                feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                    <div class="explanation-with-icon warning-inline">
-                        <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                        <div class="explanation-text">You need to choose an answer before checking. Select one of the options above and try again.</div>
-                    </div>
-                `;
-            }, 300);
-        }
-
+    if (correctAnswerStreak % 5 !== 0 || correctAnswerStreak === lastCelebratedStreakMilestone) {
         return;
     }
 
-    console.log(`📝 Answer selected: "${answer}"`);
-
-    // 💀 INSTANT CLIENT-SIDE CHECKING - NO NETWORK DELAY 💀
-    // Written questions MUST go to the server for intelligent fuzzy grading
-    if (questionData[questionId] && questionData[questionId].question_type !== 'written') {
-        console.log(`⚡ INSTANT CLIENT-SIDE CHECK for Q${questionId}`);
-
-        const qData = questionData[questionId];
-        const isCorrect = answer.toLowerCase().trim() === qData.correct_answer.toLowerCase().trim();
-
-        const instantData = {
-            success: true,
-            is_correct: isCorrect,
-            correct_answer: qData.correct_answer,
-            explanation: qData.explanation
-        };
-
-        console.log(`✅ INSTANT RESULT: ${isCorrect ? 'CORRECT' : 'WRONG'} (0ms)`);
-
-        // TRACK PERFORMANCE
-        window.performanceStats.instantChecks++;
-        window.performanceStats.totalTime += (performance.now() - startTime);
-
-        // INSTANT PROCESSING
-        userAnswers[questionId] = answer;
-        totalAnswers++;
-        if (isCorrect) correctAnswers++;
-
-        // INSTANT UI UPDATE
-        processAnswerResult(questionNumber, questionId, instantData, checkBtn);
-        // Clear processing flag
-        delete checkAnswer[processingKey];
-        return;
-    }
-
-    // NETWORK REQUEST (always used for written questions, fallback for others)
-    console.log(questionData[questionId]?.question_type === 'written'
-        ? `📝 WRITTEN QUESTION: Sending to server for intelligent grading Q${questionId}`
-        : `⚠️ FALLBACK TO NETWORK for Q${questionId}`);
-
-    if (checkBtn) {
-        checkBtn.disabled = true;
-        checkBtn.textContent = 'Checking...';
-        checkBtn.style.background = '#6c757d';
-    }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-    fetch(`/quiz/tutor/check/${questionId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-        },
-        body: JSON.stringify({ answer })
-    })
-        .then(response => {
-            const responseTime = performance.now() - startTime;
-            console.log(`⚡ Server response in ${Math.round(responseTime)}ms (Status: ${response.status})`);
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status} ${response.statusText}`);
-            }
-
-            return response.json();
-        })
-        .then(data => {
-            const totalTime = performance.now() - startTime;
-            console.log(`✅ Answer processed in ${Math.round(totalTime)}ms`);
-
-            if (!data.success) {
-                throw new Error(data.message || 'Answer check failed');
-            }
-
-            // CACHE THE RESULT FOR FUTURE INSTANT ACCESS
-            answerCache[`${questionId}_${answer}`] = data;
-
-            // INSTANT ANSWER STORAGE
-            userAnswers[questionId] = answer;
-            totalAnswers++;
-            if (data.is_correct) correctAnswers++;
-
-            // PROCESS RESULT
-            processAnswerResult(questionNumber, questionId, data, checkBtn);
-            delete checkAnswer[processingKey];
-        })
-        .catch(error => {
-            console.log('ℹ️ Answer check encountered an issue, providing fallback response');
-
-            const fallbackData = {
-                success: false,
-                is_correct: false,
-                error: 'Connection issue',
-                correct_answer: 'Unable to determine',
-                explanation: 'Please check your connection and try again'
-            };
-
-            totalAnswers++;
-            updateQuestionUI(questionNumber, {
-                correct: fallbackData.is_correct,
-                explanation: fallbackData.explanation,
-                correctAnswer: fallbackData.correct_answer
-            });
-
-            questionCard.querySelectorAll('input, textarea, button').forEach(el => el.disabled = false);
-            delete checkAnswer[processingKey];
-        });
-};
+    lastCelebratedStreakMilestone = correctAnswerStreak;
+    showStreakCelebration(correctAnswerStreak);
+}
 
 // Function to update sidebar active state
 function updateSidebarActiveState(questionNumber) {
@@ -580,269 +361,6 @@ function updateSidebarCircleState(questionNumber, isCorrect) {
             circle.classList.remove('correct');
         }
     }
-}
-
-// Update progress bar
-function updateProgressLegacy(completed, total) {
-    const progressFill = document.getElementById('progress-fill');
-    const progressText = document.getElementById('progress-text');
-    const timerElement = document.getElementById('timer');
-    const percentage = (completed / total) * 100;
-
-    if (progressFill) {
-        progressFill.style.width = `${percentage}%`;
-
-        if (timerElement) {
-            if (timerElement.classList.contains('danger')) {
-                progressFill.classList.add('danger');
-                progressFill.classList.remove('warning');
-            } else if (timerElement.classList.contains('warning')) {
-                progressFill.classList.add('warning');
-                progressFill.classList.remove('danger');
-            } else {
-                progressFill.classList.remove('warning', 'danger');
-            }
-        }
-    }
-
-    if (progressText) {
-        progressText.textContent = `${completed} of ${total} questions completed`;
-    }
-}
-
-// Process answer result
-function processAnswerResultLegacy(questionNumber, questionId, data, checkBtn) {
-    const resultKey = `result_processed_${questionNumber}`;
-    if (processAnswerResultLegacy[resultKey]) {
-        console.log(`🔇 BULLETPROOF: Result already processed for Q${questionNumber}, skipping duplicate`);
-        return;
-    }
-    processAnswerResultLegacy[resultKey] = true;
-
-    updateSidebarCircleState(questionNumber, data.is_correct);
-
-    if (totalAnswers === totalQuestions) {
-        console.log('🔥 LAST QUESTION ANSWERED: Showing View Results button instead of Next Question');
-
-        updateQuestionUI(questionNumber, {
-            correct: data.is_correct,
-            explanation: data.explanation,
-            correctAnswer: data.correct_answer,
-            showNextButton: false,
-            showViewResultsButton: true
-        });
-
-        return;
-    }
-
-    console.log('🎓 TUTOR MODE: Showing explanation for Q${questionNumber}, total answered: ${totalAnswers}/${totalQuestions}');
-
-    updateQuestionUI(questionNumber, {
-        correct: data.is_correct,
-        explanation: data.explanation,
-        correctAnswer: data.correct_answer,
-        showNextButton: true
-    });
-}
-
-// Update question UI after checking answer
-function updateQuestionUILegacy(questionNumber, data) {
-    const questionCard = document.getElementById(`question-${questionNumber}`);
-    const feedbackDiv = questionCard.querySelector('.answer-feedback');
-    const optionsContainer = questionCard.querySelector('.options-container');
-
-    const soundKey = `sound_played_${questionNumber}`;
-    const hasPlayedSound = questionCard.dataset[soundKey];
-
-    feedbackDiv.style.display = 'block';
-    const alertDiv = feedbackDiv.querySelector('.alert');
-    alertDiv.className = `alert ${data.correct ? 'alert-success' : 'alert-danger'}`;
-
-    feedbackDiv.querySelector('.result-text').textContent = data.correct ? 'Correct! 🎉' : 'Incorrect';
-
-    if (totalAnswers < totalQuestions && !hasPlayedSound) {
-        console.log(`🔥 LETHAL AUDIO POOL: Playing instant sound for Q${questionNumber} (${data.correct ? 'correct' : 'wrong'}) - FIRST TIME ONLY`);
-        playInstantSound(data.correct);
-        questionCard.dataset[soundKey] = 'true';
-    } else if (hasPlayedSound) {
-        console.log(`🔇 LETHAL AUDIO POOL: Sound already played for Q${questionNumber}, skipping duplicate`);
-    } else {
-        console.log(`🔇 LETHAL AUDIO POOL: Skipping sound for final question Q${questionNumber} to prevent overlap with final grading sound`);
-    }
-
-    let explanationHtml = data.explanation || '';
-    let correctAnswerHeader = '';
-    if (!data.correct && data.correctAnswer) {
-        correctAnswerHeader = `
-                    <div class="answer-header">
-                        <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                        <strong>Correct Answer: ${data.correctAnswer}</strong>
-                    </div>`;
-    }
-    // Add doctor icon wrapper
-    const explanationWithIcon = `
-                <div class="explanation-with-icon">
-                    ${correctAnswerHeader}
-                    <div class="explanation-text">
-                        ${explanationHtml}
-                    </div>
-                </div>
-            `;
-    feedbackDiv.querySelector('.explanation-content').innerHTML = explanationWithIcon;
-
-    const selectedOption = questionCard.querySelector('.option-card.selected');
-    const writtenAnswer = questionCard.querySelector('.written-answer');
-
-    if (writtenAnswer) {
-        writtenAnswer.disabled = true;
-        writtenAnswer.classList.add(data.correct ? 'correct' : 'incorrect');
-    } else if (selectedOption) {
-        const options = questionCard.querySelectorAll('.option-card');
-        options.forEach(option => {
-            option.classList.remove('selected', 'correct', 'incorrect');
-            if (option === selectedOption) {
-                option.classList.add(data.correct ? 'correct' : 'incorrect');
-            } else if (!data.correct && option.getAttribute('data-option') === data.correctAnswer) {
-                option.classList.add('correct');
-            }
-        });
-    }
-
-    const checkAnswerBtn = questionCard.querySelector('.check-answer');
-    const nextQuestionBtn = questionCard.querySelector('.next-question');
-    const viewResultsBtn = questionCard.querySelector('.view-results');
-
-    if (checkAnswerBtn) checkAnswerBtn.style.display = 'none';
-
-    if (data.showViewResultsButton) {
-        if (viewResultsBtn) {
-            viewResultsBtn.style.display = 'block';
-            viewResultsBtn.disabled = false;
-            if (!viewResultsBtn) {
-                const actionsDiv = questionCard.querySelector('.actions');
-                const newViewResultsBtn = document.createElement('button');
-                newViewResultsBtn.className = 'btn btn-success view-results';
-                newViewResultsBtn.onclick = () => {
-                    const percentage = (correctAnswers / totalAnswers) * 100;
-                    showQuizResults({
-                        correct: correctAnswers,
-                        total: totalAnswers,
-                        percentage: percentage
-                    });
-                };
-                newViewResultsBtn.textContent = 'View Results';
-                actionsDiv.appendChild(newViewResultsBtn);
-            }
-        }
-    } else if (nextQuestionBtn) {
-        nextQuestionBtn.style.display = 'block';
-        nextQuestionBtn.disabled = false;
-    }
-
-    updateProgress(totalAnswers, totalQuestions);
-}
-
-// Function to show next question
-function showNextQuestionLegacy(currentNumber) {
-    const currentQuestion = document.getElementById(`question-${currentNumber}`);
-    const nextQuestion = document.getElementById(`question-${currentNumber + 1}`);
-
-    if (currentQuestion) {
-        currentQuestion.style.display = 'none';
-    }
-
-    if (nextQuestion) {
-        nextQuestion.style.display = 'block';
-        currentQuestionIndex = currentNumber + 1;
-        updateProgress(currentNumber + 1, totalQuestions);
-    } else {
-        const percentage = (correctAnswers / totalAnswers) * 100;
-        showQuizResults({
-            correct: correctAnswers,
-            total: totalAnswers,
-            percentage: percentage
-        });
-    }
-}
-
-// Function to show final results when "View Results" button is clicked
-function showFinalResultsLegacy() {
-    console.log('🎯 VIEW RESULTS: User clicked "View Results" button for final question');
-    const percentage = (correctAnswers / totalAnswers) * 100;
-
-    showQuizResults({
-        correct: correctAnswers,
-        total: totalAnswers,
-        percentage: percentage
-    });
-}
-
-// INSTANT RESULTS: Show popup immediately
-function showQuizResultsLegacy(results) {
-    console.log('🚀 INSTANT RESULTS: Starting immediate quiz completion process', results);
-    const completionStart = performance.now();
-
-    const popupOverlay = document.getElementById('popup-overlay');
-    const popup = document.getElementById('popup');
-    const gradeIcon = document.getElementById('grade-icon');
-    const popupTitle = document.getElementById('popup-title');
-    const popupScore = document.getElementById('popup-score');
-    const popupMessage = document.getElementById('popup-message');
-
-    popupScore.textContent = `${results.correct}/${results.total}`;
-
-    const percentage = (results.correct / results.total) * 100;
-    if (percentage === 100) {
-        gradeIcon.innerHTML = '<i class="fas fa-crown"></i>';
-        gradeIcon.className = 'grade-icon perfect';
-        popupTitle.textContent = 'Perfect Score!';
-        popupMessage.textContent = 'Outstanding! You\'ve mastered this topic!';
-
-        if (typeof confetti !== 'undefined') {
-            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-            const originX = isSafari ? 0.48 : 0.62;
-
-            setTimeout(() => {
-                confetti({
-                    particleCount: 150,
-                    spread: 70,
-                    origin: { x: originX, y: 0.45 },
-                    colors: ['#FFD700', '#FFA500', '#FF69B4', '#00CED1', '#98FB98'],
-                    zIndex: 10000
-                });
-            }, 300);
-        }
-    } else if (percentage >= 70) {
-        gradeIcon.innerHTML = '<i class="fas fa-star"></i>';
-        gradeIcon.className = 'grade-icon good';
-        popupTitle.textContent = 'Well Done!';
-        popupMessage.textContent = 'Good progress! Keep up the great work!';
-    } else {
-        gradeIcon.innerHTML = '<i class="fas fa-book"></i>';
-        gradeIcon.className = 'grade-icon needs-improvement';
-        popupTitle.textContent = 'Keep Learning!';
-        popupMessage.textContent = 'Don\'t give up! Practice makes perfect!';
-    }
-
-    popupOverlay.classList.add('show');
-    setTimeout(() => popup.classList.add('show'), 100);
-
-    const uiTime = performance.now() - completionStart;
-    console.log(`⚡ INSTANT UI: Popup shown in ${(uiTime).toFixed(2)}ms - COMPLETING FUNCTION NOW`);
-
-    const isRandomQuiz = TUTOR_CONFIG.isRandomQuiz;
-
-    if (!isRandomQuiz) {
-        recordTutorQuizAttempt(results);
-    } else {
-        console.log('🎓 TUTOR MODE: Skipping quiz attempt recording for learning mode');
-    }
-
-    playFinalGradingSound(results.correct, results.total);
-
-    console.log(`🎉 INSTANT RESULTS: Function completed in ${(performance.now() - completionStart).toFixed(2)}ms - background operations running independently`);
-
-    return;
 }
 
 // 💀 LETHAL AUDIO POOL - INSTANT SOUND PLAYBACK 💀
@@ -953,71 +471,6 @@ function recordTutorQuizAttempt(results) {
     }
 }
 
-// 💀 ULTRA-MEGA INSTANT GRADING SOUND - AUDIO POOL POWERED 💀
-function playFinalGradingSoundLegacy(score, total) {
-    const funcStart = performance.now();
-    console.log('🔥 PLAY FINAL GRADING SOUND - AUDIO POOL EDITION');
-
-    const percentage = (score / total) * 100;
-
-    // 💀 AUDIO POOL INSTANT SELECTION - NO DOWNLOAD DELAY 💀
-    let soundType = 'partial'; // Default to partial
-    if (percentage === 100) {
-        soundType = 'perfect';
-    } else if (percentage < 70) {
-        soundType = 'wrong';
-    }
-
-    console.log(`🎵 PLAYING INSTANT ${soundType.toUpperCase()} SOUND`);
-
-    // 💀 INSTANT AUDIO POOL ACCESS - ZERO DELAY 💀
-    let audio = null;
-    if (audioPool[soundType] && audioPool[soundType].length > 0) {
-        audio = audioPool[soundType].shift(); // Remove from pool
-        console.log(`🔥 LETHAL AUDIO POOL: Got ${soundType} audio from pool (${audioPool[soundType].length} remaining)`);
-    } else {
-        // 💀 FALLBACK: CREATE FRESH AUDIO 💀
-        console.log(`🔥 LETHAL AUDIO POOL: Pool empty, creating fresh ${soundType} audio`);
-        createAudioElement(soundType);
-        audio = audioPool[soundType].shift();
-    }
-
-    if (!audio) {
-        console.log(`ℹ️ LETHAL AUDIO POOL: No audio available for ${soundType}, continuing silently`);
-        return;
-    }
-
-    // 💀 INSTANT PLAYBACK WITH ERROR HANDLING 💀
-    try {
-        audio.currentTime = 0;
-        audio.volume = 0.7;
-
-        // Add a one-time ended listener to ensure proper cleanup
-        const endedHandler = () => {
-            audio.removeEventListener('ended', endedHandler);
-            setTimeout(() => {
-                returnToPool(audio, soundType);
-            }, 100); // Small delay to ensure full playback
-        };
-        audio.addEventListener('ended', endedHandler);
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                const playbackTime = performance.now() - funcStart;
-                console.log(`✅ LETHAL AUDIO POOL: ${soundType} sound started in ${playbackTime.toFixed(2)}ms - letting it play fully`);
-            }).catch(error => {
-                console.error(`❌ LETHAL AUDIO POOL: ${soundType} playback failed`, error);
-                audio.removeEventListener('ended', endedHandler);
-                returnToPool(audio, soundType);
-            });
-        }
-    } catch (error) {
-        console.error(`❌ LETHAL AUDIO POOL: ${soundType} audio error`, error);
-        returnToPool(audio, soundType);
-    }
-}
-
 // Timer functionality - DIFFERENT MODES FOR RANDOM VS NORMAL TUTOR
 let isRandomQuiz = TUTOR_CONFIG.isRandomQuiz;
 let initialDuration = TUTOR_CONFIG.initialDuration; // Only for random quiz
@@ -1093,119 +546,7 @@ function updateTimerStyling(timerElement, remainingTime) {
     }
 }
 
-// LETHAL AUDIO POOL DEBUG FUNCTIONS
-window.debugAudioPool = function () {
-    console.log('🔥 LETHAL AUDIO POOL DEBUG:');
-    console.log('Correct pool size:', audioPool.correct.length);
-    console.log('Wrong pool size:', audioPool.wrong.length);
-    console.log('Perfect pool size:', audioPool.perfect.length);
-    console.log('Partial pool size:', audioPool.partial.length);
-    console.log('Total pool elements:', audioPool.correct.length + audioPool.wrong.length + audioPool.perfect.length + audioPool.partial.length);
-};
-
-window.testAudioPool = function () {
-    console.log('🔥 LETHAL AUDIO POOL: Testing instant playback...');
-    setTimeout(() => playInstantSound(true), 100);
-    setTimeout(() => playInstantSound(false), 500);
-    setTimeout(() => playInstantSound(true), 1000);
-};
-
 // Helper functions to be fully available
-function initializeAudioPools() {
-    const correctElements = document.querySelectorAll('.audio-pool-correct');
-    const wrongElements = document.querySelectorAll('.audio-pool-wrong');
-    const perfectElements = document.querySelectorAll('.audio-pool-perfect');
-    const partialElements = document.querySelectorAll('.audio-pool-partial');
-
-    correctElements.forEach(audio => {
-        audioPool.correct.push(audio);
-        setupAudioElement(audio);
-    });
-
-    wrongElements.forEach(audio => {
-        audioPool.wrong.push(audio);
-        setupAudioElement(audio);
-    });
-
-    perfectElements.forEach(audio => {
-        audioPool.perfect.push(audio);
-        setupAudioElement(audio);
-    });
-
-    partialElements.forEach(audio => {
-        audioPool.partial.push(audio);
-        setupAudioElement(audio);
-    });
-
-    console.log(`🔥 LETHAL AUDIO POOL: Initialized - Correct: ${audioPool.correct.length}, Wrong: ${audioPool.wrong.length}, Perfect: ${audioPool.perfect.length}, Partial: ${audioPool.partial.length}`);
-}
-
-function setupAudioElement(audio) {
-    audio.volume = 0.7;
-    audio.preload = 'auto';
-
-    audio.addEventListener('ended', function () {
-        setTimeout(() => {
-            returnToPool(audio);
-        }, 200);
-    });
-
-    audio.addEventListener('error', function () {
-        console.log('ℹ️ Audio element error, returning to pool');
-        returnToPool(audio);
-    });
-}
-
-function startPoolReplenishment() {
-    poolReplenishmentInterval = setInterval(() => {
-        replenishPools();
-    }, 5000);
-
-    setTimeout(() => {
-        replenishPools();
-    }, 1000);
-}
-
-function replenishPools() {
-    const minPoolSize = 3;
-
-    // Replenish correct pool
-    if (audioPool.correct.length < minPoolSize) {
-        const needed = minPoolSize - audioPool.correct.length;
-        for (let i = 0; i < needed; i++) {
-            createAudioElement('correct');
-        }
-        console.log(`🔥 LETHAL AUDIO POOL: Replenished correct pool with ${needed} elements`);
-    }
-
-    // Replenish wrong pool
-    if (audioPool.wrong.length < minPoolSize) {
-        const needed = minPoolSize - audioPool.wrong.length;
-        for (let i = 0; i < needed; i++) {
-            createAudioElement('wrong');
-        }
-        console.log(`🔥 LETHAL AUDIO POOL: Replenished wrong pool with ${needed} elements`);
-    }
-
-    // Replenish perfect pool
-    if (audioPool.perfect.length < minPoolSize) {
-        const needed = minPoolSize - audioPool.perfect.length;
-        for (let i = 0; i < needed; i++) {
-            createAudioElement('perfect');
-        }
-        console.log(`🔥 LETHAL AUDIO POOL: Replenished perfect pool with ${needed} elements`);
-    }
-
-    // Replenish partial pool
-    if (audioPool.partial.length < minPoolSize) {
-        const needed = minPoolSize - audioPool.partial.length;
-        for (let i = 0; i < needed; i++) {
-            createAudioElement('partial');
-        }
-        console.log(`🔥 LETHAL AUDIO POOL: Replenished partial pool with ${needed} elements`);
-    }
-}
-
 function createAudioElement(type) {
     const audio = new Audio();
     let sourceUrl = '';
@@ -1317,10 +658,6 @@ document.addEventListener('DOMContentLoaded', function () {
         console.warn('⚠️ GradingAudioController not available, falling back to old system');
     }
 
-    // Initialize audio system (legacy system for final grading sound)
-    initializeAudioPools();
-    startPoolReplenishment();
-
     // Event delegation for option selection
     document.addEventListener('click', function (e) {
         if (e.target.closest('.option-card')) {
@@ -1328,10 +665,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    console.log('✅ LETHAL AUDIO POOL: System ready for 0ms instant playback');
-
     // Initialize highlighting system
     initializeHighlighting();
+
+    // Initialize timer after the tutor page is ready
+    setTimeout(() => {
+        if (typeof updateTimer === 'function') {
+            updateTimer();
+            console.log('✅ Timer started successfully');
+        } else {
+            console.error('❌ updateTimer function not found!');
+        }
+    }, 100);
 });
 
 // ===== TEXT HIGHLIGHTING SYSTEM =====
@@ -1836,6 +1181,7 @@ window.jumpToQuestion = function (questionNumber) {
             }
         }
 
+        saveTutorDraft();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 };
@@ -1873,58 +1219,20 @@ window.handleDontKnow = function (questionNumber, questionId) {
     }
 
     totalAnswers++;
+    resetCorrectAnswerStreak();
     userAnswers[questionId] = 'dont_know';
+    questionResults[questionId] = {
+        type: 'dont_know',
+        is_correct: false,
+        correct_answer: qData.correct_answer,
+        explanation: qData.explanation || '',
+        showViewResultsButton: totalAnswers === TUTOR_CONFIG.totalQuestions
+    };
 
     updateSidebarCircleState(questionNumber, false);
 
-    const questionCard = document.getElementById(`question-${questionNumber}`);
-    if (questionCard) {
-        const feedbackDiv = questionCard.querySelector('.answer-feedback');
-        const alertDiv = feedbackDiv.querySelector('.alert');
-
-        feedbackDiv.style.display = 'block';
-        alertDiv.className = 'alert alert-danger';
-        feedbackDiv.querySelector('.result-text').textContent = "Don't worry! Here's the answer:";
-        feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                    <div class="explanation-with-icon">
-                        <div class="answer-header">
-                            <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                            <strong>Correct Answer: ${qData.correct_answer}</strong>
-                        </div>
-                        <div class="explanation-text">
-                            ${qData.explanation || 'No explanation available.'}
-                        </div>
-                    </div>
-                `;
-
-        // Highlight the correct answer option in green
-        questionCard.querySelectorAll('.option-card').forEach(opt => {
-            const optionLetter = opt.getAttribute('data-option');
-            if (optionLetter === qData.correct_answer) {
-                opt.classList.add('correct');
-            }
-            opt.style.pointerEvents = 'none';
-            opt.style.opacity = '0.6';
-        });
-
-        const checkBtn = questionCard.querySelector('.check-answer');
-        const dontKnowBtn = questionCard.querySelector('.btn-dont-know');
-        if (checkBtn) checkBtn.style.display = 'none';
-        if (dontKnowBtn) dontKnowBtn.style.display = 'none';
-
-        // Check if all questions are answered - if so, show View Results button
-        if (totalAnswers === TUTOR_CONFIG.totalQuestions) {
-            console.log('🔥 ALL QUESTIONS ANSWERED VIA I DONT KNOW: Showing View Results button');
-            const resultsBtn = questionCard.querySelector('.view-results');
-            if (resultsBtn) resultsBtn.style.display = 'inline-block';
-        } else {
-            const nextBtn = questionCard.querySelector('.next-question');
-            if (nextBtn) nextBtn.style.display = 'inline-block';
-        }
-    }
-
+    renderDontKnowResult(questionNumber, questionId, questionResults[questionId]);
     updateProgress(totalAnswers, TUTOR_CONFIG.totalQuestions);
-    playInstantSound(false);
     saveTutorDraft();
 };
 
@@ -2193,86 +1501,6 @@ function updateProgress(completed, total) {
 // 💀 LETHAL CLIENT-SIDE ANSWER CHECKING 💀
 
 // PRELOAD ALL QUESTION DATA ON PAGE LOAD
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('🔥 PRELOADING QUESTION DATA FOR INSTANT CHECKING...');
-
-    // Extract question data from DOM
-    Object.assign(questionData, TUTOR_CONFIG.questionData);
-
-    console.log('✅ Question data preloaded for', Object.keys(questionData).length, 'questions');
-
-    // PERFORMANCE MONITORING
-    window.performanceStats = {
-        instantChecks: 0,
-        cacheHits: 0,
-        networkRequests: 0,
-        totalTime: 0
-    };
-
-    window.getPerformanceStats = function () {
-        console.log('📊 PERFORMANCE STATS:', window.performanceStats);
-        const avgTime = window.performanceStats.totalTime / (window.performanceStats.instantChecks + window.performanceStats.cacheHits + window.performanceStats.networkRequests);
-        console.log(`📊 AVERAGE RESPONSE TIME: ${Math.round(avgTime)}ms`);
-        return window.performanceStats;
-    };
-
-    // Initialize timer after everything is ready
-    console.log('🕒 Initializing timer...');
-    console.log('🕒 updateTimer function exists:', typeof updateTimer);
-    console.log('🕒 quizStartTime:', quizStartTime);
-    setTimeout(() => {
-        if (typeof updateTimer === 'function') {
-            updateTimer();
-            console.log('✅ Timer started successfully');
-        } else {
-            console.error('❌ updateTimer function not found!');
-        }
-    }, 100);
-});
-
-
-
-// Track first attempt answers for each question (already declared above)
-
-// Jump to specific question from sidebar
-window.jumpToQuestion = function (questionNumber) {
-    console.log(`🎯 Jumping to question ${questionNumber}`);
-
-    // Hide all questions
-    document.querySelectorAll('.question-card').forEach(card => {
-        card.style.display = 'none';
-    });
-
-    // Show target question
-    const targetQuestion = document.getElementById(`question-${questionNumber}`);
-    if (targetQuestion) {
-        targetQuestion.style.display = 'block';
-        currentQuestionIndex = questionNumber;
-
-        // Update sidebar active state
-        updateSidebarActiveState(questionNumber);
-
-        // Scroll to top
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-};
-
-// Navigate to previous question
-window.navigatePrevious = function (currentNumber) {
-    if (currentNumber > 1) {
-        jumpToQuestion(currentNumber - 1);
-    }
-};
-
-// Navigate to next question
-window.navigateNext = function (currentNumber) {
-    if (currentNumber < totalQuestions) {
-        jumpToQuestion(currentNumber + 1);
-    }
-};
-
-
-
 // Log mistake to backend
 function logMistake(questionId, userAnswer, correctAnswer) {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -2318,6 +1546,7 @@ function processAnswerResult(questionNumber, questionId, data, checkBtn) {
         explanation: data.explanation || '',
         showViewResultsButton: totalAnswers === totalQuestions
     };
+    updateCorrectAnswerStreak(Boolean(data.is_correct));
 
     // 🔥 UPDATE SOURCE PROGRESS IN MODAL IF AVAILABLE
     if (data.source_progress) {
@@ -2590,6 +1819,7 @@ window.checkAnswer = function checkAnswer(questionNumber, questionId) {
 
             // Process the fallback data as if it was a normal response
             totalAnswers++;
+            resetCorrectAnswerStreak();
             // Don't increment correctAnswers since we don't know if it's correct
 
             // Update UI with fallback data
@@ -3078,10 +2308,97 @@ document.addEventListener('visibilitychange', function () {
 // ============================================================
 let editModalOpen = false;
 document.addEventListener('keydown', function (e) {
-    // Don't intercept when typing in inputs/textareas or when edit modal is open
+    // Don't intercept when typing in inputs/selects or when edit modal is open
     const tag = (e.target.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
     if (editModalOpen) return;
+    const activeQuestionCard = document.getElementById(`question-${currentQuestionIndex}`);
+
+    if (e.key === 'Enter') {
+        const isTypingInTextarea = tag === 'textarea';
+        const isTypingInInput = tag === 'input' || tag === 'select';
+
+        if (isTypingInInput) {
+            return;
+        }
+
+        if (activeQuestionCard) {
+            const checkButton = activeQuestionCard.querySelector('.check-answer');
+            const nextButton = activeQuestionCard.querySelector('.next-question');
+            const viewResultsButton = activeQuestionCard.querySelector('.view-results');
+            const isCheckVisible = checkButton
+                && checkButton.style.display !== 'none'
+                && !checkButton.disabled;
+            const isNextVisible = nextButton
+                && nextButton.style.display !== 'none'
+                && !nextButton.disabled;
+            const isViewResultsVisible = viewResultsButton
+                && viewResultsButton.style.display !== 'none'
+                && !viewResultsButton.disabled;
+
+            if (isCheckVisible) {
+                e.preventDefault();
+
+                if (isTypingInTextarea && e.shiftKey) {
+                    return;
+                }
+
+                const questionId = getQuestionIdFromCard(activeQuestionCard);
+                const questionNumber = getQuestionNumberFromCard(activeQuestionCard);
+
+                if (questionId && questionNumber && typeof window.checkAnswer === 'function') {
+                    window.checkAnswer(questionNumber, Number(questionId));
+                }
+                return;
+            }
+
+            if (isNextVisible) {
+                e.preventDefault();
+
+                const questionNumber = getQuestionNumberFromCard(activeQuestionCard);
+                if (questionNumber && typeof window.showNextQuestion === 'function') {
+                    window.showNextQuestion(questionNumber);
+                }
+                return;
+            }
+
+            if (isViewResultsVisible) {
+                e.preventDefault();
+
+                if (typeof window.showFinalResults === 'function') {
+                    window.showFinalResults();
+                }
+                return;
+            }
+        }
+
+        if (isTypingInTextarea) {
+            return;
+        }
+    }
+
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && activeQuestionCard) {
+        const isTypingInTextField = tag === 'input' || tag === 'textarea' || tag === 'select';
+        if (isTypingInTextField) {
+            return;
+        }
+
+        const optionCards = Array.from(activeQuestionCard.querySelectorAll('.option-card'));
+        if (optionCards.length > 0) {
+            e.preventDefault();
+
+            const currentIndex = optionCards.findIndex((optionCard) => optionCard.classList.contains('selected'));
+            const direction = e.key === 'ArrowDown' ? 1 : -1;
+            const nextIndex = currentIndex === -1
+                ? (direction === 1 ? 0 : optionCards.length - 1)
+                : (currentIndex + direction + optionCards.length) % optionCards.length;
+
+            selectOption(optionCards[nextIndex]);
+            requestAnimationFrame(saveTutorDraft);
+            return;
+        }
+    }
+
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
 
     if (e.key === 'ArrowLeft') {
         e.preventDefault();

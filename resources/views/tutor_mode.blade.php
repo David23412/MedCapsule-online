@@ -3268,6 +3268,167 @@
         <script src="{{ asset('js/tutor-admin-edit.js') }}" defer></script>
     @endif
 
+    <style>
+        .streak-celebration {
+            --streak-accent: #f59e0b;
+            --streak-accent-soft: rgba(245, 158, 11, 0.2);
+            position: fixed;
+            top: 22px;
+            left: 50%;
+            width: min(420px, calc(100vw - 28px));
+            padding: 0.95rem 1rem;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+            color: #0f172a;
+            box-shadow: 0 18px 48px rgba(15, 23, 42, 0.14);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            opacity: 0;
+            transform: translateX(-50%) translateY(-16px) scale(0.97);
+            pointer-events: none;
+            z-index: 10950;
+            overflow: hidden;
+        }
+
+        .streak-celebration::before {
+            content: "";
+            position: absolute;
+            inset: 0 0 auto 0;
+            height: 3px;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0), rgba(245, 158, 11, 0.92), rgba(59, 130, 246, 0.7), rgba(245, 158, 11, 0));
+        }
+
+        .streak-celebration::after {
+            content: "";
+            position: absolute;
+            inset: 10px auto auto 18px;
+            width: 70px;
+            height: 70px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(245, 158, 11, 0.16), transparent 68%);
+            pointer-events: none;
+        }
+
+        .streak-celebration.show {
+            animation: streakCelebrationPop 2.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        .streak-celebration-badge {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 237, 0.94));
+            border: 1px solid rgba(245, 158, 11, 0.18);
+            color: var(--streak-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.8),
+                0 10px 20px rgba(245, 158, 11, 0.12);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .streak-celebration-badge::after {
+            content: "";
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            border: 1px solid rgba(245, 158, 11, 0.14);
+        }
+
+        .streak-celebration-copy {
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .streak-celebration-label {
+            font-size: 0.69rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 0.22rem;
+            font-weight: 800;
+        }
+
+        .streak-celebration-title {
+            font-size: 1.14rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 0.18rem;
+            letter-spacing: -0.02em;
+        }
+
+        .streak-celebration-message {
+            font-size: 0.88rem;
+            color: #475569;
+            line-height: 1.35;
+        }
+
+        @keyframes streakCelebrationPop {
+            0% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-16px) scale(0.97);
+            }
+
+            14% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+
+            86% {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0) scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-8px) scale(0.985);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .streak-celebration {
+                top: 14px;
+                width: calc(100vw - 20px);
+                padding: 0.85rem 0.9rem;
+                border-radius: 20px;
+            }
+
+            .streak-celebration-title {
+                font-size: 1.02rem;
+            }
+
+            .streak-celebration-message {
+                font-size: 0.82rem;
+            }
+
+            .streak-celebration-badge {
+                width: 50px;
+                height: 50px;
+            }
+        }
+    </style>
+
+    <div class="streak-celebration" id="streak-celebration" aria-live="polite" aria-atomic="true">
+        <div class="streak-celebration-badge">
+            <i class="fas fa-check"></i>
+        </div>
+        <div class="streak-celebration-copy">
+            <div class="streak-celebration-label">Tutor Streak</div>
+            <div class="streak-celebration-title" data-streak-count>5 correct in a row</div>
+            <div class="streak-celebration-message" data-streak-message>Clean run. Keep the pace steady.</div>
+        </div>
+    </div>
+
     <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
     <div class="popup-overlay" id="popup-overlay">
         <div class="popup" id="popup">
