@@ -259,7 +259,7 @@
     <main class="main-content">
     <!-- Random Quiz Modal -->
     <div class="modal fade" id="randomQuizModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <div class="modal-title-wrapper">
@@ -352,6 +352,29 @@
                                 <option value="90">90 Minutes</option>
                                 <option value="120">2 Hours</option>
                             </select>
+                        </div>
+
+                        <!-- Topic Type Filter -->
+                        <div class="mb-4">
+                            <div class="setting-header">
+                                <i class="fas fa-filter text-warning"></i>
+                                <label class="form-label mb-2">Topic Type</label>
+                            </div>
+                            <div class="topic-type-pills" id="topicTypePills">
+                                <input type="hidden" name="topic_type" id="topicTypeInput" value="all">
+                                <button type="button" class="topic-type-pill active" data-value="all">
+                                    <i class="fas fa-th-large"></i> All
+                                </button>
+                                <button type="button" class="topic-type-pill" data-value="quiz">
+                                    <i class="fas fa-question-circle"></i> Quiz
+                                </button>
+                                <button type="button" class="topic-type-pill" data-value="practical">
+                                    <i class="fas fa-flask"></i> Practica
+                                </button>
+                                <button type="button" class="topic-type-pill" data-value="cases">
+                                    <i class="fas fa-briefcase-medical"></i> Cases
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Mode Selection -->
@@ -1423,6 +1446,28 @@
             });
         })();
     @endif
+
+    /* ---- Topic Type Pill Selector (Random Quiz Modal) ---- */
+    (function () {
+        const pillContainer = document.getElementById('topicTypePills');
+        const hiddenInput   = document.getElementById('topicTypeInput');
+
+        if (!pillContainer || !hiddenInput) return;
+
+        pillContainer.addEventListener('click', function (e) {
+            const btn = e.target.closest('.topic-type-pill');
+            if (!btn) return;
+
+            // Deactivate all siblings
+            pillContainer.querySelectorAll('.topic-type-pill').forEach(p => p.classList.remove('active'));
+
+            // Activate clicked pill
+            btn.classList.add('active');
+
+            // Update hidden input
+            hiddenInput.value = btn.dataset.value;
+        });
+    })();
     </script>
 </body>
 </html>
