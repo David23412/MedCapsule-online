@@ -139,7 +139,7 @@ class WrittenAnswerGrader
                 'anchor_terms' => $this->extractAnchorTerms($normalizedAnswer),
             ],
             'comparison' => $this->buildComparisonRubric($rawAnswer, $normalizedAnswer),
-            default => $this->buildConceptRubric($mode, $normalizedAnswer),
+            default => $this->buildConceptRubric($mode, $normalizedAnswer, $rawAnswer),
         };
     }
 
@@ -163,9 +163,9 @@ class WrittenAnswerGrader
         ];
     }
 
-    private function buildConceptRubric(string $mode, string $normalizedAnswer): array
+    private function buildConceptRubric(string $mode, string $normalizedAnswer, ?string $rawAnswer = null): array
     {
-        $required = $this->extractRequiredConcepts($normalizedAnswer);
+        $required = $this->extractRequiredConcepts($normalizedAnswer, $rawAnswer);
         $optional = $this->extractOptionalConcepts($normalizedAnswer, $required);
 
         return [
@@ -202,7 +202,7 @@ class WrittenAnswerGrader
             $isCorrect = $requiredCoverage >= 0.55 && $confidence >= 0.60;
         }
 
-        if (!$isCorrect && $orderOverlap >= 0.70 && $requiredCoverage >= 0.45) {
+        if (!$isCorrect && $orderOverlap >= 0.75 && $requiredCoverage >= 0.74) {
             $isCorrect = true;
         }
 
@@ -572,19 +572,41 @@ class WrittenAnswerGrader
         return null;
     }
 
-    private function extractRequiredConcepts(string $normalizedAnswer): array
+    private function extractRequiredConcepts(string $normalizedAnswer, ?string $rawAnswer = null): array
     {
+        $rawForSegmentation = $rawAnswer ?? $normalizedAnswer;
+
         $tokens = $this->extractMeaningfulTokens($normalizedAnswer);
+
+        // Try to segment on raw commas first (before normalization strips them).
+        $segments = preg_split('/,\s*/', $rawForSegmentation) ?: [];
+        $segments = array_values(array_filter(array_map('trim', $segments)));
+
+        // Only use segmentation if we got 2+ meaningful segments.
+        if (count($segments) >= 2) {
+            $concepts = [];
+            foreach ($segments as $segment) {
+                $group = $this->buildConceptGroup($segment);
+                if (!empty($group['tokens'])) {
+                    $concepts[] = $group;
+                }
+            }
+            if (!empty($concepts)) {
+                return $this->deduplicateConceptGroups($concepts);
+            }
+        }
+
+        // Fall back to token-count-based grouping.
         if (count($tokens) < (int) $this->cfg('short_concept_group_token_limit', 6)) {
             return !empty($tokens)
                 ? [['label' => $normalizedAnswer, 'tokens' => $tokens]]
                 : [];
         }
 
-        $segments = preg_split('/,|;/', $normalizedAnswer) ?: [];
+        $segmentsBySemicolon = preg_split('/,|;/', $normalizedAnswer) ?: [];
         $concepts = [];
 
-        foreach ($segments as $segment) {
+        foreach ($segmentsBySemicolon as $segment) {
             $group = $this->buildConceptGroup($segment);
             if (!empty($group['tokens'])) {
                 $concepts[] = $group;
@@ -687,7 +709,7 @@ class WrittenAnswerGrader
         $requiredRatio = match (count($tokens)) {
             1 => 1.0,
             2 => 0.75,
-            default => 0.6,
+            default => 0.75,
         };
 
         return ($matched / count($tokens)) >= $requiredRatio;
@@ -740,12 +762,25 @@ class WrittenAnswerGrader
         $tokens = preg_split('/\s+/', trim($filtered)) ?: [];
         $optionalDescriptors = array_flip($this->medicalKnowledge->getOptionalDescriptors());
 
-        return array_values(array_unique(array_filter($tokens, function (string $token) use ($optionalDescriptors): bool {
+        // Additional non-semantic "bridge" words that should never contribute to concept matching.
+        $bridgeWords = array_flip([
+            'through', 'throughout', 'within', 'without', 'between', 'among',
+            'because', 'therefore', 'however', 'although', 'whereas', 'while',
+            'during', 'before', 'after', 'about', 'above', 'below', 'under',
+            'along', 'around', 'across', 'against', 'amongst', 'beside',
+            'beyond', 'toward', 'towards', 'upon', 'from', 'into', 'onto',
+        ]);
+
+        return array_values(array_unique(array_filter($tokens, function (string $token) use ($optionalDescriptors, $bridgeWords): bool {
             if ($token === '') {
                 return false;
             }
 
             if (isset($optionalDescriptors[$token])) {
+                return false;
+            }
+
+            if (isset($bridgeWords[$token])) {
                 return false;
             }
 
@@ -982,14 +1017,13 @@ class WrittenAnswerGrader
         }
 
         return array_values(array_map(function (string $item): string {
-            $item = trim(preg_replace('/\s*\(.*?\)\s*/', ' ', $item) ?? $item);
             $item = preg_replace(
                 '/^.+?\b(?:includes?|contain(?:s)?|consists?\s+of|comprises?|are|is)\b\s+/i',
                 '',
-                $item
-            ) ?? $item;
+                trim($item)
+            ) ?? trim($item);
 
-            return rtrim($item, ',.;');
+            return rtrim(trim(preg_replace('/[()]/', '', $item)), ',.;');
         }, array_filter($items, fn (string $item): bool => strlen(trim($item)) > 1)));
     }
 
@@ -1165,7 +1199,9 @@ class WrittenAnswerGrader
     private function safeEquivalentTokenGroups(): array
     {
         return [
-            ['pump', 'pumps', 'circulate', 'circulates', 'propel', 'propels'],
+            ['pump', 'pumps', 'pumped'],
+            ['circulate', 'circulates', 'circulated'],
+            ['propel', 'propels'],
             ['organ', 'structure'],
             ['increase', 'increases', 'raise', 'raises', 'elevate', 'elevates'],
             ['decrease', 'decreases', 'lower', 'lowers', 'reduce', 'reduces'],
