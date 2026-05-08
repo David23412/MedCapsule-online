@@ -50,9 +50,6 @@ return [
         // Enable/disable random quiz mode
         'enable_random_mode' => env('QUIZ_ENABLE_RANDOM_MODE', true),
         
-        // Default similarity threshold for written answers
-        'written_answer_similarity_threshold' => env('QUIZ_SIMILARITY_THRESHOLD', 0.8),
-        
         // Performance tracking
         'track_performance' => env('QUIZ_TRACK_PERFORMANCE', true),
         'performance_cache_minutes' => env('QUIZ_PERFORMANCE_CACHE', 15),

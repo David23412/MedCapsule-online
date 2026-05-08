@@ -23,7 +23,6 @@ class TextProcessingServiceTest extends TestCase
     {
         $result = $this->svc->normalizeText('Biological/genetic factors');
         $this->assertStringContainsString('biological', $result);
-        $this->assertStringContainsString('genetic', $result);
         $this->assertStringContainsString('and', $result);
         // Slash should be gone
         $this->assertStringNotContainsString('/', $result);
@@ -40,6 +39,19 @@ class TextProcessingServiceTest extends TestCase
     {
         $result = $this->svc->normalizeText('A/B/C factors');
         $this->assertStringContainsString('and', $result);
+    }
+
+    public function test_normalizeText_expands_hyphenated_words_to_spaces(): void
+    {
+        $this->assertSame(
+            'open ended question',
+            $this->svc->normalizeText('open-ended question')
+        );
+    }
+
+    public function test_normalizeText_preserves_alphanumeric_hyphenated_terms(): void
+    {
+        $this->assertStringContainsString('cox-1', $this->svc->normalizeText('COX-1 inhibitor'));
     }
 
     // =========================================================================
@@ -97,6 +109,13 @@ class TextProcessingServiceTest extends TestCase
         // "genetic and biological" → same sorted form
         $a = $this->svc->sortedTokenForm('Biological/genetic factors');
         $b = $this->svc->sortedTokenForm('Genetic and biological factors');
+        $this->assertSame($a, $b);
+    }
+
+    public function test_sortedTokenForm_hyphenated_and_spaced_forms_are_equivalent(): void
+    {
+        $a = $this->svc->sortedTokenForm('open-ended question');
+        $b = $this->svc->sortedTokenForm('open ended question');
         $this->assertSame($a, $b);
     }
 

@@ -295,6 +295,73 @@ class MedicalKnowledgeService
     }
 
     /**
+     * Hard guards that must resolve before concept scoring.
+     */
+    public function getHardGuards(): array
+    {
+        return [
+            [
+                'name' => 'sympathetic_nervous_system',
+                'question_pattern' => '/\bsympathetic nervous system\b/i',
+                'required_presence' => ['sympathetic'],
+                'forbidden_presence' => ['parasympathetic'],
+                'positive_phrases' => [
+                    ['increase heart rate', 'increases heart rate', 'heart rate increases', 'raise heart rate', 'raises heart rate', 'tachycardia'],
+                    ['decrease digestion', 'decreases digestion', 'suppresses digestion', 'inhibits digestion', 'decreases peristalsis'],
+                ],
+                'negative_phrases' => [
+                    ['decrease heart rate', 'decreases heart rate', 'heart rate decreases', 'lower heart rate', 'lowers heart rate', 'bradycardia'],
+                    ['increase digestion', 'increases digestion', 'promotes digestion', 'stimulates digestion', 'promotes peristalsis'],
+                ],
+                'wrong_division_code' => 'wrong_ans_division',
+                'wrong_division_feedback' => 'Your answer refers to the parasympathetic system instead of the sympathetic system.',
+                'reversal_code' => 'reversed_sympathetic_effects',
+                'reversal_feedback' => 'Sympathetic activation increases heart rate and suppresses digestion.',
+                'match_code' => 'sympathetic_effects_match',
+                'match_feedback' => 'Your answer correctly captures the sympathetic effects.',
+            ],
+            [
+                'name' => 'parasympathetic_nervous_system',
+                'question_pattern' => '/\bparasympathetic nervous system\b/i',
+                'required_presence' => ['parasympathetic'],
+                'forbidden_presence' => ['sympathetic'],
+                'positive_phrases' => [
+                    ['decrease heart rate', 'decreases heart rate', 'heart rate decreases', 'lower heart rate', 'lowers heart rate', 'bradycardia'],
+                    ['increase digestion', 'increases digestion', 'promotes digestion', 'stimulates digestion', 'promotes peristalsis'],
+                ],
+                'negative_phrases' => [
+                    ['increase heart rate', 'increases heart rate', 'heart rate increases', 'raise heart rate', 'raises heart rate', 'tachycardia'],
+                    ['decrease digestion', 'decreases digestion', 'suppresses digestion', 'inhibits digestion', 'decreases peristalsis'],
+                ],
+                'wrong_division_code' => 'wrong_ans_division',
+                'wrong_division_feedback' => 'Your answer refers to the sympathetic system instead of the parasympathetic system.',
+                'reversal_code' => 'reversed_parasympathetic_effects',
+                'reversal_feedback' => 'Parasympathetic activation lowers heart rate and supports digestion.',
+                'match_code' => 'parasympathetic_effects_match',
+                'match_feedback' => 'Your answer correctly captures the parasympathetic effects.',
+            ],
+        ];
+    }
+
+    /**
+     * Known incorrect process locations for hard-fail checks.
+     */
+    public function getProcessLocationMismatchRules(): array
+    {
+        return [
+            'protein synthesis' => ['mitochondrion', 'golgi', 'lysosome', 'peroxisome', 'nucleus'],
+            'translation' => ['mitochondrion', 'golgi', 'lysosome', 'nucleus'],
+            'glycolysis' => ['mitochondrion', 'nucleus', 'endoplasmic reticulum'],
+            'krebs cycle' => ['cytoplasm', 'nucleus', 'endoplasmic reticulum', 'lysosome'],
+            'tca cycle' => ['cytoplasm', 'nucleus', 'endoplasmic reticulum', 'lysosome'],
+            'citric acid cycle' => ['cytoplasm', 'nucleus', 'endoplasmic reticulum', 'lysosome'],
+            'electron transport chain' => ['cytoplasm', 'nucleus', 'plasma membrane', 'endoplasmic reticulum'],
+            'oxidative phosphorylation' => ['cytoplasm', 'nucleus', 'plasma membrane'],
+            'dna replication' => ['mitochondrion', 'cytoplasm', 'ribosome', 'endoplasmic reticulum'],
+        ];
+    }
+
+    /**
      * Set cache configuration
      */
     public function setCacheConfig(bool $enabled, int $ttl = 3600): void
@@ -303,4 +370,3 @@ class MedicalKnowledgeService
         $this->cacheTtl = $ttl;
     }
 }
-

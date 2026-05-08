@@ -28,6 +28,7 @@ class TextProcessingService
         // Expand slashes to " and " BEFORE stripping special characters
         // so "biological/genetic" → "biological and genetic"
         $text = $this->expandSlashSeparators($text);
+        $text = $this->expandWordSeparators($text);
 
         $text = preg_replace('/[^\w\s\-\'\.]/', '', $text);
         $text = preg_replace('/\s+/', ' ', trim($text));
@@ -527,15 +528,8 @@ class TextProcessingService
             '/\btype\s+ii\b/i'                   => 'type 2',
             '/\btype\s+iii\b/i'                  => 'type 3',
             '/\btype\s+iv\b/i'                   => 'type 4',
-            '/\blifestyle\b/i'                    => 'behavioral',
-            '/\bgenetic\b/i'                      => 'biological',
             '/\bpulse\b/i'                        => 'heart rate',
             '/\bhr\b/i'                           => 'heart rate',
-            '/\bgi\b/i'                           => 'digestion',
-            '/\bgastrointestinal activity\b/i'   => 'digestion',
-            '/\bgastrointestinal\b/i'             => 'digestion',
-            '/\bgut motility\b/i'                 => 'digestion',
-            '/\bperistalsis\b/i'                  => 'digestion',
             '/\braises?\b/i'                      => 'increases',
             '/\belevates?\b/i'                    => 'increases',
             '/\bboosts?\b/i'                      => 'increases',
@@ -557,9 +551,6 @@ class TextProcessingService
             '/\bis\s+located\s+in\b/i'            => 'occurs in',
             '/\bis\s+carried\s+out\s+in\b/i'      => 'occurs in',
             '/\bis\s+performed\s+in\b/i'          => 'occurs in',
-            '/\bresponsible\s+for\b/i'            => 'function',
-            '/\bpropels?\b/i'                     => 'pumps',
-            '/\bcirculates?\b/i'                  => 'pumps',
             '/\bpumping\b/i'                      => 'pumps',
             // Plural → singular normalisation for key terms
             '/\barteries\b/i'                     => 'artery',
@@ -625,6 +616,17 @@ class TextProcessingService
     }
 
     /**
+     * Expand punctuation separators inside alphabetic compounds to spaces.
+     *
+     * This makes "open-ended" equivalent to "open ended" while preserving
+     * medically meaningful alphanumeric forms such as "cox-1" or "5-ht".
+     */
+    private function expandWordSeparators(string $text): string
+    {
+        return preg_replace('/(?<=[a-z])[-_](?=[a-z])/i', ' ', $text) ?? $text;
+    }
+
+    /**
      * Build a canonical (sorted) token representation of a text.
      *
      * This enables order-independent comparison so that:
@@ -651,14 +653,14 @@ class TextProcessingService
     {
         $stop = $this->stopWordSet();
 
-        $w1 = array_values(array_filter(
+        $w1 = array_values(array_unique(array_filter(
             $this->extractWords($text1),
             fn($w) => !isset($stop[$w]) && strlen($w) >= 2
-        ));
-        $w2 = array_values(array_filter(
+        )));
+        $w2 = array_values(array_unique(array_filter(
             $this->extractWords($text2),
             fn($w) => !isset($stop[$w]) && strlen($w) >= 2
-        ));
+        )));
 
         if (empty($w1) && empty($w2)) { return 1.0; }
         if (empty($w1) || empty($w2)) { return 0.0; }

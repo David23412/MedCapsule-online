@@ -95,6 +95,11 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         );
     }
 
+    public function test_normalized_match_hyphenated_and_spaced_forms(): void
+    {
+        $this->assertCorrect('open ended', 'open-ended');
+    }
+
     // =========================================================================
     // 2. ORDER-INDEPENDENT MATCHING — THE KEY USER SCENARIO
     // =========================================================================
@@ -227,6 +232,17 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         );
     }
 
+    public function test_comma_heavy_sentence_is_not_misclassified_as_enumeration(): void
+    {
+        $result = $this->grade(
+            'The heart, a muscular organ, pumps blood',
+            'The heart pumps blood'
+        );
+
+        $this->assertTrue($result['isCorrect']);
+        $this->assertSame('exact', $result['diagnostics']['mode'] ?? null);
+    }
+
     // =========================================================================
     // 5. COMPARISON QUESTIONS
     // =========================================================================
@@ -248,6 +264,21 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         );
         // May or may not be correct depending on similarity, but similarity should be < 0.9
         $this->assertLessThan(0.95, $result['similarity']);
+    }
+
+    public function test_short_answer_with_and_is_single_concept_group(): void
+    {
+        $this->assertCorrect('fatty acid oxidation', 'fatty acid and oxidation');
+    }
+
+    public function test_two_token_group_accepts_partial_correct_phrase(): void
+    {
+        $this->assertCorrect('kidney tubules', 'renal tubule');
+    }
+
+    public function test_asymptomatic_and_inapparent_are_not_collapsed_to_same_concept(): void
+    {
+        $this->assertIncorrect('asymptomatic infection', 'inapparent infection');
     }
 
     // =========================================================================

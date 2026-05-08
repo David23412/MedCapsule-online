@@ -636,8 +636,13 @@ class GradingService
             ]);
             
             return [
-                'isCorrect' => $question->matchesWrittenAnswerFallback($submittedAnswer),
-                'feedback' => 'We could not fully analyze the wording, so a conservative fallback check was used.',
+                'isCorrect' => false,
+                'confidence' => 0.0,
+                'reasonCode' => 'grader_error',
+                'reason' => 'grader_error',
+                'similarity' => 0.0,
+                'feedback' => 'We could not grade this written answer right now.',
+                'diagnostics' => ['exception' => $e->getMessage()],
             ];
         }
     }
