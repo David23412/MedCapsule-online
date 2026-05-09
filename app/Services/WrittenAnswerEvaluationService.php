@@ -8,14 +8,14 @@ use Illuminate\Support\Facades\Log;
 class WrittenAnswerEvaluationService
 {
     public function __construct(
-        private WrittenAnswerGrader|TextProcessingService $grader,
-        ?PatternMatcherService $patternMatcher = null,
+        private WrittenAnswerGrader $grader,
+        ?TextProcessingService $textProcessor = null,
         ?MedicalKnowledgeService $medicalKnowledge = null,
         private ?LegacyWrittenAnswerEvaluator $legacyEvaluator = null,
         private ?WrittenGradingDiagnosticsService $diagnostics = null,
     ) {
-        if ($this->grader instanceof TextProcessingService) {
-            $textProcessor = $this->grader;
+        // Backward-compatibility: old callers passed TextProcessingService as the first arg.
+        if ($textProcessor !== null) {
             $this->grader = new WrittenAnswerGrader(
                 $textProcessor,
                 $medicalKnowledge ?? app(MedicalKnowledgeService::class),

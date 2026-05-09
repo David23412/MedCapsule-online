@@ -13,20 +13,37 @@ return new class extends Migration
             return;
         }
 
-        $duplicates = DB::table('users')
+        // If the unique constraint already exists, skip (idempotent).
+        if (Schema::hasIndex('users', 'users_number_unique')) {
+            return;
+        }
+
+        // Resolve duplicates before adding the unique constraint.
+        $duplicateNumbers = DB::table('users')
             ->select('number', DB::raw('COUNT(*) as aggregate'))
             ->whereNotNull('number')
             ->where('number', '!=', '')
             ->groupBy('number')
             ->having('aggregate', '>', 1)
-            ->limit(10)
             ->pluck('number')
             ->all();
 
-        if ($duplicates !== []) {
-            throw new RuntimeException(
-                'Cannot add unique constraint to users.number until duplicates are resolved. Duplicate numbers: '.implode(', ', $duplicates)
-            );
+        foreach ($duplicateNumbers as $number) {
+            // Keep the record with the lowest id unchanged; append "_dup_{id}" to the rest.
+            $keepId = DB::table('users')
+                ->where('number', $number)
+                ->min('id');
+
+            $duplicatesToFix = DB::table('users')
+                ->where('number', $number)
+                ->where('id', '!=', $keepId)
+                ->pluck('id');
+
+            foreach ($duplicatesToFix as $fixId) {
+                DB::table('users')
+                    ->where('id', $fixId)
+                    ->update(['number' => $number . '_dup_' . $fixId]);
+            }
         }
 
         Schema::table('users', function (Blueprint $table) {

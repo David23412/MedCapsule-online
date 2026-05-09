@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\Grading;
 use App\Services\TextProcessingService;
 use App\Services\PatternMatcherService;
 use App\Services\MedicalKnowledgeService;
+use App\Services\WrittenAnswerGrader;
 use App\Services\WrittenAnswerEvaluationService;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +36,13 @@ class WrittenAnswerEvaluationServiceTest extends TestCase
         $tp = new TextProcessingService();
         $pm = new PatternMatcherService();
         $mk = new MedicalKnowledgeService();
-        $this->svc = new WrittenAnswerEvaluationService($tp, $pm, $mk);
+        // New signature: (WrittenAnswerGrader $grader, ?TextProcessingService $textProcessor, ?MedicalKnowledgeService $medicalKnowledge)
+        // For backward-compat, we pass TextProcessingService as 2nd arg, 3rd is medicalKnowledge
+        $this->svc = new WrittenAnswerEvaluationService(
+            new WrittenAnswerGrader($tp, $mk),
+            $tp, // textProcessor for backward-compat reconstruction path
+            $mk,
+        );
         $this->svc->setCacheConfig(false); // disable cache for deterministic tests
     }
 
