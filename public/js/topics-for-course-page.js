@@ -1340,16 +1340,68 @@
         if (randomQuizModal) {
             randomQuizModal.addEventListener('show.bs.modal', function() {
                 loadRandomQuizSources();
+                loadQuestionCountsByType();
             });
 
             courseCheckboxes.forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
                     debouncedLoadRandomQuizSources();
+                    debouncedLoadQuestionCounts();
                 });
             });
         }
 
         const debouncedLoadRandomQuizSources = debounce(loadRandomQuizSources, 180);
+        const debouncedLoadQuestionCounts = debounce(loadQuestionCountsByType, 180);
+
+        async function loadQuestionCountsByType() {
+            const selectedCourses = Array.from(courseCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            const pillContainer = document.getElementById('topicTypePills');
+            
+            if (selectedCourses.length === 0) return;
+
+            try {
+                const queryParams = new URLSearchParams();
+                selectedCourses.forEach(courseId => {
+                    queryParams.append('course_ids[]', courseId);
+                });
+                // Also pass currently selected sources
+                const checkedSourceCheckboxes = document.querySelectorAll('#sourceCheckboxContainer input[name="sources[]"]:checked');
+                if (checkedSourceCheckboxes.length > 0) {
+                    checkedSourceCheckboxes.forEach(cb => {
+                        queryParams.append('sources[]', cb.value);
+                    });
+                }
+
+                const sortedIds = [...selectedCourses].sort().join(',');
+                const data = await cachedFetchJson('/api/random-quiz-question-counts?' + queryParams.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken.content,
+                        'Accept': 'application/json'
+                    }
+                }, 30000, `question-counts:${sortedIds}`);
+
+                if (data.success && data.counts) {
+                    const pills = pillContainer.querySelectorAll('.topic-type-pill');
+                    pills.forEach(pill => {
+                        const value = pill.dataset.value;
+                        const count = data.counts[value];
+                        if (count !== undefined) {
+                            // Remove old count span if exists
+                            const oldCount = pill.querySelector('.topic-type-count');
+                            if (oldCount) oldCount.remove();
+                            const countSpan = document.createElement('span');
+                            countSpan.className = 'topic-type-count';
+                            countSpan.textContent = count;
+                            pill.appendChild(countSpan);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading question counts:', error);
+            }
+        }
 
         async function loadRandomQuizSources() {
             const selectedCourses = Array.from(courseCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
@@ -1384,6 +1436,8 @@
 
                 if (data.success && data.sources && data.sources.length > 0) {
                     renderRandomQuizSources(data.sources);
+                    // Also reload question counts since sources changed
+                    loadQuestionCountsByType();
                 } else {
                     container.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-exclamation-circle mb-2"></i><p class="mb-0">No sources available for selected courses.</p></div>';
                 }
@@ -1437,6 +1491,7 @@
                             sourceAllCheckbox.checked = true;
                         }
                     }
+                    loadQuestionCountsByType();
                 });
             });
 
@@ -1447,6 +1502,7 @@
                         cb.checked = false;
                     });
                 }
+                loadQuestionCountsByType();
             });
         }
 
@@ -1467,8 +1523,8 @@
                 }
 
                 const questionLimitValue = parseInt(questionLimit?.value || 10, 10);
-                if (questionLimitValue < 1 || questionLimitValue > 100) {
-                    alert('Please enter a valid question limit (1-100).');
+                if (questionLimitValue < 1 || questionLimitValue > 500) {
+                    alert('Please enter a valid question limit (1-500).');
                     return false;
                 }
 

@@ -653,6 +653,7 @@ class QuizService
             $sources = $options['sources'] ?? ['all'];
             $excludeTopics = $options['exclude_topics'] ?? [];
             $courseIds = $options['course_ids'] ?? [];
+            $topicType = $options['topic_type'] ?? 'all';
 
             // SECURITY FIX: Validate user access to specified courses.
             // Random quiz must only run on fully unlocked courses to prevent
@@ -737,6 +738,13 @@ class QuizService
                 $questionsQuery->whereNotIn('topic_id', $excludeTopics);
             }
 
+            // ✅ FIX: Apply topic_type filtering - filter by the topic's case_type
+            if ($topicType !== 'all') {
+                $questionsQuery->whereHas('topic', function ($query) use ($topicType) {
+                    $query->where('case_type', $topicType);
+                });
+            }
+
             // Apply difficulty filtering if specified and column exists
             if ($difficulty !== 'mixed' && $this->questionTableHasDifficultyColumn()) {
                 $questionsQuery->where('difficulty', $difficulty);
@@ -778,6 +786,9 @@ class QuizService
 
             // Group questions by topic for better organization
             $questionsByTopic = $validQuestions->groupBy('topic_id');
+
+            // ✅ FIX: Shuffle the questions so they don't appear grouped by topic/lecture
+            $validQuestions = $validQuestions->shuffle()->values();
 
             return [
                 'success' => true,

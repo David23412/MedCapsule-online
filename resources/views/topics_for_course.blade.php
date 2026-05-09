@@ -309,16 +309,7 @@
                                 <i class="fas fa-list-ol text-warning"></i>
                                 <label for="questionLimit" class="form-label mb-2">Number of Questions</label>
                             </div>
-                            <select class="form-select custom-select" id="questionLimit" name="question_limit" required>
-                                <option value="">Select number of questions</option>
-                                <option value="5">5 Questions</option>
-                                <option value="10">10 Questions</option>
-                                <option value="15">15 Questions</option>
-                                <option value="20">20 Questions</option>
-                                <option value="30">30 Questions</option>
-                                <option value="50">50 Questions</option>
-                                <option value="100">100 Questions</option>
-                            </select>
+                            <input type="number" class="form-control custom-select" id="questionLimit" name="question_limit" value="10" min="1" max="500" required placeholder="Enter number of questions">
                         </div>
                         
                         <div class="mb-4">

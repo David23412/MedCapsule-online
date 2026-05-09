@@ -2151,11 +2151,35 @@ body {
 }
 
 /* All */
+/* Count badge on topic type pills */
+#randomQuizModal .topic-type-pill .topic-type-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(108, 117, 125, 0.15);
+    color: #6c757d;
+    margin-left: 2px;
+    line-height: 1;
+}
+#randomQuizModal .topic-type-pill.active .topic-type-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: inherit;
+}
 #randomQuizModal .topic-type-pill[data-value="all"].active {
     background: linear-gradient(135deg, #ffc107, #e6ac00);
     border-color: #ffc107;
     color: #2c3e50;
     box-shadow: 0 3px 10px rgba(255,193,7,0.3);
+}
+html[data-theme='dark'] #randomQuizModal .topic-type-pill .topic-type-count {
+    background: rgba(148, 163, 184, 0.2);
+    color: #94a3b8;
 }
 
 /* Quiz */

@@ -307,6 +307,11 @@ Route::group([], function () {
         ->name('api.courses-sources')
         ->middleware('auth');
 
+    // Question counts per topic type for random quiz modal
+    Route::get('/api/random-quiz-question-counts', [\App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'getQuestionCountsByType'])
+        ->name('api.random-quiz-question-counts')
+        ->middleware('auth');
+
     // Video page route
     Route::get('/video/{topic}', [TopicController::class, 'showVideo'])->name('video.show')->middleware('auth');
     

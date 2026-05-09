@@ -1107,6 +1107,45 @@ function getRangeOffsets(container, range) {
 }
 
 function getAbsoluteTextOffset(container, node, offset) {
+    // If the node is not a text node, compute the offset at the start or end
+    // of the node's text content based on which boundary we're at.
+    if (node.nodeType !== Node.TEXT_NODE) {
+        // If offset is 0, we want the position at the very beginning of this element
+        // If offset is >= childCount, we want the position at the very end
+        // Walk text nodes until we find/reach this element
+        let absOffset = 0;
+        const walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        let found = false;
+        let currentNode;
+        while (currentNode = walker.nextNode()) {
+            if (currentNode.parentNode === node || currentNode === node) {
+                found = true;
+                if (offset === 0) {
+                    return absOffset;
+                }
+                // offset > 0: we want the end — fall through to add remaining text
+            }
+            if (found && offset > 0) {
+                absOffset += currentNode.textContent.length;
+                continue;
+            }
+            if (!found) {
+                absOffset += currentNode.textContent.length;
+            }
+        }
+        // If we reached the end while looking for the end boundary, return total length
+        if (found && offset > 0) {
+            return absOffset;
+        }
+        // Element not found in tree - fallback: return total length
+        return container.textContent.length;
+    }
+
     let absoluteOffset = 0;
     const walker = document.createTreeWalker(
         container,
@@ -1124,7 +1163,8 @@ function getAbsoluteTextOffset(container, node, offset) {
         absoluteOffset += currentNode.textContent.length;
     }
 
-    return absoluteOffset;
+    // Fallback: node not found in tree, return container length
+    return container.textContent.length;
 }
 
 

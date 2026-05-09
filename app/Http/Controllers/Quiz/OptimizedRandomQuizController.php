@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Models\Course;
 use App\Models\Question;
+use App\Models\Topic;
 use Illuminate\Support\Collection;
 
 /**
@@ -40,6 +41,7 @@ class OptimizedRandomQuizController extends Controller
         $durationMinutes = (float) $request->input('duration_minutes', 15);
         $selectedCourseIds = $request->input('selected_courses', []);
         $selectedSources = $request->input('sources', ['all']);
+        $topicType = $request->input('topic_type', 'all'); // ✅ FIX: Read the topic_type filter
         
         if (!is_array($selectedSources)) {
             $selectedSources = [$selectedSources];
@@ -56,7 +58,8 @@ class OptimizedRandomQuizController extends Controller
         $options = [
             'sources' => $selectedSources,
             'course_ids' => $selectedCourseIds,
-            'difficulty' => 'mixed'
+            'difficulty' => 'mixed',
+            'topic_type' => $topicType, // ✅ FIX: Pass topic_type to the quiz generator
         ];
 
         $result = $this->resolveRandomQuizSession($request, $sessionKey, $user, $questionCount, $options);
@@ -408,6 +411,9 @@ class OptimizedRandomQuizController extends Controller
         if (!empty($storedQuestionIds)) {
             $storedQuestions = $this->fetchQuestionsInOrder($storedQuestionIds);
             if ($storedQuestions->count() === count($storedQuestionIds)) {
+                // ✅ FIX: Shuffle restored questions so they don't group by topic/lecture
+                $storedQuestions = $storedQuestions->shuffle()->values();
+                
                 return [
                     'success' => true,
                     'questions' => $storedQuestions,
@@ -459,6 +465,112 @@ class OptimizedRandomQuizController extends Controller
             ->get()
             ->sortBy(fn (Question $question) => $idOrderMap[$question->id] ?? PHP_INT_MAX)
             ->values();
+    }
+
+    /**
+     * Get question counts per topic type (quiz, practical, cases) and total
+     * for the selected courses/sources in the random quiz modal
+     */
+    public function getQuestionCountsByType(Request $request): JsonResponse
+    {
+        try {
+            $selectedCourseIds = $request->input('course_ids', []);
+            $selectedSources = $request->input('sources', ['all']);
+
+            if (!is_array($selectedCourseIds)) {
+                $selectedCourseIds = [$selectedCourseIds];
+            }
+            if (!is_array($selectedSources)) {
+                $selectedSources = [$selectedSources];
+            }
+            if (in_array('all', $selectedSources)) {
+                $selectedSources = ['all'];
+            }
+
+            $user = auth()->user();
+
+            // Resolve accessible course IDs
+            if (empty($selectedCourseIds)) {
+                $userCourses = $user->courses()->pluck('courses.id')->toArray();
+                $accessLevels = $user->getCourseAccessLevels(array_map('intval', $userCourses));
+                $selectedCourseIds = array_values(array_filter(
+                    $userCourses,
+                    fn ($courseId) => ($accessLevels[(int) $courseId] ?? null) === \App\Models\User::COURSE_ACCESS_FULL
+                ));
+            }
+
+            if (empty($selectedCourseIds)) {
+                return response()->json(['success' => true, 'counts' => []]);
+            }
+
+            // Build count per topic type
+            $typeCounts = [];
+            $topicTypes = ['quiz', 'practical', 'cases'];
+
+            foreach ($topicTypes as $type) {
+                $count = Question::query()
+                    ->where(function ($q) use ($selectedCourseIds) {
+                        $q->whereHas('topic', function ($query) use ($selectedCourseIds) {
+                            $query->whereIn('course_id', $selectedCourseIds);
+                        })
+                        ->orWhereExists(function ($sub) use ($selectedCourseIds) {
+                            $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                                ->from('topics')
+                                ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
+                                ->whereIn('topics.course_id', $selectedCourseIds);
+                        });
+                    })
+                    ->whereHas('topic', function ($query) use ($type) {
+                        $query->where('case_type', $type);
+                    })
+                    ->whereNotNull('question')
+                    ->where('question', '!=', '');
+
+                if (!in_array('all', $selectedSources)) {
+                    $count->whereIn('source', $selectedSources);
+                }
+
+                $typeCounts[$type] = $count->count();
+            }
+
+            // Total count (all types)
+            $totalQuery = Question::query()
+                ->where(function ($q) use ($selectedCourseIds) {
+                    $q->whereHas('topic', function ($query) use ($selectedCourseIds) {
+                        $query->whereIn('course_id', $selectedCourseIds);
+                    })
+                    ->orWhereExists(function ($sub) use ($selectedCourseIds) {
+                        $sub->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('topics')
+                            ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
+                            ->whereIn('topics.course_id', $selectedCourseIds);
+                    });
+                })
+                ->whereNotNull('question')
+                ->where('question', '!=', '');
+
+            if (!in_array('all', $selectedSources)) {
+                $totalQuery->whereIn('source', $selectedSources);
+            }
+
+            $typeCounts['all'] = $totalQuery->count();
+
+            return response()->json([
+                'success' => true,
+                'counts' => $typeCounts,
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Question counts by type failed', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to load question counts'
+            ], 500);
+        }
     }
 
     /**
