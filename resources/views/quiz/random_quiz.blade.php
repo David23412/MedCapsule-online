@@ -77,7 +77,16 @@
                                         <div class="question-text">{{ $question->question }}</div>
 
                                         <div class="options">
-                                            @foreach(collect(['A', 'B', 'C', 'D'])->shuffle() as $option)
+                                            @php
+                                                $allOptions = ['A', 'B', 'C', 'D'];
+                                                $visibleOptions = array_values(array_filter($allOptions, fn($opt) => {
+                                                    $field = 'option_' . strtolower($opt);
+                                                    $val = trim($question->$field ?? '');
+                                                    return $val !== '' && $val !== '-';
+                                                }));
+                                                if (empty($visibleOptions)) $visibleOptions = ['A', 'B', 'C', 'D'];
+                                            @endphp
+                                            @foreach(collect($visibleOptions)->shuffle() as $option)
                                                 @php
                                                     $optionField = 'option_' . strtolower($option);
                                                 @endphp
@@ -85,8 +94,8 @@
                                                         <input type="radio" 
                                                                name="answers[{{ $question->id }}]" 
                                                                value="{{ $option }}" 
-                                                           id="q{{ $question->id }}_{{ strtolower($option) }}" 
-                                                           class="form-check-input">
+                                                            id="q{{ $question->id }}_{{ strtolower($option) }}" 
+                                                            class="form-check-input">
                                                     <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
                                                         {{ $option }}. {{ $question->$optionField }}
                                                         </label>
