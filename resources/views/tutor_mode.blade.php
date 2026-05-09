@@ -2706,6 +2706,7 @@
                                     'B' => $qObj->option_b,
                                     'C' => $qObj->option_c,
                                     'D' => $qObj->option_d,
+                                    'E' => $qObj->option_e,
                                 ];
                                 $cleanedOptions = [];
                                 $realOptionCount = 0;
@@ -3206,6 +3207,13 @@
                                 </div>
                                 <input type="text" id="edit-option-d" class="edit-input" placeholder="Option D">
                             </div>
+                            <div class="edit-option-row">
+                                <div class="edit-option-radio">
+                                    <input type="radio" name="edit-correct" id="edit-correct-E" value="E">
+                                    <label for="edit-correct-E" class="edit-radio-label">E</label>
+                                </div>
+                                <input type="text" id="edit-option-e" class="edit-input" placeholder="Option E">
+                            </div>
                         </div>
                     </div>
 
@@ -3495,6 +3503,7 @@
                         option_b: @json($qObj->option_b ?? ''),
                         option_c: @json($qObj->option_c ?? ''),
                         option_d: @json($qObj->option_d ?? ''),
+                        option_e: @json($qObj->option_e ?? ''),
                         alternative_answers: @json($qObj->alternative_answers ?? ''),
                     @endif
                     },

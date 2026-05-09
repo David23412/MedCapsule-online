@@ -78,7 +78,7 @@
 
                                         <div class="options">
                                             @php
-                                                $allOptions = ['A', 'B', 'C', 'D'];
+                                                $allOptions = ['A', 'B', 'C', 'D', 'E'];
                                                 $visibleOptions = array_values(array_filter($allOptions, fn($opt) => {
                                                     $field = 'option_' . strtolower($opt);
                                                     $val = trim($question->$field ?? '');

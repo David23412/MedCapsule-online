@@ -436,7 +436,7 @@
                     @else
                     <div class="options">
                         @php
-                            $allOpts = ['A', 'B', 'C', 'D'];
+                            $allOpts = ['A', 'B', 'C', 'D', 'E'];
                             $visibleOpts = array_values(array_filter($allOpts, function($opt) use ($mistake) {
                                 $val = trim((string) ($mistake->question->{'option_' . strtolower($opt)} ?? ''));
                                 return $val !== '' && $val !== '-';
