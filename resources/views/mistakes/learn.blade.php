@@ -435,7 +435,15 @@
                     </div>
                     @else
                     <div class="options">
-                        @foreach(collect(['A', 'B', 'C', 'D'])->shuffle() as $option)
+                        @php
+                            $allOpts = ['A', 'B', 'C', 'D'];
+                            $visibleOpts = array_values(array_filter($allOpts, function($opt) use ($mistake) {
+                                $val = trim((string) ($mistake->question->{'option_' . strtolower($opt)} ?? ''));
+                                return $val !== '' && $val !== '-';
+                            }));
+                            if (empty($visibleOpts)) $visibleOpts = ['A', 'B', 'C', 'D'];
+                        @endphp
+                        @foreach(collect($visibleOpts)->shuffle() as $option)
                             @php
                                 $optionText = $mistake->question->{'option_' . strtolower($option)};
                                 if (!is_string($optionText)) {
