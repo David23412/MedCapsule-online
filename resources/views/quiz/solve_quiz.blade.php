@@ -86,25 +86,29 @@
                                         <div class="options">
                                             @php
                                                 $allOptions = ['A', 'B', 'C', 'D', 'E'];
-                                                $visibleOptions = array_values(array_filter($allOptions, fn($opt) => {
-                                                    $field = 'option_' . strtolower($opt);
-                                                    $val = trim($question->$field ?? '');
+                                                // Determine which DB letters have real content.
+                                                $visibleLetters = array_values(array_filter($allOptions, fn($opt) => {
+                                                    $val = trim($question->{'option_' . strtolower($opt)} ?? '');
                                                     return $val !== '' && $val !== '-';
                                                 }));
-                                                if (empty($visibleOptions)) $visibleOptions = ['A', 'B', 'C', 'D'];
+                                                if (empty($visibleLetters)) $visibleLetters = ['A', 'B', 'C', 'D'];
+                                                // Shuffle which DB text appears under each display letter.
+                                                $shuffledDbLetters = $visibleLetters;
+                                                shuffle($shuffledDbLetters);
                                             @endphp
-                                            @foreach(collect($visibleOptions)->shuffle() as $option)
+                                            @foreach($visibleLetters as $idx => $displayLetter)
                                                 @php
-                                                    $optionField = 'option_' . strtolower($option);
+                                                    $dbLetter = $shuffledDbLetters[$idx];
+                                                    $optionField = 'option_' . strtolower($dbLetter);
                                                 @endphp
                                                     <div class="form-check">
                                                         <input type="radio" 
                                                                name="answers[{{ $question->id }}]" 
-                                                               value="{{ $option }}" 
-                                                            id="q{{ $question->id }}_{{ strtolower($option) }}" 
+                                                               value="{{ $dbLetter }}" 
+                                                            id="q{{ $question->id }}_{{ $displayLetter }}" 
                                                             class="form-check-input">
-                                                    <label for="q{{ $question->id }}_{{ strtolower($option) }}" class="form-check-label">
-                                                        {{ $option }}. {{ $question->$optionField }}
+                                                    <label for="q{{ $question->id }}_{{ $displayLetter }}" class="form-check-label">
+                                                        {{ $displayLetter }}. {{ $question->$optionField }}
                                                         </label>
                                                     </div>
                                             @endforeach

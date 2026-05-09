@@ -2721,11 +2721,16 @@
 
                             <div class="options-container" data-question-id="{{ $qObj->id ?? '' }}">
                                 @if(($qObj->question_type ?? null) === 'multiple_choice')
-                                    @foreach(collect(array_keys($cleanedOptions))->shuffle() as $letter)
-                                        @php $cleanOption = $cleanedOptions[$letter]; @endphp
+                                    @php
+                                        $visibleLetters = array_values(array_filter(array_keys($cleanedOptions), fn($l) => $cleanedOptions[$l] !== '' && $cleanedOptions[$l] !== '-'));
+                                        $shuffledDb = $visibleLetters;
+                                        shuffle($shuffledDb);
+                                    @endphp
+                                    @foreach($visibleLetters as $idx => $displayLetter)
+                                        @php $dbLetter = $shuffledDb[$idx]; $cleanOption = $cleanedOptions[$dbLetter]; @endphp
                                         @if($cleanOption !== '' && $cleanOption !== '-')
-                                            <div class="option-card" data-option="{{ $letter }}">
-                                                <span class="option-letter">{{ $letter }}</span>
+                                            <div class="option-card" data-option="{{ $dbLetter }}">
+                                                <span class="option-letter">{{ $displayLetter }}</span>
                                                 <div class="option-content">{{ $cleanOption }}</div>
                                             </div>
                                         @endif

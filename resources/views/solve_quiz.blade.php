@@ -1545,20 +1545,29 @@
 
                                         {{-- Options will be rendered here --}}
                                         <div class="options">
-                                            @foreach([
-                                                'A' => $question->option_a,
-                                                'B' => $question->option_b,
-                                                'C' => $question->option_c,
-                                                'D' => $question->option_d,
-                                            ] as $key => $optionValue)
-                                                @if(!empty($optionValue))
+                                            @php
+                                                $displayOrder = ['A', 'B', 'C', 'D', 'E'];
+                                                $visibleDbLetters = array_values(array_filter($displayOrder, function($l) use ($question) {
+                                                    $val = trim($question->{'option_' . strtolower($l)} ?? '');
+                                                    return $val !== '' && $val !== '-';
+                                                }));
+                                                if (empty($visibleDbLetters)) $visibleDbLetters = ['A', 'B', 'C', 'D'];
+                                                $shuffledDb = $visibleDbLetters;
+                                                shuffle($shuffledDb);
+                                            @endphp
+                                            @foreach($visibleDbLetters as $idx => $displayLetter)
+                                                @php
+                                                    $dbLetter = $shuffledDb[$idx];
+                                                    $optVal = $question->{'option_' . strtolower($dbLetter)};
+                                                @endphp
+                                                @if(!empty(trim($optVal ?? '')))
                                                     <div class="form-check">
                                                         <input class="form-check-input" type="radio" 
                                                             name="answers[{{ $question->id }}]" 
-                                                            id="option_{{ $question->id }}_{{ $key }}" 
-                                                            value="{{ $key }}">
-                                                        <label class="form-check-label" for="option_{{ $question->id }}_{{ $key }}">
-                                                            {{ $key }}. {{ $optionValue }}
+                                                            id="option_{{ $question->id }}_{{ $displayLetter }}" 
+                                                            value="{{ $dbLetter }}">
+                                                        <label class="form-check-label" for="option_{{ $question->id }}_{{ $displayLetter }}">
+                                                            {{ $displayLetter }}. {{ $optVal }}
                                                         </label>
                                                     </div>
                                                 @endif

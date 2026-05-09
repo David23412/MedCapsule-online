@@ -442,18 +442,21 @@
                                 return $val !== '' && $val !== '-';
                             }));
                             if (empty($visibleOpts)) $visibleOpts = ['A', 'B', 'C', 'D'];
+                            $shuffledDb = $visibleOpts;
+                            shuffle($shuffledDb);
                         @endphp
-                        @foreach(collect($visibleOpts)->shuffle() as $option)
+                        @foreach($visibleOpts as $idx => $displayLetter)
                             @php
-                                $optionText = $mistake->question->{'option_' . strtolower($option)};
+                                $dbLetter = $shuffledDb[$idx];
+                                $optionText = $mistake->question->{'option_' . strtolower($dbLetter)};
                                 if (!is_string($optionText)) {
                                     $optionText = json_decode($optionText);
                                 }
                             @endphp
                             <div class="option" 
-                                data-option="{{ $option }}"
-                                data-is-correct="{{ $option === $mistake->question->correct_answer ? 'true' : 'false' }}">
-                                {{ $optionText }}
+                                data-option="{{ $dbLetter }}"
+                                data-is-correct="{{ $dbLetter === $mistake->question->correct_answer ? 'true' : 'false' }}">
+                                {{ $displayLetter }}. {{ $optionText }}
                             </div>
                         @endforeach
                     </div>
