@@ -110,13 +110,15 @@ class PaymentController extends Controller
 
         if (!$course->canBePurchased()) {
             return response()->json([
-                'error' => 'This course does not require payment.'
+                'success' => false,
+                'message' => 'Payment is not configured for this course.'
             ], 400);
         }
 
         if (!$user->isAdmin() && ($course->hasUserPaid($user->id) || $course->hasUserPendingPayment($user->id))) {
             return response()->json([
-                'error' => 'You have already paid for this course or have a pending payment'
+                'success' => false,
+                'message' => 'You have already paid for this course or have a pending payment'
             ], 400);
         }
 
@@ -169,7 +171,7 @@ class PaymentController extends Controller
 
             // Validate the request
             $request->validate([
-                'payment_method' => 'required|string|in:vodafone_cash,fawry,instapay,bank_transfer',
+                'payment_method' => 'required|string|in:instapay',
                 'transaction_id' => 'required|string|min:1|max:255',
                 'amount' => 'required|numeric|min:0'
             ]);

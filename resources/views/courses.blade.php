@@ -522,11 +522,16 @@
                                     <i class="fas fa-clock" style="color: #ea580c;"></i>
                                     <span style="color: #ea580c; font-weight: bold;">Payment Pending</span>
                                 </button>
-                            @else
+                            @elseif ($course->canBePurchased())
                                 <!-- User is not enrolled and no pending payment - show payment button -->
                                 <button type="button" class="action-btn enroll show-payment-modal" id="paymentBtn_{{ $course->id }}" data-course-id="{{ $course->id }}" aria-label="Unlock {{ $course->name }} course">
                                     <i class="fas fa-unlock"></i>
                                     <span>Unlock</span>
+                                </button>
+                            @else
+                                <button type="button" class="action-btn enroll" disabled style="background: #f8fafc; border-color: #e5e7eb; color: #64748b; cursor: not-allowed;" aria-label="{{ $course->name }} payment is not configured">
+                                    <i class="fas fa-lock"></i>
+                                    <span>Payment Unavailable</span>
                                 </button>
                             @endif
                         @else
@@ -540,10 +545,15 @@
                                     <i class="fas fa-play"></i>
                                     Sign in to Start (Free)
                                 </a>
-                            @else
+                            @elseif ($course->canBePurchased())
                                 <a href="{{ route('login') }}" class="action-btn enroll" aria-label="Sign in to access {{ $course->name }}">
                                     <i class="fas fa-lock"></i>
                                     Sign in to Access
+                                </a>
+                            @else
+                                <a href="{{ route('login') }}" class="action-btn enroll" style="background: #f8fafc; border-color: #e5e7eb; color: #64748b;" aria-label="Sign in to check {{ $course->name }} access">
+                                    <i class="fas fa-lock"></i>
+                                    Sign in to Check Access
                                 </a>
                             @endif
                         @endif

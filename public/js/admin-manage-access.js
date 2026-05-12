@@ -1,4 +1,5 @@
 const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
+const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
 
 // ── Unified Notification System (global scope) ─────────────────────────
 (function () {
@@ -1653,8 +1654,12 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 
                 if (courseId) {
                     $.ajax({
-                        url: `/api/courses/${courseId}/topics`,
+                        url: `${MANAGE_ACCESS_ROUTES.courseTopicsBase || '/api/courses'}/${courseId}/topics`,
                         method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
                         success: function(topics) {
                             topicSelect.empty().append('<option value="">Select topic...</option>');
                             topics.forEach(topic => {
@@ -1683,9 +1688,13 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                 };
 
                 $.ajax({
-                    url: '/admin/videos',
+                    url: MANAGE_ACCESS_ROUTES.adminVideosStore || '/admin/videos',
                     method: 'POST',
                     data: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     success: function(response) {
                         if (response.success) {
                             showNotification('success', 'Video Added', 'Video added successfully!');
@@ -1697,7 +1706,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
                         }
                     },
                     error: function(xhr) {
-                        var msg = xhr.responseJSON?.message || 'Failed to add video.';
+                        var msg = xhr.responseJSON?.message || xhr.responseJSON?.errors?.youtube_url?.[0] || xhr.responseJSON?.errors?.title?.[0] || xhr.responseJSON?.errors?.topic_id?.[0] || 'Failed to add video.';
                         showNotification('error', 'Add Failed', msg);
                     }
                 });
@@ -1716,7 +1725,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
             `);
 
             $.ajax({
-                url: '/admin/videos',
+                url: MANAGE_ACCESS_ROUTES.adminVideosIndex || '/admin/videos',
                 method: 'GET',
                 headers: {
                     'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
@@ -1785,7 +1794,7 @@ const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
         function deleteVideo(videoId) {
             if (confirm('Are you sure you want to delete this video?')) {
                 $.ajax({
-                    url: `/admin/videos/${videoId}`,
+                    url: `${MANAGE_ACCESS_ROUTES.adminVideosDestroyBase || '/admin/videos'}/${videoId}`,
                     method: 'DELETE',
                     data: { _token: MANAGE_ACCESS_CONFIG.csrfToken },
                     success: function(response) {

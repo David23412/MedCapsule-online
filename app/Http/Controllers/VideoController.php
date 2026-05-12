@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Video;
+use App\Models\Topic;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Validator;
 
 class VideoController extends Controller
 {
@@ -216,34 +218,49 @@ class VideoController extends Controller
                 ], 403);
             }
 
-            // ENHANCED SECURITY: Comprehensive input validation and sanitization
-            $validated = $request->validate([
+            // ENHANCED SECURITY: Validate input before parsing YouTube variants.
+            $validator = Validator::make($request->all(), [
                 'topic_id' => 'required|integer|exists:topics,id',
-                'youtube_url' => 'required|url|max:2048|regex:/^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)/',
-                'title' => 'required|string|max:255|min:1'
+                'youtube_url' => 'required|string|max:2048',
+                'title' => 'nullable|string|max:255',
+                'description' => 'nullable|string|max:2000',
             ], [
                 'topic_id.required' => 'Topic ID is required.',
                 'topic_id.integer' => 'Invalid topic ID format.',
                 'topic_id.exists' => 'Selected topic does not exist.',
                 'youtube_url.required' => 'YouTube URL is required.',
-                'youtube_url.url' => 'Invalid URL format.',
-                'youtube_url.regex' => 'URL must be a valid YouTube video URL.',
+                'youtube_url.string' => 'YouTube URL must be valid text.',
                 'youtube_url.max' => 'URL is too long.',
-                'title.required' => 'Video title is required.',
                 'title.string' => 'Title must be a valid string.',
                 'title.max' => 'Title must not exceed 255 characters.',
-                'title.min' => 'Title cannot be empty.'
             ]);
 
-            // SECURITY: Sanitize inputs to prevent XSS
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            $topic = Topic::query()->select('id', 'name')->findOrFail((int) $validated['topic_id']);
+            $rawYoutubeInput = trim((string) $validated['youtube_url']);
+            $videoId = $this->extractYouTubeId($rawYoutubeInput);
+            $title = trim((string) ($validated['title'] ?? ''));
+
+            if ($title === '') {
+                $title = $topic->name;
+            }
+
+            // SECURITY: Normalize inputs before storage and output.
             $safeData = [
                 'topic_id' => (int) $validated['topic_id'],
-                'youtube_url' => htmlspecialchars($validated['youtube_url'], ENT_QUOTES, 'UTF-8'),
-                'title' => htmlspecialchars($validated['title'], ENT_QUOTES, 'UTF-8')
+                'youtube_url' => strip_tags($rawYoutubeInput),
+                'title' => strip_tags($title),
             ];
 
             // Extract YouTube video ID from URL with enhanced validation
-            $videoId = $this->extractYouTubeId($safeData['youtube_url']);
             if (!$videoId || !preg_match('/^[a-zA-Z0-9_-]{11}$/', $videoId)) {
                 Log::warning('Invalid YouTube video ID extracted', [
                     'user_id' => $user->id,
@@ -254,8 +271,8 @@ class VideoController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid YouTube URL. Please provide a valid YouTube video URL.'
-                ], 400);
+                    'message' => 'Invalid YouTube URL. Paste a YouTube watch/share/shorts/embed URL or the 11-character video ID.'
+                ], 422);
             }
 
             // 🚀 OPTIMIZED: Check for existing video with caching
@@ -395,13 +412,47 @@ class VideoController extends Controller
      */
     private function extractYouTubeId($url): ?string
     {
+        $input = trim((string) $url);
+
+        if (preg_match('/^[a-zA-Z0-9_-]{11}$/', $input)) {
+            return $input;
+        }
+
+        if (! preg_match('/^https?:\/\//i', $input)) {
+            $input = 'https://' . ltrim($input, '/');
+        }
+
+        $host = strtolower((string) parse_url($input, PHP_URL_HOST));
+        $path = trim((string) parse_url($input, PHP_URL_PATH), '/');
+        $query = (string) parse_url($input, PHP_URL_QUERY);
+
+        if ($host === 'youtu.be') {
+            $segments = explode('/', $path);
+            return $segments[0] ?? null;
+        }
+
+        if (str_ends_with($host, 'youtube.com') || str_ends_with($host, 'youtube-nocookie.com')) {
+            parse_str($query, $queryParams);
+            if (! empty($queryParams['v'])) {
+                return (string) $queryParams['v'];
+            }
+
+            $segments = explode('/', $path);
+            $knownPathPrefixes = ['embed', 'shorts', 'live', 'v'];
+            if (count($segments) >= 2 && in_array($segments[0], $knownPathPrefixes, true)) {
+                return $segments[1];
+            }
+        }
+
         $patterns = [
             '/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/',
             '/youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/',
+            '/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/',
+            '/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/',
         ];
 
         foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $url, $matches)) {
+            if (preg_match($pattern, $input, $matches)) {
                 return $matches[1];
             }
         }

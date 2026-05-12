@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -15,7 +16,8 @@ return new class extends Migration
         DB::unprepared('DROP TRIGGER IF EXISTS topics_before_insert_defaults');
         DB::unprepared('DROP TRIGGER IF EXISTS topics_before_update_defaults');
 
-        DB::unprepared(<<<'SQL'
+        try {
+            DB::unprepared(<<<'SQL'
 CREATE TRIGGER topics_before_insert_defaults
 BEFORE INSERT ON topics
 FOR EACH ROW
@@ -42,7 +44,7 @@ BEGIN
 END
 SQL);
 
-        DB::unprepared(<<<'SQL'
+            DB::unprepared(<<<'SQL'
 CREATE TRIGGER topics_before_update_defaults
 BEFORE UPDATE ON topics
 FOR EACH ROW
@@ -68,6 +70,11 @@ BEGIN
     END IF;
 END
 SQL);
+        } catch (\Throwable $e) {
+            Log::warning('Skipping topics default triggers; database user cannot create triggers.', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function down(): void

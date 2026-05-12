@@ -188,6 +188,12 @@ class User extends Authenticatable
      */
     protected static function booted()
     {
+        static::creating(function ($user) {
+            if (blank($user->number)) {
+                $user->number = static::generateFallbackNumber();
+            }
+        });
+
         static::updating(function ($user) {
             // Check if role is being changed from admin to non-admin
             if ($user->isDirty('role') &&
@@ -200,6 +206,15 @@ class User extends Authenticatable
             }
         });
 
+    }
+
+    private static function generateFallbackNumber(): string
+    {
+        do {
+            $number = 'U'.str_pad((string) random_int(1, 999999999999), 12, '0', STR_PAD_LEFT);
+        } while (static::query()->where('number', $number)->exists());
+
+        return $number;
     }
 
     /**

@@ -1,704 +1,317 @@
-<!-- Modal Header -->
-<meta name="csrf-token" content="{{ csrf_token() }}">
-
-<!-- Animated Success Message -->
 <style>
-@keyframes checkmark {
-    0% { transform: scale(0); opacity: 0; }
-    50% { transform: scale(1.2); }
-    100% { transform: scale(1); opacity: 1; }
-}
-@keyframes text-fade {
-    0% { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0); }
-}
-.success-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255,255,255,0.95);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 999999;
-}
-.success-checkmark {
-    color: #28a745;
-    font-size: 80px;
-    animation: checkmark 0.8s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-}
-.success-text {
-    opacity: 0;
-    animation: text-fade 0.6s ease forwards;
-    animation-delay: 0.4s;
-}
-</style>
-
-<div id="successOverlay" class="success-overlay">
-    <div style="text-align: center; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-        <div class="success-checkmark">
-            <i class="fas fa-check-circle"></i>
-        </div>
-        <h3 class="success-text" style="margin-top: 20px; color: #28a745; font-size: 24px;">
-            Payment Submitted Successfully!
-        </h3>
-        <p class="success-text" style="margin-top: 15px; color: #666; font-size: 16px;">
-            We will verify it shortly.
-        </p>
-        <div class="success-text" style="margin-top: 20px; color: #666;">
-            Redirecting in <span id="countdown">5</span> seconds...
-        </div>
-    </div>
-</div>
-
-<div id="successMessage" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 999999; text-align: center; padding-top: 20%;">
-    <i class="fas fa-check-circle" style="color: #28a745; font-size: 80px;"></i>
-    <h3 style="margin-top: 20px; color: #28a745;">Payment Submitted Successfully!</h3>
-    <p>We will verify it shortly.</p>
-    <p>Redirecting in <span id="countdown">5</span> seconds...</p>
-</div>
-
-<!-- Modal Header -->
-<div class="modal-header py-3">
-    <h5 class="modal-title fs-5" id="paymentModalLabel">
-        <i class="fas fa-shopping-cart me-2"></i>Course Payment
-    </h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-</div>
-
-<!-- Modal Body -->
-<div class="modal-body p-4">
-    <!-- Course Summary Box -->
-    <div class="card mb-4 border shadow-sm">
-        <div class="card-header bg-primary text-white py-2">
-            <h6 class="mb-0 fs-5">Course Summary</h6>
-        </div>
-        <div class="card-body p-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="mb-2 fs-5">{{ $course['name'] }}</h6>
-                    <div class="text-muted">
-                        Learn and master new skills
-                    </div>
-                </div>
-                <div class="h4 text-primary mb-0">{{ $course['price'] }} {{ $course['currency'] }}</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Admin Note -->
-    @if(Auth::user()->role === 'admin')
-        <div class="text-muted mb-3">
-            <i class="fas fa-info-circle me-1"></i> Admin: All payment methods visible
-        </div>
-    @endif
-
-    <div class="alert alert-light border mb-4">
-        <div class="fw-semibold mb-1">Payment setup</div>
-        <div class="small text-muted">
-            <strong>IBAN</strong> is your bank account identifier for manual bank transfers.
-            <strong>Paymob</strong> is a payment gateway and needs merchant keys from the Paymob dashboard.
-            You can start immediately with bank transfer, Vodafone Cash, Fawry, or InstaPay, then enable Paymob later.
-        </div>
-    </div>
-    
-    <!-- Payment Method Tabs -->
-    <ul class="nav nav-tabs nav-fill mb-0" id="paymentMethodTabs" role="tablist">
-        @if(config('payment.vodafone_cash.enabled', true) || Auth::user()->role === 'admin')
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active payment-tab-vodafone py-3" id="vodafone-tab" data-bs-toggle="tab" data-bs-target="#vodafone-panel" type="button" role="tab">
-                    <i class="fas fa-mobile-alt me-2"></i>Vodafone Cash
-                    @if(Auth::user()->role === 'admin' && !config('payment.vodafone_cash.enabled', true))
-                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">Disabled</span>
-                    @endif
-                </button>
-            </li>
-        @endif
-        
-        @if(config('payment.fawry.enabled', true) || Auth::user()->role === 'admin')
-            <li class="nav-item" role="presentation">
-                <button class="nav-link payment-tab-fawry py-3" id="fawry-tab" data-bs-toggle="tab" data-bs-target="#fawry-panel" type="button" role="tab">
-                    <i class="fas fa-store me-2"></i>Fawry
-                    @if(Auth::user()->role === 'admin' && !config('payment.fawry.enabled', true))
-                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">Disabled</span>
-                    @endif
-                </button>
-            </li>
-        @endif
-        
-        <li class="nav-item" role="presentation">
-            <button class="nav-link payment-tab-instapay py-3" id="instapay-tab" data-bs-toggle="tab" data-bs-target="#instapay-panel" type="button" role="tab">
-                <i class="fas fa-credit-card me-2"></i>InstaPay
-            </button>
-        </li>
-
-        @if(config('payment.bank_transfer.enabled', true) || Auth::user()->role === 'admin')
-            <li class="nav-item" role="presentation">
-                <button class="nav-link payment-tab-bank py-3" id="bank-transfer-tab" data-bs-toggle="tab" data-bs-target="#bank-transfer-panel" type="button" role="tab">
-                    <i class="fas fa-university me-2"></i>Bank Transfer
-                    @if(Auth::user()->role === 'admin' && !config('payment.bank_transfer.enabled', true))
-                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">Disabled</span>
-                    @endif
-                </button>
-            </li>
-        @endif
-    </ul>
-    
-    <!-- Payment Method Details -->
-    <div class="tab-content border border-top-0 rounded-bottom p-4 mb-4" id="paymentMethodContent">
-        <!-- Vodafone Cash Panel -->
-        <div class="tab-pane fade show active" id="vodafone-panel" role="tabpanel">
-            <div class="d-flex align-items-center mb-3">
-                <div class="text-danger me-3"><i class="fas fa-mobile-alt fa-2x"></i></div>
-                <div class="fw-bold fs-5">Send {{ $course['price'] }} EGP to:</div>
-            </div>
-            <div class="d-flex align-items-center my-3">
-                <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.vodafone_cash.number', '01XXXXXXXXX') }}</code>
-                <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.vodafone_cash.number', '01XXXXXXXXX') }}">
-                    <i class="fas fa-copy"></i>
-                </button>
-            </div>
-            <div class="text-success fs-6">
-                <i class="fas fa-check-circle me-2"></i>Auto-verify with <code>VC</code> followed by your transaction number
-            </div>
-        </div>
-        
-        <!-- Fawry Panel -->
-        <div class="tab-pane fade" id="fawry-panel" role="tabpanel">
-            <div class="d-flex align-items-center mb-3">
-                <div class="text-warning me-3"><i class="fas fa-store fa-2x"></i></div>
-                <div class="fw-bold fs-5">Pay {{ $course['price'] }} EGP to:</div>
-            </div>
-            <div class="d-flex align-items-center my-3">
-                <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.fawry.number', 'FAWRY-XXXXXXXXX') }}</code>
-                <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.fawry.number', 'FAWRY-XXXXXXXXX') }}">
-                    <i class="fas fa-copy"></i>
-                </button>
-            </div>
-            <div class="text-success fs-6">
-                <i class="fas fa-check-circle me-2"></i>Auto-verify with <code>FWY</code> followed by your transaction number
-            </div>
-        </div>
-        
-        <!-- InstaPay Panel -->
-        <div class="tab-pane fade" id="instapay-panel" role="tabpanel">
-            <div class="d-flex align-items-center mb-3">
-                <div style="color: #c13584;" class="me-3"><i class="fas fa-credit-card fa-2x"></i></div>
-                <div class="fw-bold fs-5">Pay {{ $course['price'] }} EGP via:</div>
-            </div>
-            <div class="d-flex align-items-center my-3">
-                <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-5">{{ config('payment.instapay.number', 'INSTAPAY-XXXXXXXXX') }}</code>
-                <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.instapay.number', 'INSTAPAY-XXXXXXXXX') }}">
-                    <i class="fas fa-copy"></i>
-                </button>
-            </div>
-            <div class="text-success fs-6">
-                <i class="fas fa-check-circle me-2"></i>Auto-verify with <code>IP</code> followed by your transaction number
-            </div>
-        </div>
-
-        @if(config('payment.bank_transfer.enabled', true) || Auth::user()->role === 'admin')
-            <div class="tab-pane fade" id="bank-transfer-panel" role="tabpanel">
-                <div class="d-flex align-items-center mb-3">
-                    <div class="text-primary me-3"><i class="fas fa-university fa-2x"></i></div>
-                    <div class="fw-bold fs-5">Transfer {{ $course['price'] }} EGP to this bank account:</div>
-                </div>
-                <div class="mb-3">
-                    <div class="small text-muted mb-1">Bank Name</div>
-                    <div class="fw-semibold">{{ config('payment.bank_transfer.bank_name', 'Your Bank') }}</div>
-                </div>
-                <div class="mb-3">
-                    <div class="small text-muted mb-1">Account Name</div>
-                    <div class="fw-semibold">{{ config('payment.bank_transfer.account_name', 'MedCapsule') }}</div>
-                </div>
-                <div class="d-flex align-items-center my-3">
-                    <code class="bg-white py-2 px-3 rounded border flex-grow-1 me-2 fs-6">{{ config('payment.bank_transfer.iban', 'EGXXXXXXXXXXXXXXXXXXXXXXXXX') }}</code>
-                    <button class="btn btn-lg text-secondary copy-btn" data-clipboard="{{ config('payment.bank_transfer.iban', 'EGXXXXXXXXXXXXXXXXXXXXXXXXX') }}">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-                @if(config('payment.bank_transfer.account_number'))
-                    <div class="small text-muted mb-2">Account Number: {{ config('payment.bank_transfer.account_number') }}</div>
-                @endif
-                @if(config('payment.bank_transfer.swift'))
-                    <div class="small text-muted mb-2">SWIFT: {{ config('payment.bank_transfer.swift') }}</div>
-                @endif
-                @if(config('payment.bank_transfer.branch'))
-                    <div class="small text-muted mb-3">Branch: {{ config('payment.bank_transfer.branch') }}</div>
-                @endif
-                <div class="text-success fs-6">
-                    <i class="fas fa-check-circle me-2"></i>{{ config('payment.bank_transfer.instructions') }}
-                </div>
-            </div>
-        @endif
-    </div>
-    
-    <!-- Payment Form -->
-                    <form id="coursePaymentForm" class="mb-0" method="POST" action="{{ route('payments.process', $course['id']) }}" data-course-id="{{ $course['id'] }}">
-        @csrf
-        <!-- Hidden payment method field that gets updated by JavaScript -->
-        <input type="hidden" id="paymentMethodField" name="payment_method" value="vodafone_cash">
-        <input type="hidden" name="amount" value="{{ $course['price'] }}">
-        
-        <!-- Transaction ID Input -->
-        <div class="mb-4">
-            <label for="transactionId" class="form-label" id="transactionIdLabel">Transaction Code</label>
-            <div class="input-group">
-                <input type="text" class="form-control form-control-lg" id="transactionId" name="transaction_id" placeholder="Enter your transfer or transaction reference" required>
-            </div>
-        </div>
-        
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">
-            Submit Payment
-        </button>
-    </form>
-</div>
-
-<!-- Modal Footer -->
-<div class="modal-footer p-3">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-</div>
-
-<!-- Payment Form JavaScript -->
-<script>
-// Function to update payment button state
-function updatePaymentButton(courseId) {
-    const button = document.querySelector(`#paymentBtn_${courseId}`);
-    if (button) {
-        button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px; font-weight: bold;">Payment Pending</span>';
-        button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
-        button.classList.add('btn-warning');
-        button.disabled = true;
-        button.style.cursor = 'default';
-        button.style.pointerEvents = 'none';
-        button.style.opacity = '0.8';
-        
-        console.log('🔄 Payment button updated to pending state for course:', courseId);
-    } else {
-        console.warn('⚠️ Payment button not found for course:', courseId);
-    }
-}
-
-function showSuccessMessage() {
-    // Store pending state and update button
-    const courseId = document.getElementById('coursePaymentForm').getAttribute('data-course-id');
-    if (courseId) {
-        // Store pending state with timestamp
-        const pendingData = {
-            timestamp: Date.now(),
-            courseId: courseId,
-            status: 'pending'
-        };
-        localStorage.setItem(`payment_pending_${courseId}`, JSON.stringify(pendingData));
-        
-        // Update button immediately
-        updatePaymentButton(courseId);
-        
-        // Close the payment modal
-        const paymentModal = bootstrap.Modal.getInstance(document.getElementById('paymentModal'));
-        if (paymentModal) {
-            paymentModal.hide();
-        }
-        
-        console.log('✅ Payment pending state stored for course:', courseId);
+    .payment-modal-shell {
+        background: #fff;
+        overflow: hidden;
     }
 
-    // Create success message container
-    const container = document.createElement('div');
-    container.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255,255,255,0.98);
+    .payment-modal-shell .modal-header {
+        border-bottom: 1px solid #eef2f7;
+        padding: 16px 20px;
+    }
+
+    .payment-title {
         display: flex;
         align-items: center;
-        justify-content: center;
-        z-index: 999998;
-        backdrop-filter: blur(5px);
-    `;
+        gap: 10px;
+        margin: 0;
+        color: #111827;
+        font-size: 1.08rem;
+        font-weight: 800;
+    }
 
-    // Add success message content
-    container.innerHTML = `
-        <style>
-            @keyframes modal-in {
-                0% { transform: scale(0.8); opacity: 0; }
-                100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes checkmark {
-                0% { transform: scale(0.5) rotate(-45deg); opacity: 0; }
-                40% { transform: scale(1.2) rotate(10deg); }
-                70% { transform: scale(0.9) rotate(-5deg); }
-                100% { transform: scale(1) rotate(0); opacity: 1; }
-            }
-            @keyframes text-fade {
-                0% { opacity: 0; transform: translateY(15px); }
-                100% { opacity: 1; transform: translateY(0); }
-            }
-            @keyframes shine {
-                0% { background-position: -100% 0; }
-                100% { background-position: 200% 0; }
-            }
-            @keyframes pulse {
-                0% { transform: scale(1); opacity: 1; }
-                50% { transform: scale(1.05); opacity: 0.8; }
-                100% { transform: scale(1); opacity: 1; }
-            }
-        </style>
-        <div style="text-align: center; padding: 50px; background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); transform: scale(0.8); opacity: 0; animation: modal-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">
-            <div style="color: #28a745; font-size: 140px; animation: checkmark 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">
-                <i class="fas fa-check-circle" style="filter: drop-shadow(0 6px 8px rgba(40, 167, 69, 0.2));"></i>
-            </div>
-            <h3 style="margin-top: 30px; color: #28a745; font-size: 32px; font-weight: bold; animation: text-fade 0.6s ease forwards 0.6s; opacity: 0; text-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);">
-                Amazing! Payment Submitted! 🎉
-            </h3>
-            <p style="margin-top: 15px; color: #666; font-size: 18px; animation: text-fade 0.6s ease forwards 0.8s; opacity: 0;">
-                Get ready to start learning! We'll verify it shortly.
-            </p>
-            <div style="margin-top: 25px; animation: text-fade 0.6s ease forwards 1s; opacity: 0;">
-                <span style="
-                    background: linear-gradient(90deg, #e8f5e9, #c8e6c9, #e8f5e9);
-                    background-size: 200% 100%;
-                    color: #28a745;
-                    padding: 12px 24px;
-                    border-radius: 50px;
-                    font-size: 18px;
-                    font-weight: 500;
-                    display: inline-block;
-                    animation: shine 2s linear infinite, pulse 2s ease-in-out infinite;
-                ">
-                    <i class="fas fa-bolt"></i> Unlocking your course...
-                </span>
-            </div>
-        </div>
-    `;
+    .payment-title i {
+        color: #2563eb;
+    }
 
-    document.body.appendChild(container);
+    .payment-hero {
+        position: relative;
+        padding: 22px;
+        border-radius: 14px;
+        background:
+            radial-gradient(circle at top right, rgba(236, 72, 153, 0.24), transparent 34%),
+            linear-gradient(135deg, #2563eb 0%, #7c3aed 58%, #db2777 100%);
+        color: #fff;
+        box-shadow: 0 18px 40px rgba(37, 99, 235, 0.22);
+    }
 
-    // Hide modal if it exists
-    const modal = document.querySelector('.modal');
-    if (modal) modal.style.display = 'none';
-
-    // Redirect after animations complete
-    setTimeout(() => {
-        window.location.href = '/courses';
-    }, 2500);
-}
-
-function showErrorMessage(message) {
-    // Create error message container
-    const container = document.createElement('div');
-    container.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255,255,255,0.98);
-        display: flex;
+    .payment-hero-label {
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
-        z-index: 999998;
-        backdrop-filter: blur(5px);
-    `;
-
-    // Add error message content
-    container.innerHTML = `
-        <style>
-            @keyframes modal-in {
-                0% { transform: scale(0.8); opacity: 0; }
-                100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes text-fade {
-                0% { opacity: 0; transform: translateY(15px); }
-                100% { opacity: 1; transform: translateY(0); }
-            }
-        </style>
-        <div style="text-align: center; padding: 50px; background: white; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); transform: scale(0.8); opacity: 0; animation: modal-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;">
-            <div style="color: #dc3545; font-size: 140px;">
-                <i class="fas fa-exclamation-triangle" style="filter: drop-shadow(0 6px 8px rgba(220, 53, 69, 0.2));"></i>
-            </div>
-            <h3 style="margin-top: 30px; color: #dc3545; font-size: 32px; font-weight: bold; animation: text-fade 0.6s ease forwards 0.6s; opacity: 0;">
-                Payment Submission Failed
-            </h3>
-            <p style="margin-top: 15px; color: #666; font-size: 18px; animation: text-fade 0.6s ease forwards 0.8s; opacity: 0;">
-                ${message}
-            </p>
-            <div style="margin-top: 25px; animation: text-fade 0.6s ease forwards 1s; opacity: 0;">
-                <button onclick="location.reload()" style="
-                    background: #dc3545;
-                    color: white;
-                    padding: 12px 24px;
-                    border: none;
-                    border-radius: 50px;
-                    font-size: 18px;
-                    font-weight: 500;
-                    cursor: pointer;
-                ">
-                    <i class="fas fa-redo"></i> Try Again
-                </button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(container);
-}
-
-// Function to get current payment method from active tab
-function getCurrentPaymentMethod() {
-    const activeTab = document.querySelector('#paymentMethodTabs .nav-link.active');
-    if (activeTab) {
-        if (activeTab.id === 'vodafone-tab') return 'vodafone_cash';
-        if (activeTab.id === 'fawry-tab') return 'fawry';
-        if (activeTab.id === 'instapay-tab') return 'instapay';
-        if (activeTab.id === 'bank-transfer-tab') return 'bank_transfer';
-    }
-    return 'vodafone_cash'; // default
-}
-
-function updateTransactionFieldCopy(paymentMethod) {
-    const label = document.getElementById('transactionIdLabel');
-    const input = document.getElementById('transactionId');
-
-    if (!label || !input) {
-        return;
+        gap: 7px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
 
-    const copyByMethod = {
-        vodafone_cash: {
-            label: 'Vodafone Cash Transaction Code',
-            placeholder: 'Example: VC1234567890'
-        },
-        fawry: {
-            label: 'Fawry Reference Number',
-            placeholder: 'Example: FWY123456789012'
-        },
-        instapay: {
-            label: 'InstaPay Reference Number',
-            placeholder: 'Example: IP12345678901234'
-        },
-        bank_transfer: {
-            label: 'Bank Transfer Reference',
-            placeholder: 'Enter the transfer reference from your bank app or receipt'
-        }
-    };
-
-    const selected = copyByMethod[paymentMethod] || copyByMethod.vodafone_cash;
-    label.textContent = selected.label;
-    input.placeholder = selected.placeholder;
-}
-
-// Initialize payment form handling
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('coursePaymentForm');
-    const paymentMethodField = document.getElementById('paymentMethodField');
-    
-    if (!form) {
-        console.log('Payment form not found');
-        return;
-    }
-    console.log('Payment form found');
-    
-    // Update payment method field when tabs are clicked
-    const paymentTabs = document.querySelectorAll('#paymentMethodTabs .nav-link');
-    paymentTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            setTimeout(() => {
-                const paymentMethod = getCurrentPaymentMethod();
-                if (paymentMethodField) {
-                    paymentMethodField.value = paymentMethod;
-                    console.log('Payment method updated to:', paymentMethod);
-                }
-                updateTransactionFieldCopy(paymentMethod);
-            }, 100); // Small delay to ensure tab is active
-        });
-    });
-    
-    // Set initial payment method
-    if (paymentMethodField) {
-        paymentMethodField.value = getCurrentPaymentMethod();
-        console.log('Initial payment method set to:', paymentMethodField.value);
-        updateTransactionFieldCopy(paymentMethodField.value);
+    .payment-course-name {
+        margin: 14px 0 8px;
+        font-size: clamp(1.45rem, 3vw, 2rem);
+        font-weight: 900;
+        line-height: 1.05;
     }
 
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        console.log('Payment form submitted');
-
-        // Disable submit button
-        const submitBtn = this.querySelector('#submitBtn');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Processing...';
-        }
-
-        // Ensure payment method is up to date
-        const paymentMethod = getCurrentPaymentMethod();
-        if (paymentMethodField) {
-            paymentMethodField.value = paymentMethod;
-        }
-        console.log('Final payment method:', paymentMethod);
-
-        // Submit the form data (payment method is now in the hidden field)
-        const formData = new FormData(form);
-        
-        fetch(form.action, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-            },
-            body: new URLSearchParams(formData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Payment submission response:', data);
-            
-            if (data.success) {
-                // Show success message
-                showSuccessMessage();
-            } else {
-                // Show error message
-                showErrorMessage(data.message || 'An error occurred while submitting your payment. Please try again.');
-                
-                // Re-enable submit button
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Submit Payment';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Payment submission error:', error);
-            
-            // Show error message
-            showErrorMessage('An error occurred while submitting your payment. Please try again.');
-            
-            // Re-enable submit button
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Payment';
-            }
-        });
-    });
-});
-</script>
-
-<!-- Styles -->
-<style>
-    /* General Styles */
-    .modal-content {
-        font-size: 16px;
+    .payment-course-copy {
+        max-width: 30rem;
+        margin: 0;
+        color: rgba(255, 255, 255, 0.86);
+        font-size: 0.95rem;
+        line-height: 1.45;
     }
-    
-    /* Tab Navigation Styles */
-    .nav-tabs .nav-link {
-        padding: 0.7rem;
-        border-radius: 0;
-        font-weight: 500;
+
+    .payment-price {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-top: 18px;
+        font-size: 2rem;
+        font-weight: 900;
+        line-height: 1;
+    }
+
+    .payment-price span {
+        font-size: 0.95rem;
+        font-weight: 800;
+        opacity: 0.88;
+    }
+
+    .payment-value-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin: 14px 0 18px;
+    }
+
+    .payment-value-item {
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1.3;
+    }
+
+    .payment-value-item i {
+        display: block;
+        margin-bottom: 8px;
+        color: #2563eb;
         font-size: 1rem;
     }
-    
-    /* Vodafone Cash Tab Styles */
-    .payment-tab-vodafone {
-        color: #e53935;
-    }
-    
-    .payment-tab-vodafone:hover, .payment-tab-vodafone.active {
-        background-color: #ffebee !important;
-        color: #c62828 !important;
-        border-color: #ffcdd2 !important;
-    }
-    
-    /* Fawry Tab Styles */
-    .payment-tab-fawry {
-        color: #f57c00;
-    }
-    
-    .payment-tab-fawry:hover, .payment-tab-fawry.active {
-        background-color: #fff8e1 !important;
-        color: #ef6c00 !important;
-        border-color: #ffe082 !important;
-    }
-    
-    /* InstaPay Tab Styles */
-    .payment-tab-instapay {
-        color: #c13584;
-    }
-    
-    .payment-tab-instapay:hover, .payment-tab-instapay.active {
-        background-color: rgba(193, 53, 132, 0.1) !important;
-        color: #833ab4 !important;
-        border-color: rgba(193, 53, 132, 0.3) !important;
+
+    .instapay-card {
+        padding: 18px;
+        border: 1px solid rgba(219, 39, 119, 0.2);
+        border-radius: 14px;
+        background: linear-gradient(180deg, #fff7fb 0%, #ffffff 100%);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
     }
 
-    .payment-tab-bank {
-        color: #1565c0;
+    .instapay-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
     }
 
-    .payment-tab-bank:hover, .payment-tab-bank.active {
-        background-color: #e3f2fd !important;
-        color: #0d47a1 !important;
-        border-color: #90caf9 !important;
+    .instapay-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #db2777;
+        color: #fff;
+        box-shadow: 0 10px 18px rgba(219, 39, 119, 0.22);
     }
-    
-    /* Code Styles */
-    code {
+
+    .instapay-heading h6 {
+        margin: 0;
+        color: #111827;
+        font-size: 1rem;
+        font-weight: 900;
+    }
+
+    .instapay-heading p {
+        margin: 2px 0 0;
+        color: #64748b;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .instapay-copy-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 44px;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .instapay-handle {
+        min-width: 0;
+        overflow: hidden;
+        padding: 13px 14px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #fff;
+        color: #be185d;
         font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         font-size: 1rem;
-        letter-spacing: 0.5px;
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
-    
-    /* Form Elements */
-    .form-control {
-        padding: 0.75rem 1rem;
-    }
-    
-    /* Copy Button */
+
     .copy-btn {
-        padding: 0.5rem 1rem;
+        width: 44px;
+        height: 44px;
+        border: 0;
+        border-radius: 10px;
+        background: #eef2ff;
+        color: #2563eb;
     }
-    
-    /* Improved Readability */
-    .text-muted {
-        color: #5a6268 !important;
+
+    .instapay-note {
+        margin-top: 12px;
+        color: #15803d;
+        font-size: 0.86rem;
+        font-weight: 700;
+        line-height: 1.4;
     }
-    
-    /* Alert Styles */
-    .alert {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border-radius: 8px;
-        text-align: center;
+
+    .payment-form-card {
+        margin-top: 16px;
     }
-    
-    .alert-success {
-        background-color: #d4edda;
-        color: #155724;
-        border: none;
+
+    .payment-form-card label {
+        color: #111827;
+        font-weight: 800;
     }
-    
-    .alert-danger {
-        background-color: #f8d7da;
-        color: #721c24;
-        border: none;
+
+    .payment-form-card .form-control {
+        min-height: 50px;
+        border-radius: 10px;
+        border-color: #dbe3ef;
+        font-weight: 700;
     }
-    
-    /* Button Styles */
-    .btn-primary {
-        background-color: #007bff;
-        border: none;
-        font-weight: 500;
-        transition: all 0.2s ease;
+
+    .payment-submit {
+        min-height: 52px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #2563eb, #db2777);
+        font-size: 1rem;
+        font-weight: 900;
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
     }
-    
-    .btn-primary:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
+
+    .payment-submit:hover,
+    .payment-submit:focus {
+        background: linear-gradient(135deg, #1d4ed8, #be185d);
+    }
+
+    .payment-modal-shell .modal-footer {
+        border-top: 1px solid #eef2f7;
+        padding: 12px 20px;
+    }
+
+    @media (max-width: 575px) {
+        .payment-value-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .payment-hero {
+            padding: 18px;
+        }
     }
 </style>
+
+<div class="payment-modal-shell">
+    <div class="modal-header">
+        <h5 class="payment-title" id="paymentModalLabel">
+            <i class="fas fa-bolt"></i>
+            Unlock Course
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <div class="modal-body p-4">
+        <div class="payment-hero">
+            <div class="payment-hero-label">
+                <i class="fas fa-crown"></i>
+                Instant access after approval
+            </div>
+            <h3 class="payment-course-name">{{ $course['name'] }}</h3>
+            <p class="payment-course-copy">
+                Get the full learning track, protected video lessons, topic practice, and progress tracking in one focused course space.
+            </p>
+            <div class="payment-price">
+                {{ $course['price'] }}
+                <span>{{ $course['currency'] }}</span>
+            </div>
+        </div>
+
+        <div class="payment-value-grid">
+            <div class="payment-value-item">
+                <i class="fas fa-play-circle"></i>
+                Full topic video access
+            </div>
+            <div class="payment-value-item">
+                <i class="fas fa-chart-line"></i>
+                Progress tracking
+            </div>
+            <div class="payment-value-item">
+                <i class="fas fa-shield-alt"></i>
+                Protected study session
+            </div>
+        </div>
+
+        <div class="instapay-card">
+            <div class="instapay-heading">
+                <div class="instapay-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <div>
+                    <h6>Pay with InstaPay</h6>
+                    <p>Use InstaPay or any supported wallet transfer.</p>
+                </div>
+            </div>
+
+            <div class="instapay-copy-row">
+                <code class="instapay-handle">{{ config('payment.instapay.number', 'INSTAPAY-USERNAME') }}</code>
+                <button type="button" class="copy-btn" data-clipboard="{{ config('payment.instapay.number', 'INSTAPAY-USERNAME') }}" aria-label="Copy InstaPay account">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+
+            <div class="instapay-note">
+                <i class="fas fa-check-circle me-1"></i>
+                After transfer, paste the reference number below so we can verify and unlock your course.
+            </div>
+        </div>
+
+        <form id="coursePaymentForm" class="payment-form-card mb-0" method="POST" action="{{ route('payments.process', $course['id']) }}" data-course-id="{{ $course['id'] }}">
+            @csrf
+            <input type="hidden" id="paymentMethodField" name="payment_method" value="instapay">
+            <input type="hidden" name="amount" value="{{ $course['price'] }}">
+
+            <div class="mb-3">
+                <label for="transactionId" class="form-label" id="transactionIdLabel">InstaPay Reference Number</label>
+                <input type="text" class="form-control form-control-lg" id="transactionId" name="transaction_id" placeholder="Example: IP12345678901234" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary payment-submit w-100" id="submitBtn">
+                Submit Payment
+            </button>
+        </form>
+    </div>
+
+    <div class="modal-footer">
+        <button type="button" class="btn btn-link text-muted text-decoration-none ms-auto" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</div>

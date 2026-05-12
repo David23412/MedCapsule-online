@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 return new class extends Migration {
     /**
@@ -57,31 +58,37 @@ return new class extends Migration {
         });
 
         if (in_array(DB::getDriverName(), ['mysql', 'mariadb'], true)) {
-            DB::unprepared('
-                CREATE TRIGGER trg_questions_exam_count_insert 
-                BEFORE INSERT ON questions
-                FOR EACH ROW
-                BEGIN
-                    IF NEW.extra_topic IS NULL OR NEW.extra_topic = "" THEN
-                        SET NEW.exam_appearances_count = 0;
-                    ELSE
-                        SET NEW.exam_appearances_count = (LENGTH(REPLACE(NEW.extra_topic, " ", "")) - LENGTH(REPLACE(REPLACE(NEW.extra_topic, " ", ""), ",", "")) + 1);
-                    END IF;
-                END;
-            ');
+            try {
+                DB::unprepared('
+                    CREATE TRIGGER trg_questions_exam_count_insert
+                    BEFORE INSERT ON questions
+                    FOR EACH ROW
+                    BEGIN
+                        IF NEW.extra_topic IS NULL OR NEW.extra_topic = "" THEN
+                            SET NEW.exam_appearances_count = 0;
+                        ELSE
+                            SET NEW.exam_appearances_count = (LENGTH(REPLACE(NEW.extra_topic, " ", "")) - LENGTH(REPLACE(REPLACE(NEW.extra_topic, " ", ""), ",", "")) + 1);
+                        END IF;
+                    END;
+                ');
 
-            DB::unprepared('
-                CREATE TRIGGER trg_questions_exam_count_update 
-                BEFORE UPDATE ON questions
-                FOR EACH ROW
-                BEGIN
-                    IF NEW.extra_topic IS NULL OR NEW.extra_topic = "" THEN
-                        SET NEW.exam_appearances_count = 0;
-                    ELSE
-                        SET NEW.exam_appearances_count = (LENGTH(REPLACE(NEW.extra_topic, " ", "")) - LENGTH(REPLACE(REPLACE(NEW.extra_topic, " ", ""), ",", "")) + 1);
-                    END IF;
-                END;
-            ');
+                DB::unprepared('
+                    CREATE TRIGGER trg_questions_exam_count_update
+                    BEFORE UPDATE ON questions
+                    FOR EACH ROW
+                    BEGIN
+                        IF NEW.extra_topic IS NULL OR NEW.extra_topic = "" THEN
+                            SET NEW.exam_appearances_count = 0;
+                        ELSE
+                            SET NEW.exam_appearances_count = (LENGTH(REPLACE(NEW.extra_topic, " ", "")) - LENGTH(REPLACE(REPLACE(NEW.extra_topic, " ", ""), ",", "")) + 1);
+                        END IF;
+                    END;
+                ');
+            } catch (\Throwable $e) {
+                Log::warning('Skipping questions exam-count triggers; database user cannot create triggers.', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

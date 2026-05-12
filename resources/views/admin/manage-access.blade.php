@@ -2888,7 +2888,7 @@
                                         <label class="form-label">
                                             <i class="fab fa-youtube me-1"></i>YouTube URL
                                         </label>
-                                        <input type="url" class="form-control" id="youtube_url" name="youtube_url" placeholder="https://youtu.be/VIDEO_ID or https://www.youtube.com/watch?v=VIDEO_ID">
+                                        <input type="text" class="form-control" id="youtube_url" name="youtube_url" placeholder="https://youtu.be/VIDEO_ID, YouTube URL, or video ID">
                                         <div class="form-text">
                                             <i class="fas fa-lightbulb me-1"></i>
                                             Paste any YouTube URL - we'll extract the video ID automatically
@@ -2968,6 +2968,12 @@
             activeTab: '{{ $activeTab ?? "" }}',
             studentProfileBaseUrl: '{{ url('/tutor/student') }}',
             deleteUserBaseUrl: '{{ url('/admin/delete/user') }}',
+            routes: {
+                adminVideosIndex: '{{ route('admin.videos.index') }}',
+                adminVideosStore: '{{ route('admin.videos.store') }}',
+                adminVideosDestroyBase: '{{ url('/admin/videos') }}',
+                courseTopicsBase: '{{ url('/api/courses') }}'
+            },
             courseOptions: {!! json_encode(
                 isset($courses) && $courses->count() > 0
                     ? $courses->map(fn ($c) => [

@@ -812,6 +812,38 @@
             localStorage.setItem(`payment_pending_${courseId}`, JSON.stringify(pendingData));
         }
 
+        function initializeInjectedPaymentContent() {
+            const paymentMethodField = document.getElementById('paymentMethodField');
+            if (paymentMethodField) {
+                paymentMethodField.value = 'instapay';
+            }
+
+            document.querySelectorAll('#paymentModal .copy-btn').forEach(button => {
+                if (button.dataset.bound) {
+                    return;
+                }
+
+                button.dataset.bound = 'true';
+                button.addEventListener('click', async function() {
+                    const value = this.dataset.clipboard || '';
+                    if (!value) {
+                        return;
+                    }
+
+                    try {
+                        await navigator.clipboard.writeText(value);
+                        const originalHtml = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check"></i>';
+                        window.setTimeout(() => {
+                            this.innerHTML = originalHtml;
+                        }, 1100);
+                    } catch (error) {
+                        console.warn('Clipboard copy failed:', error);
+                    }
+                });
+            });
+        }
+
         document.querySelectorAll('.show-payment-modal').forEach(button => {
             button.addEventListener('click', function() {
                 const courseId = this.dataset.courseId;
@@ -824,10 +856,18 @@
                         'Accept': 'application/json'
                     }
                 })
-                    .then(response => response.json())
+                    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (!ok) {
+                            throw new Error(data.message || data.error || 'Payment options are not available for this course.');
+                        }
+
+                        return data;
+                    })
                     .then(data => {
                         if (data.success) {
                             document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
+                            initializeInjectedPaymentContent();
                             paymentModal.show();
 
                             const paymentForm = document.getElementById('coursePaymentForm');
@@ -884,12 +924,12 @@
                                     });
                             });
                         } else {
-                            alert(data.message);
+                            alert(data.message || data.error || 'Payment options are not available for this course.');
                         }
                     })
                     .catch(error => {
                         console.error('Error:', error);
-                        alert('An error occurred. Please try again.');
+                        alert(error.message || 'An error occurred. Please try again.');
                     });
             });
         });
@@ -945,10 +985,11 @@
             });
         }
 
+        let paymentStatusPolling = null;
+
         updatePaymentButtonsForPendingPayments();
         startPaymentStatusPolling();
 
-        let paymentStatusPolling = null;
         function startPaymentStatusPolling() {
             if (paymentStatusPolling) {
                 return;
