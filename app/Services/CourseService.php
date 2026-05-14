@@ -458,8 +458,20 @@ class CourseService
                 }
             }
 
-            $course->update($updateData);
+            $originalAccessType = Course::normalizeAccessType($course->access_type);
+            $newAccessType = Course::normalizeAccessType($updateData['access_type'] ?? null);
+
+            DB::transaction(function () use ($course, $updateData, $originalAccessType, $newAccessType) {
+                $course->updateQuietly($updateData);
+
+                if ($originalAccessType !== Course::ACCESS_TYPE_PAID && $newAccessType === Course::ACCESS_TYPE_PAID) {
+                    $this->revokeSurveyEnrollmentsForPaidCourse((int) $course->id);
+                }
+            });
+
+            $course->refresh();
             $this->clearCourseCaches();
+            $this->clearCourseSpecificCaches((int) $course->id);
 
             return [
                 'success' => true,
@@ -836,6 +848,33 @@ class CourseService
         if ($user = auth()->user()) {
             Cache::forget($this->userCourseOptimizationCacheKey($user));
         }
+    }
+
+    private function clearCourseSpecificCaches(int $courseId): void
+    {
+        Cache::forget("course_{$courseId}_enrolled_count");
+        Cache::forget("course_{$courseId}_enrolled_students");
+        Cache::forget("course_{$courseId}_enrolled_students_limit_3");
+        Cache::forget('home_data_v4_bulletproof_2025');
+        Cache::forget('home_statistics_v4_bulletproof_2025');
+        Cache::forget('home_featured_courses_v4_bulletproof_2025');
+        Cache::forget('home_health_check_v4_bulletproof_2025');
+        Cache::forget('courses_list');
+        Cache::forget('courses_with_stats');
+    }
+
+    private function revokeSurveyEnrollmentsForPaidCourse(int $courseId): void
+    {
+        $adminUserIds = User::query()
+            ->where('role', User::ROLE_ADMIN)
+            ->pluck('id')
+            ->all();
+
+        DB::table('course_user')
+            ->where('course_id', $courseId)
+            ->where('is_enrolled', true)
+            ->whereNotIn('user_id', $adminUserIds)
+            ->update(['is_enrolled' => false, 'updated_at' => now()]);
     }
 
     private function getUserCourseOptimizationData(User $user): array
