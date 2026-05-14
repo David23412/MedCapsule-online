@@ -92,7 +92,7 @@ return [
         'payment_methods' => [
             'vodafone_cash' => [
                 'enabled' => env('PAYMENT_VODAFONE_ENABLED', true),
-                'number' => env('PAYMENT_VODAFONE_NUMBER', '01012345678'),
+                'number' => env('PAYMENT_VODAFONE_NUMBER', '01019070354'),
                 'name' => env('PAYMENT_VODAFONE_NAME', 'MedCapsule Account'),
             ],
             'fawry' => [
@@ -102,7 +102,7 @@ return [
             ],
             'instapay' => [
                 'enabled' => env('PAYMENT_INSTAPAY_ENABLED', true),
-                'username' => env('PAYMENT_INSTAPAY_USERNAME', '@medcapsule'),
+                'username' => env('PAYMENT_INSTAPAY_USERNAME', '01019070354'),
             ],
         ],
         

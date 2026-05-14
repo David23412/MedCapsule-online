@@ -325,20 +325,27 @@
             </div>
         </div>
 
+        @php
+            $configuredPaymentNumber = config('payment.instapay.number', config('payment.vodafone_cash.number'));
+            $paymentNumber = preg_match('/^01[0125][0-9]{8}$/', (string) $configuredPaymentNumber)
+                ? $configuredPaymentNumber
+                : '01019070354';
+        @endphp
+
         <div class="instapay-card">
             <div class="instapay-heading">
                 <div class="instapay-icon">
                     <i class="fas fa-credit-card"></i>
                 </div>
                 <div>
-                    <h6>الدفع عن طريق InstaPay</h6>
-                    <p>حوّل على الرقم ده، وبعدها ابعت رقم العملية للتأكيد.</p>
+                    <h6>الدفع عن طريق InstaPay أو Vodafone Cash</h6>
+                    <p>حوّل على الرقم ده من InstaPay أو Vodafone Cash، وبعدها ابعت رقم العملية للتأكيد.</p>
                 </div>
             </div>
 
             <div class="instapay-copy-row">
-                <code class="instapay-handle">{{ config('payment.instapay.number', 'INSTAPAY-USERNAME') }}</code>
-                <button type="button" class="copy-btn" data-clipboard="{{ config('payment.instapay.number', 'INSTAPAY-USERNAME') }}" aria-label="Copy InstaPay account">
+                <code class="instapay-handle">{{ $paymentNumber }}</code>
+                <button type="button" class="copy-btn" data-clipboard="{{ $paymentNumber }}" aria-label="Copy payment number">
                     <i class="fas fa-copy"></i>
                 </button>
             </div>

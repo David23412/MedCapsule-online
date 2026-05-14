@@ -29,7 +29,7 @@ return [
     // Manual payment options
     'vodafone_cash' => [
         'enabled' => env('VODAFONE_CASH_ENABLED', true),
-        'number' => env('VODAFONE_CASH_NUMBER', '01XXXXXXXXX'),
+        'number' => env('VODAFONE_CASH_NUMBER', '01019070354'),
         'name' => env('VODAFONE_CASH_NAME', 'MedCapsule'),
     ],
     
@@ -41,8 +41,8 @@ return [
     
     'instapay' => [
         'enabled' => env('INSTAPAY_ENABLED', true),
-        'number' => env('INSTAPAY_NUMBER', env('INSTAPAY_USERNAME', 'INSTAPAY-USERNAME')),
-        'username' => env('INSTAPAY_USERNAME', 'INSTAPAY-USERNAME'),
+        'number' => env('INSTAPAY_NUMBER', '01019070354'),
+        'username' => env('INSTAPAY_USERNAME', '01019070354'),
         'name' => env('INSTAPAY_NAME', 'MedCapsule'),
     ],
 
