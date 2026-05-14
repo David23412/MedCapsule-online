@@ -182,7 +182,7 @@
 
         .question-content {
             display: flex;
-            gap: 3.25rem;
+            gap: 2.5rem;
             align-items: flex-start;
             margin-bottom: 2rem;
             width: 100%;
@@ -395,8 +395,8 @@
         }
 
         .question-image {
-            flex: 0 0 min(34vw, 560px);
-            max-width: min(34vw, 560px);
+            flex: 0 0 clamp(420px, 42vw, 760px);
+            max-width: clamp(420px, 42vw, 760px);
             display: flex;
             justify-content: center;
         }
@@ -404,17 +404,14 @@
         .question-image img {
             width: 100%;
             height: auto;
-            max-height: 640px;
+            max-height: 720px;
             border-radius: 12px;
             object-fit: contain;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
             border: 1px solid #e2e8f0;
-            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-        }
-
-        .question-image img:hover {
-            transform: scale(1.02);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .options-container {
@@ -966,7 +963,7 @@
             .question-image {
                 flex: none !important;
                 width: 100% !important;
-                max-width: 400px;
+                max-width: 640px;
                 margin: 0 auto;
             }
 
@@ -1013,7 +1010,7 @@
 
             .question-image {
                 width: 100%;
-                max-width: 420px;
+                max-width: 640px;
                 margin: 0 auto 1.5rem;
             }
 
@@ -1357,7 +1354,7 @@
             .question-image img {
                 width: 100%;
                 height: auto;
-                max-height: 250px;
+                max-height: 420px;
                 object-fit: contain;
             }
         }
@@ -1521,13 +1518,13 @@
             }
 
             .question-image {
-                width: 200px;
-                max-width: 200px;
+                width: min(40vw, 340px);
+                max-width: min(40vw, 340px);
                 margin: 0;
             }
 
             .question-image img {
-                max-height: 150px;
+                max-height: 240px;
             }
 
             .popup {
@@ -2209,9 +2206,10 @@
                 min-height: 40px;
                 max-width: 40px;
                 max-height: 40px;
+                aspect-ratio: 1 / 1;
                 font-size: 0.85rem;
                 border-width: 2px;
-                flex-shrink: 0;
+                flex: 0 0 40px;
             }
 
             /* ── Main content: full width, add bottom padding for strip ─ */
@@ -2289,7 +2287,9 @@
                 min-height: 36px;
                 max-width: 36px;
                 max-height: 36px;
+                aspect-ratio: 1 / 1;
                 font-size: 0.8rem;
+                flex-basis: 36px;
             }
 
             .main-content {
@@ -2663,9 +2663,7 @@
                         <div class="question-main">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div class="question-text-container">
-                                    <div class="question-text">
-                                        {{ is_array($question) ? $question['question']->question : $question->question }}
-                                    </div>
+                                    <div class="question-text">{{ is_array($question) ? $question['question']->question : $question->question }}</div>
                                 </div>
                                 <div class="ms-2 d-flex flex-column align-items-end gap-1">
                                     @if(auth()->user()->isAdmin())
@@ -3667,6 +3665,31 @@
             .question-circle,
             .popup-btn {
                 min-height: 44px;
+            }
+
+            .question-sidebar .question-circle {
+                width: 40px;
+                height: 40px;
+                min-width: 40px;
+                min-height: 40px;
+                max-width: 40px;
+                max-height: 40px;
+                aspect-ratio: 1 / 1;
+                flex: 0 0 40px;
+                padding: 0;
+                line-height: 1;
+            }
+
+            @media (max-width: 480px) {
+                .question-sidebar .question-circle {
+                    width: 36px;
+                    height: 36px;
+                    min-width: 36px;
+                    min-height: 36px;
+                    max-width: 36px;
+                    max-height: 36px;
+                    flex-basis: 36px;
+                }
             }
 
             .written-answer,

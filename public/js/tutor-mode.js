@@ -148,6 +148,9 @@ function renderDontKnowResult(questionNumber, questionId, questionResult) {
         return;
     }
 
+    const correctAnswerKey = String(qData.correct_answer || '');
+    const correctAnswerText = getAnswerDisplayText(questionCard, correctAnswerKey);
+
     updateSidebarCircleState(questionNumber, false);
 
     const feedbackDiv = questionCard.querySelector('.answer-feedback');
@@ -159,7 +162,7 @@ function renderDontKnowResult(questionNumber, questionId, questionResult) {
                 <div class="explanation-with-icon">
                     <div class="answer-header">
                         <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                        <strong>Correct Answer: ${qData.correct_answer}</strong>
+                        <strong>Correct Answer: ${escapeHtml(correctAnswerText)}</strong>
                     </div>
                     <div class="explanation-text">
                         ${qData.explanation || 'No explanation available.'}
@@ -169,7 +172,7 @@ function renderDontKnowResult(questionNumber, questionId, questionResult) {
 
     questionCard.querySelectorAll('.option-card').forEach((opt) => {
         const optionLetter = opt.getAttribute('data-option');
-        if (optionLetter === qData.correct_answer) {
+        if (optionLetter === correctAnswerKey) {
             opt.classList.add('correct');
         }
         opt.style.pointerEvents = 'none';
@@ -684,6 +687,8 @@ function initializeHighlighting() {
     highlightToolbar = document.getElementById('highlight-toolbar');
     console.log('🎨 Highlighting system initialized');
 
+    normalizeQuestionTextNodes();
+
     // Load saved highlights from localStorage
     const savedHighlights = localStorage.getItem('tutorModeHighlights');
     if (savedHighlights) {
@@ -699,11 +704,11 @@ function initializeHighlighting() {
     // Handle text selection - add to question cards specifically
     document.addEventListener('mouseup', function (e) {
         console.log('🖱️ Mouse up detected');
-        handleTextSelection(e);
+        scheduleTextSelectionHandling(e);
     });
     document.addEventListener('touchend', function (e) {
         console.log('👆 Touch end detected');
-        handleTextSelection(e);
+        scheduleTextSelectionHandling(e);
     });
 
     // Hide toolbar when clicking outside
@@ -727,6 +732,29 @@ function initializeHighlighting() {
     }, true);
 }
 
+function scheduleTextSelectionHandling(e) {
+    const target = e.target;
+
+    window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+            handleTextSelection({ target });
+        }, 0);
+    });
+}
+
+function normalizeQuestionTextNodes() {
+    document.querySelectorAll('.question-text').forEach(questionElement => {
+        if (questionElement.querySelector('mark')) {
+            return;
+        }
+
+        const normalizedText = questionElement.textContent.trim();
+        if (questionElement.textContent !== normalizedText) {
+            questionElement.textContent = normalizedText;
+        }
+    });
+}
+
 function handleTextSelection(e) {
     // Skip when the event target is a button or other interactive element —
     // clicking a button is NOT a text-selection gesture and should not be
@@ -739,9 +767,14 @@ function handleTextSelection(e) {
 
     console.log('📝 HANDLING TEXT SELECTION EVENT');
 
-    // Allow selection anywhere in document for now - we'll filter later
     const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+    if (!selection || selection.rangeCount === 0) {
+        hideToolbar();
+        return;
+    }
+
+    const range = selection.getRangeAt(0).cloneRange();
+    const selectedText = range.toString().trim();
 
     console.log('📝 Selected text length:', selectedText.length);
 
@@ -751,29 +784,34 @@ function handleTextSelection(e) {
         return;
     }
 
-    // Find the question text element containing the selection
-    const startElement = selection.getRangeAt(0).startContainer;
-    const questionElement = startElement.nodeType === Node.TEXT_NODE ?
-        startElement.parentElement.closest('.question-text') :
-        startElement.closest('.question-text');
+    const startElement = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer;
+    const endElement = range.endContainer.nodeType === Node.TEXT_NODE
+        ? range.endContainer.parentElement
+        : range.endContainer;
+    const questionElement = startElement?.closest?.('.question-text');
 
     console.log('📝 Found question element:', !!questionElement);
 
-    if (!questionElement) {
+    if (!questionElement || !questionElement.contains(range.startContainer) || !questionElement.contains(range.endContainer) || !questionElement.contains(endElement)) {
         console.log('📝 Selection not within question text, hiding toolbar');
         hideToolbar();
         return;
     }
 
-    // Store the complete selection details
+    const selectionOffsets = getTrimmedRangeOffsets(questionElement, range);
+    const selectedFromOffsets = questionElement.textContent.slice(selectionOffsets.start, selectionOffsets.end).trim();
+    if (!selectedFromOffsets || selectionOffsets.end <= selectionOffsets.start) {
+        hideToolbar();
+        return;
+    }
+
     currentSelection = {
-        text: selectedText,
-        range: selection.getRangeAt(0),
+        text: selectedFromOffsets,
+        range,
         questionElement: questionElement,
-        startContainer: selection.getRangeAt(0).startContainer,
-        endContainer: selection.getRangeAt(0).endContainer,
-        startOffset: selection.getRangeAt(0).startOffset,
-        endOffset: selection.getRangeAt(0).endOffset
+        offsets: selectionOffsets
     };
 
     console.log('📝 Stored selection details:', currentSelection);
@@ -864,17 +902,7 @@ window.applyHighlight = function (color) {
         return;
     }
 
-    const range = document.createRange();
-    try {
-        range.setStart(currentSelection.range.startContainer, currentSelection.range.startOffset);
-        range.setEnd(currentSelection.range.endContainer, currentSelection.range.endOffset);
-    } catch (e) {
-        console.error('Failed to recreate range:', e);
-        hideToolbar();
-        return;
-    }
-
-    const selectionOffsets = getRangeOffsets(questionElement, range);
+    const selectionOffsets = currentSelection.offsets || getTrimmedRangeOffsets(questionElement, currentSelection.range);
     if (selectionOffsets.end <= selectionOffsets.start) {
         hideToolbar();
         return;
@@ -900,18 +928,7 @@ window.removeHighlight = function () {
 
     const questionElement = currentSelection.questionElement;
     const questionId = getQuestionId(questionElement);
-    const range = document.createRange();
-
-    try {
-        range.setStart(currentSelection.range.startContainer, currentSelection.range.startOffset);
-        range.setEnd(currentSelection.range.endContainer, currentSelection.range.endOffset);
-    } catch (e) {
-        console.error('Failed to recreate range for highlight removal:', e);
-        hideToolbar();
-        return;
-    }
-
-    const selectionOffsets = getRangeOffsets(questionElement, range);
+    const selectionOffsets = currentSelection.offsets || getTrimmedRangeOffsets(questionElement, currentSelection.range);
     if (selectionOffsets.end <= selectionOffsets.start) {
         hideToolbar();
         return;
@@ -940,13 +957,19 @@ function persistQuestionHighlights(questionId, questionElement, intervals) {
 
 function restoreHighlights() {
     Object.keys(highlights).forEach(questionId => {
-        const questionElement = document.querySelector(`[data-question-id="${questionId}"] .question-text`);
+        const questionElement = document.querySelector(`#${escapeSelector(questionId)} .question-text`);
         if (!questionElement) return;
 
         const normalizedHighlights = normalizeHighlightEntries(questionElement, highlights[questionId] || []);
         renderQuestionHighlights(questionElement, normalizedHighlights);
         persistQuestionHighlights(questionId, questionElement, normalizedHighlights);
     });
+}
+
+function escapeSelector(value) {
+    return window.CSS && typeof window.CSS.escape === 'function'
+        ? window.CSS.escape(String(value))
+        : String(value).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
 }
 
 function getQuestionId(questionElement) {
@@ -1100,50 +1123,54 @@ function serializeHighlightIntervals(questionElement, intervals) {
 }
 
 function getRangeOffsets(container, range) {
+    const textLength = container.textContent.length;
+    const rawStart = getRangeBoundaryOffset(container, range.startContainer, range.startOffset);
+    const rawEnd = getRangeBoundaryOffset(container, range.endContainer, range.endOffset);
+    const start = Math.max(0, Math.min(rawStart, rawEnd, textLength));
+    const end = Math.max(start, Math.min(Math.max(rawStart, rawEnd), textLength));
+
     return {
-        start: getAbsoluteTextOffset(container, range.startContainer, range.startOffset),
-        end: getAbsoluteTextOffset(container, range.endContainer, range.endOffset)
+        start,
+        end
     };
 }
 
+function getTrimmedRangeOffsets(container, range) {
+    const offsets = getRangeOffsets(container, range);
+    const selectedText = container.textContent.slice(offsets.start, offsets.end);
+    const leadingWhitespace = selectedText.match(/^\s*/)[0].length;
+    const trailingWhitespace = selectedText.match(/\s*$/)[0].length;
+
+    return {
+        start: offsets.start + leadingWhitespace,
+        end: Math.max(offsets.start + leadingWhitespace, offsets.end - trailingWhitespace)
+    };
+}
+
+function getRangeBoundaryOffset(container, node, offset) {
+    if (!container || !node || !container.contains(node)) {
+        return 0;
+    }
+
+    const boundaryRange = document.createRange();
+    boundaryRange.selectNodeContents(container);
+
+    try {
+        boundaryRange.setEnd(node, offset);
+        return boundaryRange.toString().length;
+    } catch (e) {
+        return getAbsoluteTextOffset(container, node, offset);
+    }
+}
+
 function getAbsoluteTextOffset(container, node, offset) {
-    // If the node is not a text node, compute the offset at the start or end
-    // of the node's text content based on which boundary we're at.
+    if (node === container && node.nodeType !== Node.TEXT_NODE) {
+        return getTextLengthBeforeChildIndex(container, offset);
+    }
+
     if (node.nodeType !== Node.TEXT_NODE) {
-        // If offset is 0, we want the position at the very beginning of this element
-        // If offset is >= childCount, we want the position at the very end
-        // Walk text nodes until we find/reach this element
-        let absOffset = 0;
-        const walker = document.createTreeWalker(
-            container,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-        let found = false;
-        let currentNode;
-        while (currentNode = walker.nextNode()) {
-            if (currentNode.parentNode === node || currentNode === node) {
-                found = true;
-                if (offset === 0) {
-                    return absOffset;
-                }
-                // offset > 0: we want the end — fall through to add remaining text
-            }
-            if (found && offset > 0) {
-                absOffset += currentNode.textContent.length;
-                continue;
-            }
-            if (!found) {
-                absOffset += currentNode.textContent.length;
-            }
-        }
-        // If we reached the end while looking for the end boundary, return total length
-        if (found && offset > 0) {
-            return absOffset;
-        }
-        // Element not found in tree - fallback: return total length
-        return container.textContent.length;
+        const nodeStart = getElementTextStartOffset(container, node);
+        return nodeStart + getTextLengthBeforeChildIndex(node, offset);
     }
 
     let absoluteOffset = 0;
@@ -1167,6 +1194,32 @@ function getAbsoluteTextOffset(container, node, offset) {
     return container.textContent.length;
 }
 
+function getTextLengthBeforeChildIndex(element, childIndex) {
+    let length = 0;
+    const safeIndex = Math.max(0, Math.min(Number(childIndex) || 0, element.childNodes.length));
+
+    for (let index = 0; index < safeIndex; index++) {
+        length += element.childNodes[index].textContent.length;
+    }
+
+    return length;
+}
+
+function getElementTextStartOffset(container, element) {
+    let length = 0;
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+
+    let currentNode;
+    while (currentNode = walker.nextNode()) {
+        if (element.contains(currentNode)) {
+            return length;
+        }
+
+        length += currentNode.textContent.length;
+    }
+
+    return length;
+}
 
 // ============================================================
 // BLOCK 2: Helper functions and grading
@@ -1567,6 +1620,31 @@ function logMistake(questionId, userAnswer, correctAnswer) {
         });
 }
 
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value == null ? '' : String(value);
+    return div.innerHTML;
+}
+
+function getAnswerDisplayText(questionCard, answerKey) {
+    const normalizedKey = String(answerKey || '').trim();
+    if (!questionCard || !normalizedKey) {
+        return normalizedKey;
+    }
+
+    const escapedKey = window.CSS && typeof window.CSS.escape === 'function'
+        ? window.CSS.escape(normalizedKey)
+        : normalizedKey.replace(/"/g, '\\"');
+    const optionContent = questionCard.querySelector(`.option-card[data-option="${escapedKey}"] .option-content`);
+    const optionText = optionContent?.textContent?.trim();
+    return optionText || normalizedKey;
+}
+
+function getSelectedAnswerDisplayText(questionCard) {
+    const selectedOption = questionCard?.querySelector('.option-card.selected .option-content');
+    return selectedOption?.textContent?.trim() || 'Unknown';
+}
+
 // EXTRACTED ANSWER PROCESSING FUNCTION FOR SPEED
 function processAnswerResult(questionNumber, questionId, data, checkBtn) {
     // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
@@ -1576,13 +1654,17 @@ function processAnswerResult(questionNumber, questionId, data, checkBtn) {
         return;
     }
     processAnswerResult[resultKey] = true;
+    const questionCard = document.getElementById(`question-${questionNumber}`);
+    const correctAnswerKey = String(data.correct_answer || '');
+    const correctAnswerText = getAnswerDisplayText(questionCard, correctAnswerKey);
 
     // Update sidebar circle state
     updateSidebarCircleState(questionNumber, data.is_correct);
     questionResults[questionId] = {
         type: 'answered',
         is_correct: Boolean(data.is_correct),
-        correct_answer: data.correct_answer || '',
+        correct_answer: correctAnswerKey,
+        correct_answer_text: correctAnswerText,
         explanation: data.explanation || '',
         showViewResultsButton: totalAnswers === totalQuestions
     };
@@ -1602,7 +1684,8 @@ function processAnswerResult(questionNumber, questionId, data, checkBtn) {
         updateQuestionUI(questionNumber, {
             correct: data.is_correct,
             explanation: data.explanation,
-            correctAnswer: data.correct_answer,
+            correctAnswer: correctAnswerKey,
+            correctAnswerText,
             showNextButton: false, // Don't show next button
             showViewResultsButton: true // Show "View Results" button instead
         });
@@ -1617,7 +1700,8 @@ function processAnswerResult(questionNumber, questionId, data, checkBtn) {
     updateQuestionUI(questionNumber, {
         correct: data.is_correct,
         explanation: data.explanation,
-        correctAnswer: data.correct_answer,
+        correctAnswer: correctAnswerKey,
+        correctAnswerText,
         showNextButton: true // Flag to show next button for non-last questions
     });
     saveTutorDraft();
@@ -1947,10 +2031,9 @@ function updateQuestionUI(questionNumber, data) {
     if (data.correct) {
         feedbackDiv.querySelector('.result-text').textContent = 'Correct! 🎉';
     } else {
-        // Show what was selected vs correct answer
-        const selectedOption = questionCard.querySelector('.option-card.selected');
-        const userAnswer = selectedOption ? selectedOption.getAttribute('data-option') : 'Unknown';
-        feedbackDiv.querySelector('.result-text').textContent = `You selected: ${userAnswer} | Correct: ${data.correctAnswer}`;
+        const userAnswer = getSelectedAnswerDisplayText(questionCard);
+        const correctAnswerDisplay = data.correctAnswerText || getAnswerDisplayText(questionCard, data.correctAnswer);
+        feedbackDiv.querySelector('.result-text').textContent = `You selected: ${userAnswer} | Correct: ${correctAnswerDisplay}`;
     }
 
     // 🎯 PLAY IMMEDIATE SOUND FOR ALL INDIVIDUAL ANSWERS USING UNIFIED CONTROLLER
@@ -1969,12 +2052,13 @@ function updateQuestionUI(questionNumber, data) {
     // Show explanation and correct answer
     let explanationHtml = data.explanation || '';
     let correctAnswerHeader = '';
-    if (data.correctAnswer) {
+    const correctAnswerDisplay = data.correctAnswerText || getAnswerDisplayText(questionCard, data.correctAnswer);
+    if (correctAnswerDisplay) {
         // Always show correct answer in green, regardless of whether user got it right or wrong
         correctAnswerHeader = `
                     <div class="answer-header">
                         <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                        <strong>Correct Answer: ${data.correctAnswer}</strong>
+                        <strong>Correct Answer: ${escapeHtml(correctAnswerDisplay)}</strong>
                     </div>`;
     }
 

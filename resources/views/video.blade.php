@@ -42,6 +42,7 @@
         .video-shell {
             width: 100vw;
             height: 100vh;
+            height: 100dvh;
             min-width: 0;
             min-height: 0;
             display: flex;
@@ -333,19 +334,81 @@
 
         @media (max-width: 900px) and (orientation: landscape) {
             :root {
-                --header-height: 42px;
+                --header-height: 0px;
+            }
+
+            .video-shell {
+                height: 100vh;
+                height: 100dvh;
+                display: block;
             }
 
             .video-header {
-                padding: 6px 12px;
+                position: absolute;
+                top: max(6px, env(safe-area-inset-top));
+                left: max(8px, env(safe-area-inset-left));
+                right: auto;
+                width: min(58vw, 360px);
+                height: auto;
+                min-height: 32px;
+                grid-template-columns: 28px minmax(0, 1fr);
+                gap: 8px;
+                padding: 5px 8px;
+                border: 0;
+                border-radius: 999px;
+                background: rgba(0, 0, 0, 0.34);
+                backdrop-filter: blur(10px);
+            }
+
+            .back-btn {
+                width: 26px;
+                height: 26px;
+            }
+
+            .video-title {
+                font-size: 0.76rem;
+                font-weight: 800;
+                line-height: 1;
             }
 
             .video-course {
                 display: none;
             }
 
+            .video-main {
+                width: 100vw;
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            .video-player {
+                height: 100vh;
+                height: 100dvh;
+            }
+
+            .video-protection-watermark-grid {
+                grid-template-columns: repeat(3, minmax(170px, 1fr));
+                gap: 54px 76px;
+                opacity: 0.16;
+            }
+
             .video-custom-controls {
+                left: max(10px, env(safe-area-inset-left));
+                right: max(10px, env(safe-area-inset-right));
                 bottom: max(8px, env(safe-area-inset-bottom));
+                padding: 6px 8px;
+                grid-template-columns: repeat(3, 26px) minmax(0, 1fr) auto;
+            }
+
+            .video-control-button {
+                width: 24px;
+                height: 24px;
+                font-size: 0.82rem;
+            }
+
+            .video-control-time {
+                min-width: 62px;
+                font-size: 0.68rem;
             }
         }
     </style>
@@ -863,6 +926,10 @@
             });
 
             window.addEventListener('resize', refreshPlayerSize);
+            window.addEventListener('orientationchange', () => {
+                window.setTimeout(refreshPlayerSize, 120);
+                window.setTimeout(refreshPlayerSize, 360);
+            });
         })();
     </script>
 </body>
