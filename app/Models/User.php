@@ -501,6 +501,25 @@ class User extends Authenticatable
             : null;
     }
 
+    public function getPreviewAccessibleTopicIdsForCourse(Course|int $course): array
+    {
+        $courseId = $course instanceof Course ? (int) $course->id : (int) $course;
+        $previewLimit = $this->getPreviewTopicLimitForCourse($courseId);
+
+        if ($previewLimit === null || $previewLimit <= 0) {
+            return [];
+        }
+
+        return Topic::query()
+            ->where('course_id', $courseId)
+            ->orderBy('display_order')
+            ->orderBy('id')
+            ->limit($previewLimit)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     public function isTopicPreviewLocked(Topic|int $topic): bool
     {
         $topicModel = $topic instanceof Topic
@@ -513,8 +532,11 @@ class User extends Authenticatable
 
         $previewLimit = $this->getPreviewTopicLimitForCourse($topicModel->course_id);
 
-        return $previewLimit !== null
-            && (int) ($topicModel->display_order ?? 0) > $previewLimit;
+        if ($previewLimit === null) {
+            return false;
+        }
+
+        return !in_array((int) $topicModel->id, $this->getPreviewAccessibleTopicIdsForCourse($topicModel->course_id), true);
     }
 
     /**

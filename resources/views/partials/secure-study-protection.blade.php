@@ -18,7 +18,7 @@
             'blockPrint' => (bool) config('features.design_protection_block_print', true),
             'hideOnBackground' => (bool) ($hideOnBackground ?? config('features.design_protection_hide_on_background', true)),
             'blurOnBackgroundDesktop' => (bool) config('features.design_protection_blur_on_background_desktop', false),
-            'watermarkEnabled' => (bool) config('features.design_protection_watermark_enabled', true),
+            'watermarkEnabled' => (bool) ($watermarkEnabled ?? config('features.design_protection_watermark_enabled', true)),
             'allowSelection' => (bool) ($allowSelection ?? false),
             'backgroundLockDelayMs' => (int) config('features.design_protection_background_lock_delay_ms', 120),
             'watermarkText' => $secureStudyLabel !== '' ? $secureStudyLabel : 'Protected MedCapsule Content',

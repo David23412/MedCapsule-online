@@ -439,6 +439,6 @@
         });
     })();
     </script>
-    @include('partials.secure-study-protection', ['surfaceLabel' => 'mistake cards'])
+    @include('partials.secure-study-protection', ['surfaceLabel' => 'mistake cards', 'watermarkEnabled' => false])
 </body>
 </html>

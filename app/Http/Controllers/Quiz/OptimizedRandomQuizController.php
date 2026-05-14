@@ -42,6 +42,10 @@ class OptimizedRandomQuizController extends Controller
         $selectedCourseIds = $request->input('selected_courses', []);
         $selectedSources = $request->input('sources', ['all']);
         $topicType = $request->input('topic_type', 'all'); // ✅ FIX: Read the topic_type filter
+
+        if (!is_array($selectedCourseIds)) {
+            $selectedCourseIds = [$selectedCourseIds];
+        }
         
         if (!is_array($selectedSources)) {
             $selectedSources = [$selectedSources];
@@ -53,6 +57,11 @@ class OptimizedRandomQuizController extends Controller
         }
 
         $user = auth()->user();
+        if ($this->shouldBlockRandomQuizForPreviewSelection($user, $selectedCourseIds)) {
+            return redirect()->route('courses.index')
+                ->with('error', 'Random Quiz Mode is available after upgrading to full course access.');
+        }
+
         $sessionKey = $this->buildRandomSessionKey($user->id, 'quiz', $questionCount, $durationMinutes, $selectedCourseIds, $selectedSources);
 
         $options = [
@@ -126,6 +135,10 @@ class OptimizedRandomQuizController extends Controller
         $selectedCourseIds = $request->input('selected_courses', []);
         $selectedSources = $request->input('sources', ['all']);
 
+        if (!is_array($selectedCourseIds)) {
+            $selectedCourseIds = [$selectedCourseIds];
+        }
+
         if (!is_array($selectedSources)) {
             $selectedSources = [$selectedSources];
         }
@@ -136,6 +149,11 @@ class OptimizedRandomQuizController extends Controller
         }
 
         $user = auth()->user();
+        if ($this->shouldBlockRandomQuizForPreviewSelection($user, $selectedCourseIds)) {
+            return redirect()->route('courses.index')
+                ->with('error', 'Random Tutor Mode is available after upgrading to full course access.');
+        }
+
         $sessionKey = $this->buildRandomSessionKey($user->id, 'tutor', $questionCount, $durationMinutes, $selectedCourseIds, $selectedSources);
 
         $options = [
@@ -212,6 +230,14 @@ class OptimizedRandomQuizController extends Controller
         return QuizPerformanceService::trackQuizGeneration(0, auth()->id(), function () use ($request) {
             try {
                 $validatedData = $request->getValidatedWithDefaults();
+
+                if ($this->shouldBlockRandomQuizForPreviewSelection(auth()->user(), $validatedData['course_ids'] ?? [])) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Random Quiz Mode is available after upgrading to full course access.',
+                        'error_code' => 'FULL_ACCESS_REQUIRED'
+                    ], 403);
+                }
                 
                 // LETHAL FIX: NUCLEAR CACHE BYPASS - Force fresh generation every time
                 $result = $this->quizService->generateRandomQuiz(
@@ -281,6 +307,26 @@ class OptimizedRandomQuizController extends Controller
                     'success' => false,
                     'message' => 'No valid questions found for grading'
                 ], 400);
+            }
+
+            $questionCourseIds = $questions
+                ->map(fn ($question) => (int) ($question->topic?->course_id ?? 0))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (!$user->isAdmin()) {
+                $accessLevels = $user->getCourseAccessLevels($questionCourseIds);
+                $nonFullCourseIds = array_filter($questionCourseIds, fn ($courseId) => ($accessLevels[$courseId] ?? null) !== \App\Models\User::COURSE_ACCESS_FULL);
+
+                if (!empty($nonFullCourseIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Random Quiz Mode is available after upgrading to full course access.',
+                        'error_code' => 'FULL_ACCESS_REQUIRED'
+                    ], 403);
+                }
             }
 
             // For random quiz, we'll use the first question's topic/course as context
@@ -488,6 +534,7 @@ class OptimizedRandomQuizController extends Controller
             }
 
             $user = auth()->user();
+            $selectedCourseIds = $this->filterFullAccessCourseIds($user, $selectedCourseIds);
 
             // Resolve accessible course IDs
             if (empty($selectedCourseIds)) {
@@ -603,5 +650,38 @@ class OptimizedRandomQuizController extends Controller
                 'message' => 'Unable to load quiz statistics'
             ], 500);
         }
+    }
+
+    private function shouldBlockRandomQuizForPreviewSelection($user, array $selectedCourseIds): bool
+    {
+        if (!$user || $user->isAdmin()) {
+            return false;
+        }
+
+        if (empty($selectedCourseIds)) {
+            return $this->filterFullAccessCourseIds($user, $user->courses()->pluck('courses.id')->toArray()) === [];
+        }
+
+        return count($this->filterFullAccessCourseIds($user, $selectedCourseIds)) !== count(array_unique(array_map('intval', $selectedCourseIds)));
+    }
+
+    private function filterFullAccessCourseIds($user, array $courseIds): array
+    {
+        $courseIds = array_values(array_unique(array_filter(array_map('intval', $courseIds))));
+
+        if (!$user || $courseIds === []) {
+            return [];
+        }
+
+        if ($user->isAdmin()) {
+            return $courseIds;
+        }
+
+        $accessLevels = $user->getCourseAccessLevels($courseIds);
+
+        return array_values(array_filter(
+            $courseIds,
+            fn ($courseId) => ($accessLevels[$courseId] ?? null) === \App\Models\User::COURSE_ACCESS_FULL
+        ));
     }
 }

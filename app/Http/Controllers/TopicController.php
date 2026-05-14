@@ -169,10 +169,13 @@ class TopicController extends Controller
             ])
             ->get();
 
+        $previewAccessibleTopicIds = $previewTopicLimit !== null
+            ? $topics->take($previewTopicLimit)->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : [];
         $previewLockedTopicIds = [];
         foreach ($topics as $topic) {
             $isPreviewLocked = $previewTopicLimit !== null
-                && (int) ($topic->display_order ?? 0) > $previewTopicLimit;
+                && !in_array((int) $topic->id, $previewAccessibleTopicIds, true);
 
             $topic->is_preview_locked = $isPreviewLocked;
             $topic->is_locked = (bool) $topic->is_locked || $isPreviewLocked;
@@ -427,6 +430,9 @@ class TopicController extends Controller
             'availableCourses' => $availableCourses,
             'hasFullCourseAccess' => $hasFullCourseAccess,
             'previewTopicLimit' => $previewTopicLimit,
+            'previewUpgradeAvailable' => !$hasFullCourseAccess && $previewTopicLimit !== null && $course->canBePurchased(),
+            'previewUpgradePrice' => $course->formatted_price,
+            'previewHasPendingPayment' => !$hasFullCourseAccess && $course->hasUserPendingPayment($user->id),
             'gamePlan' => $gamePlan,
             'topicsPageView' => $topicsPageView,
             'assignmentViewData' => $assignmentViewData,

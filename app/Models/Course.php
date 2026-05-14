@@ -245,8 +245,7 @@ class Course extends Model
         
         // Preview access = limited topics
         if ($accessType === User::COURSE_ACCESS_PREVIEW) {
-            $previewLimit = config('free_course_survey.preview_topics_count', 5);
-            return ($topic->display_order ?? 0) <= $previewLimit;
+            return in_array((int) $topic->id, $user->getPreviewAccessibleTopicIdsForCourse($this), true);
         }
         
         // Locked = no access

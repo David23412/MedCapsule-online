@@ -3046,6 +3046,59 @@ body.topics-sidebar-open {
     font-size: 1.15rem;
 }
 
+.random-link-disabled,
+.random-link-disabled:hover {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+    opacity: 0.75;
+    transform: none;
+    box-shadow: none;
+}
+
+button.random-link {
+    font: inherit;
+}
+
+button.random-link-disabled {
+    cursor: pointer;
+}
+
+span.random-link-disabled {
+    cursor: not-allowed;
+}
+
+.search-icon-bubble-disabled,
+.search-icon-bubble-disabled:hover {
+    color: #64748b;
+    background: #f1f5f9;
+    box-shadow: none;
+    transform: none;
+}
+
+button.search-icon-bubble {
+    border: 0;
+}
+
+button.search-icon-bubble-disabled {
+    cursor: pointer;
+}
+
+span.search-icon-bubble-disabled {
+    cursor: not-allowed;
+}
+
+button.topic-locked-btn.show-payment-modal {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+button.topic-locked-btn.show-payment-modal:hover {
+    border-color: #dc3545 !important;
+    box-shadow: 0 8px 18px rgba(220, 53, 69, 0.12);
+    transform: translateY(-1px) !important;
+}
+
 /* Source Tags - Bottom Right */
 .source-tag {
     font-size: 0.7rem;

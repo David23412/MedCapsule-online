@@ -2957,54 +2957,31 @@
         overflow-x: hidden;
     }
 
-    /* ── Navbar ───────────────────────────────── */
+    /* ── Mobile header removal ───────────────────
+       The desktop header stays intact; phones use the course list as
+       the first interactive surface because the collapsed menu is broken. */
     .navbar {
-        padding: 0.5rem 0;
-        min-height: 56px !important;
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-        box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+        display: none !important;
+        min-height: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
     }
 
-    .navbar .container {
-        padding-left: 1rem;
-        padding-right: 1rem;
+    .navbar::after,
+    .navbar .container,
+    .navbar-brand,
+    .navbar-toggler,
+    .navbar-collapse,
+    .navbar-nav {
+        display: none !important;
     }
 
-    .navbar-brand {
-        font-size: 1.25rem;
-        margin-left: 0;
-    }
-
-    /* Bootstrap toggler */
     .navbar-toggler {
         border: none;
-        padding: 0.4rem;
-        min-width: 44px;
-        min-height: 44px;
-    }
-
-    /* Collapsed nav full-width on mobile */
-    .navbar-collapse {
-        background: #ffffff;
-        border-top: 1px solid #f0f0f0;
-        padding: 0.75rem 1rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-    }
-
-    .navbar-nav {
-        gap: 0.25rem;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .navbar-nav .nav-link {
-        padding: 0.75rem 0.5rem;
-        min-height: 44px;
-        display: flex;
-        align-items: center;
-        font-size: 1rem;
+        min-width: 0;
+        min-height: 0;
     }
 
     /* Fix the me-5 right margin pushing profile off screen */
@@ -3036,7 +3013,7 @@
 
     /* ── Hero section: ultra-compact on mobile ── */
     .hero-section {
-        padding: 0.5rem 1rem 0.25rem !important;
+        padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.25rem !important;
         min-height: auto !important;
         margin-bottom: 0 !important;
         overflow: hidden;
@@ -3063,7 +3040,7 @@
 
     /* ── Semester / filter pills ─────────────── */
     .semester-pills {
-        padding: 0.5rem 1rem;
+        padding: 0.35rem 1rem 0.5rem;
     }
 
     .semester-dropdown {
@@ -3193,7 +3170,7 @@
 @supports (-webkit-touch-callout: none) {
     @media (max-width: 767.98px) {
         .hero-section {
-            padding: 0.5rem 1rem 0.25rem !important;
+            padding: calc(env(safe-area-inset-top, 0px) + 0.75rem) 1rem 0.25rem !important;
             min-height: auto !important;
         }
         .hero-title {

@@ -689,10 +689,22 @@
 
         
         <!-- Fixed position pills that are always present -->
-        <a href="#" class="random-link" data-bs-toggle="modal" data-bs-target="#randomQuizModal" style="order: 98;">
-            <i class="fas fa-random"></i>
-            Random
-        </a>
+        @if($hasFullCourseAccess && isset($availableCourses) && $availableCourses->count() > 0)
+            <a href="#" class="random-link" data-bs-toggle="modal" data-bs-target="#randomQuizModal" style="order: 98;">
+                <i class="fas fa-random"></i>
+                Random
+            </a>
+        @elseif(($previewUpgradeAvailable ?? false) && !($previewHasPendingPayment ?? false))
+            <button type="button" class="random-link random-link-disabled show-payment-modal" data-course-id="{{ $course->id }}" title="Upgrade to unlock Random Quiz Mode" style="order: 98;">
+                <i class="fas fa-lock"></i>
+                Random
+            </button>
+        @else
+            <span class="random-link random-link-disabled" title="Random Quiz Mode unlocks with paid access" style="order: 98;" aria-disabled="true">
+                <i class="fas fa-lock"></i>
+                Random
+            </span>
+        @endif
         <a href="{{ route('review.index') }}" class="mistakes-link" style="order: 99;">
             <i class="fas fa-times-circle"></i>
             Review Mistakes
@@ -701,6 +713,14 @@
             <a href="#" class="search-icon-bubble" data-bs-toggle="modal" data-bs-target="#searchQuestionsModal" title="Search Questions" style="order: 101;">
                 <i class="fas fa-search"></i>
             </a>
+        @elseif(($previewUpgradeAvailable ?? false) && !($previewHasPendingPayment ?? false))
+            <button type="button" class="search-icon-bubble search-icon-bubble-disabled show-payment-modal" data-course-id="{{ $course->id }}" title="Upgrade to unlock course question search" style="order: 101;">
+                <i class="fas fa-lock"></i>
+            </button>
+        @elseif($previewTopicLimit)
+            <span class="search-icon-bubble search-icon-bubble-disabled" title="Course question search unlocks with paid access" style="order: 101;" aria-disabled="true">
+                <i class="fas fa-lock"></i>
+            </span>
         @endif
         
         {{-- Assignment Icon in Red Circle - Only show if there are assignments --}}
@@ -898,9 +918,15 @@
                         
                         @if($topic->is_locked)
                             {{-- Show white button with red lock for locked topics --}}
-                            <div class="topic-locked-btn" title="{{ ($topicView['is_preview_locked'] ?? false) ? 'Unlock the full course to access this topic' : 'Topic is locked' }}">
-                                <i class="fas fa-lock"></i>
-                            </div>
+                            @if(($topicView['is_preview_locked'] ?? false) && ($previewUpgradeAvailable ?? false) && !($previewHasPendingPayment ?? false))
+                                <button type="button" class="topic-locked-btn show-payment-modal" data-course-id="{{ $course->id }}" title="Upgrade to unlock the full course">
+                                    <i class="fas fa-lock"></i>
+                                </button>
+                            @else
+                                <div class="topic-locked-btn" title="{{ ($topicView['is_preview_locked'] ?? false) ? (($previewHasPendingPayment ?? false) ? 'Payment pending verification' : 'Unlock the full course to access this topic') : 'Topic is locked' }}">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                            @endif
                         @else
                             <a href="javascript:void(0)" class="start-quiz-btn" data-topic-id="{{ $topic->id }}" data-course-id="{{ $topic->course_id }}" data-quiz-url="{{ route('quiz.start', ['course' => $topic->course_id, 'topic' => $topic->id]) }}">
                                 @if($hasAttemptedTopic)
@@ -916,7 +942,7 @@
                     </div>
                     
                     {{-- Video Play Button OUTSIDE the card --}}
-                    @if($topic->video && !$topic->is_locked)
+                    @if($topic->video && !$topic->is_locked && !($topicView['is_preview_locked'] ?? false))
                         <a href="{{ route('video.show', ['topic' => $topic->id]) }}" class="video-play-btn" id="video-btn-{{ $topic->id }}">
                             <i class="fas fa-play"></i>
                         </a>
@@ -934,6 +960,21 @@
 
     <div class="task-toast-stack" id="taskToastStack" aria-live="polite" aria-atomic="true"></div>
     </main>
+
+    @if(($previewUpgradeAvailable ?? false) && !($previewHasPendingPayment ?? false))
+        <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body text-center p-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading payment options...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
 
     <script src="{{ $bladeAsset->url('js/topics-optimized.js') }}"></script>
@@ -956,6 +997,134 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
     <script src="{{ asset('js/topics-for-course-page.js') }}" defer></script>
     <script>
+    @if(($previewUpgradeAvailable ?? false) && !($previewHasPendingPayment ?? false))
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof bootstrap === 'undefined') {
+                return;
+            }
+
+            const paymentModalElement = document.getElementById('paymentModal');
+            if (!paymentModalElement) {
+                return;
+            }
+
+            const paymentModal = new bootstrap.Modal(paymentModalElement);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            const bindPaymentContent = (courseId) => {
+                const paymentMethodField = document.getElementById('paymentMethodField');
+                if (paymentMethodField) {
+                    paymentMethodField.value = 'instapay';
+                }
+
+                document.querySelectorAll('#paymentModal .copy-btn').forEach((button) => {
+                    if (button.dataset.bound) {
+                        return;
+                    }
+
+                    button.dataset.bound = 'true';
+                    button.addEventListener('click', async function() {
+                        const value = this.dataset.clipboard || '';
+                        if (!value) {
+                            return;
+                        }
+
+                        try {
+                            await navigator.clipboard.writeText(value);
+                            const originalHtml = this.innerHTML;
+                            this.innerHTML = '<i class="fas fa-check"></i>';
+                            window.setTimeout(() => {
+                                this.innerHTML = originalHtml;
+                            }, 1100);
+                        } catch (error) {
+                            console.warn('Clipboard copy failed:', error);
+                        }
+                    });
+                });
+
+                const paymentForm = document.getElementById('coursePaymentForm');
+                if (!paymentForm || paymentForm.dataset.bound) {
+                    return;
+                }
+
+                paymentForm.dataset.bound = 'true';
+                paymentForm.addEventListener('submit', function(event) {
+                    event.preventDefault();
+
+                    const formData = new FormData(this);
+                    const submitBtn = this.querySelector('#submitBtn');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                    }
+
+                    fetch(`/payments/${courseId}/process`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                        body: formData,
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (!data.success) {
+                                throw new Error(data.message || 'Payment submission failed.');
+                            }
+
+                            paymentModal.hide();
+                            document.querySelectorAll(`.show-payment-modal[data-course-id="${courseId}"]`).forEach((trigger) => {
+                                trigger.classList.remove('show-payment-modal');
+                                trigger.setAttribute('aria-disabled', 'true');
+                                trigger.setAttribute('title', 'Payment pending verification');
+                                trigger.disabled = true;
+                            });
+                        })
+                        .catch((error) => {
+                            alert(error.message || 'Payment submission failed. Please try again.');
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = 'Submit Payment';
+                            }
+                        });
+                });
+            };
+
+            document.querySelectorAll('.show-payment-modal').forEach((trigger) => {
+                trigger.addEventListener('click', function(event) {
+                    event.preventDefault();
+
+                    const courseId = this.dataset.courseId;
+                    if (!courseId) {
+                        return;
+                    }
+
+                    fetch(`/payments/${courseId}/options`, {
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                    })
+                        .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+                        .then(({ ok, data }) => {
+                            if (!ok || !data.success) {
+                                throw new Error(data.message || data.error || 'Payment options are not available for this course.');
+                            }
+
+                            document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
+                            bindPaymentContent(courseId);
+                            paymentModal.show();
+                        })
+                        .catch((error) => {
+                            alert(error.message || 'Payment options are not available for this course.');
+                        });
+                });
+            });
+        });
+    @endif
+
     @if($hasFullCourseAccess)
         /* Search Questions Feature */
         (function() {
