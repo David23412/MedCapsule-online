@@ -246,6 +246,7 @@ class SecurityHeaders
                 'script-src-elem '.implode(' ', $scriptSources),
                 "script-src-attr 'unsafe-inline'",
                 'style-src '.implode(' ', self::STYLE_SOURCES),
+                'style-src-elem '.implode(' ', self::STYLE_SOURCES),
                 'connect-src '.implode(' ', self::CONNECT_SOURCES),
             ]
         );

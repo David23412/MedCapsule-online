@@ -132,14 +132,22 @@
                                         <label for="academic_year" class="form-label">Academic Year / Grade</label>
                                         <select class="form-select" id="academic_year" name="academic_year" required>
                                             <option value="">Select Academic Year or Grade</option>
+                                            @php
+                                                $standardAcademicYears = ['YEAR 1 - SEMESTER 1', 'YEAR 1 - SEMESTER 2', 'YEAR 2 - SEMESTER 1', 'YEAR 2 - SEMESTER 2', 'YEAR 3 - SEMESTER 1', 'YEAR 3 - SEMESTER 2', 'YEAR 4 - SEMESTER 1', 'YEAR 4 - SEMESTER 2', 'YEAR 5 - SEMESTER 1', 'YEAR 5 - SEMESTER 2', 'YEAR 6 - SEMESTER 1', 'YEAR 6 - SEMESTER 2'];
+                                                $standardTests = ['SAT', 'EST', 'ACT'];
+                                                $selectedAcademicYear = old('academic_year', $course->academic_year);
+                                            @endphp
+                                            @if($selectedAcademicYear && !in_array($selectedAcademicYear, array_merge($standardAcademicYears, $standardTests), true))
+                                                <option value="{{ $selectedAcademicYear }}" selected>{{ $selectedAcademicYear }}</option>
+                                            @endif
                                             <optgroup label="Medical School Years">
-                                                @foreach(['YEAR 1 - SEMESTER 1', 'YEAR 1 - SEMESTER 2', 'YEAR 2 - SEMESTER 1', 'YEAR 2 - SEMESTER 2', 'YEAR 3 - SEMESTER 1', 'YEAR 3 - SEMESTER 2', 'YEAR 4 - SEMESTER 1', 'YEAR 4 - SEMESTER 2', 'YEAR 5 - SEMESTER 1', 'YEAR 5 - SEMESTER 2', 'YEAR 6 - SEMESTER 1', 'YEAR 6 - SEMESTER 2'] as $year)
-                                                    <option value="{{ $year }}" {{ old('academic_year', $course->academic_year) == $year ? 'selected' : '' }}>{{ $year }}</option>
+                                                @foreach($standardAcademicYears as $year)
+                                                    <option value="{{ $year }}" {{ $selectedAcademicYear == $year ? 'selected' : '' }}>{{ $year }}</option>
                                                 @endforeach
                                             </optgroup>
                                             <optgroup label="Standardized Tests">
-                                                @foreach(['SAT', 'EST', 'ACT'] as $test)
-                                                    <option value="{{ $test }}" {{ old('academic_year', $course->academic_year) == $test ? 'selected' : '' }}>{{ $test }}</option>
+                                                @foreach($standardTests as $test)
+                                                    <option value="{{ $test }}" {{ $selectedAcademicYear == $test ? 'selected' : '' }}>{{ $test }}</option>
                                                 @endforeach
                                             </optgroup>
                                         </select>

@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Services\SecureFileUploadService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection as SupportCollection;
@@ -262,7 +263,7 @@ class CourseService
                 'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
                 'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
-                'academic_year' => 'required|string|in:YEAR 1 - SEMESTER 1,YEAR 1 - SEMESTER 2,YEAR 2 - SEMESTER 1,YEAR 2 - SEMESTER 2,YEAR 3 - SEMESTER 1,YEAR 3 - SEMESTER 2,YEAR 4 - SEMESTER 1,YEAR 4 - SEMESTER 2,YEAR 5 - SEMESTER 1,YEAR 5 - SEMESTER 2,YEAR 6 - SEMESTER 1,YEAR 6 - SEMESTER 2,SAT,EST,ACT',
+                'academic_year' => 'required|string|max:255',
                 'price' => 'nullable|numeric|min:0|max:999999.99'
             ], [
                 'name.unique' => 'A course with this name already exists.',
@@ -353,6 +354,12 @@ class CourseService
                 'message' => 'Course "' . $course->name . '" created successfully!'
             ];
 
+        } catch (ValidationException $e) {
+            return [
+                'success' => false,
+                'message' => 'Please fix the highlighted course fields.',
+                'errors' => $e->errors(),
+            ];
         } catch (\Exception $e) {
             Log::error('Failed to create course', [
                 'error' => $e->getMessage(),
@@ -387,7 +394,7 @@ class CourseService
                 'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
                 'title_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
-                'academic_year' => 'required|string|in:YEAR 1 - SEMESTER 1,YEAR 1 - SEMESTER 2,YEAR 2 - SEMESTER 1,YEAR 2 - SEMESTER 2,YEAR 3 - SEMESTER 1,YEAR 3 - SEMESTER 2,YEAR 4 - SEMESTER 1,YEAR 4 - SEMESTER 2,YEAR 5 - SEMESTER 1,YEAR 5 - SEMESTER 2,YEAR 6 - SEMESTER 1,YEAR 6 - SEMESTER 2,SAT,EST,ACT',
+                'academic_year' => 'required|string|max:255',
                 'price' => 'nullable|numeric|min:0|max:999999.99',
                 'type' => 'required|string|in:medical,custom',
                 'is_published' => 'required|boolean'
@@ -456,8 +463,17 @@ class CourseService
                 'message' => 'Course "' . $course->name . '" updated successfully!'
             ];
 
+        } catch (ValidationException $e) {
+            return [
+                'success' => false,
+                'message' => 'Please fix the highlighted course fields.',
+                'errors' => $e->errors(),
+            ];
         } catch (\Exception $e) {
-            Log::error('Failed to update course', ['error' => $e->getMessage(), 'course_id' => $courseId]);
+            Log::error('Failed to update course', [
+                'error' => $e->getMessage(),
+                'course_id' => $courseId,
+            ]);
             return ['success' => false, 'message' => 'Failed to update course.'];
         } finally {
             $this->performanceMonitor->endOperation($operationId);
