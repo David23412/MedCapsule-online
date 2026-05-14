@@ -661,6 +661,7 @@ const uploadPreview = document.getElementById('uploadPreview');
 const previewImg = document.getElementById('previewImg');
 const fileName = document.getElementById('fileName');
 const removeImageBtn = document.getElementById('removeImage');
+const maxCourseImageBytes = 50 * 1024 * 1024;
 
 let currentImageSource = null; // 'file' or 'url'
 let lastMonetizedPrice = (() => {
@@ -904,6 +905,12 @@ function handleFileUpload(file) {
     // Validate file type
     if (!file.type.startsWith('image/')) {
         alert('Please select an image file.');
+        return;
+    }
+
+    if (file.size > maxCourseImageBytes) {
+        alert('Please select an image under 50MB.');
+        imageFileInput.value = '';
         return;
     }
 

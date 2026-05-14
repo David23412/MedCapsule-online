@@ -258,7 +258,7 @@ class CourseService
             $validated = validator($data, [
                 'name' => 'required|string|max:255|unique:courses,name',
                 'description' => 'required|string|max:2000',
-                'image_file' => 'nullable|file',
+                'image_file' => 'nullable|file|max:51200',
                 'image_url' => 'nullable|url|max:2048',
                 'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
@@ -267,6 +267,8 @@ class CourseService
                 'price' => 'nullable|numeric|min:0|max:999999.99'
             ], [
                 'name.unique' => 'A course with this name already exists.',
+                'image_file.uploaded' => 'The image is larger than the server upload limit. Please use an image under 50MB.',
+                'image_file.max' => 'The image must be under 50MB.',
                 'access_type.required' => 'Choose how students should access this course.',
                 'access_type.in' => 'Choose a valid access policy for this course.',
                 'color.regex' => 'Color must be a valid hex color code (e.g., #FF5733).',
@@ -389,7 +391,7 @@ class CourseService
             $validated = validator($data, [
                 'name' => 'required|string|max:255|unique:courses,name,' . $courseId,
                 'description' => 'required|string|max:2000',
-                'image_file' => 'nullable|file',
+                'image_file' => 'nullable|file|max:51200',
                 'image_url' => 'nullable|url|max:2048',
                 'access_type' => 'required|string|in:free,preview,paid',
                 'color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
@@ -400,6 +402,8 @@ class CourseService
                 'is_published' => 'required|boolean'
             ], [
                 'name.unique' => 'A course with this name already exists.',
+                'image_file.uploaded' => 'The image is larger than the server upload limit. Please use an image under 50MB.',
+                'image_file.max' => 'The image must be under 50MB.',
                 'color.regex' => 'Color must be a valid hex color code.',
                 'title_color.regex' => 'Title color must be a valid hex color code.'
             ])->validated();

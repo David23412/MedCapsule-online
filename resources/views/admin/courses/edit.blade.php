@@ -570,6 +570,7 @@ const previewActionText = document.getElementById('previewActionText');
 // Colors
 const colorPreview = document.getElementById('colorPreview');
 const titleColorPreview = document.getElementById('titleColorPreview');
+const maxCourseImageBytes = 50 * 1024 * 1024;
 
 function setImageInputFile(file) {
     const transfer = new DataTransfer();
@@ -593,6 +594,12 @@ function clearUploadSelection() {
 function handleSelectedImageFile(file) {
     if (!file.type.startsWith('image/')) {
         alert('Please select an image file.');
+        imageFileInput.value = '';
+        return;
+    }
+
+    if (file.size > maxCourseImageBytes) {
+        alert('Please select an image under 50MB.');
         imageFileInput.value = '';
         return;
     }

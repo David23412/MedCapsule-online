@@ -50,6 +50,7 @@ FROM app-base AS production
 COPY docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/cron/laravel-scheduler /etc/cron.d/laravel-scheduler
 COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/php/conf.d/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
 COPY --from=frontend-builder /var/www/html/public/build /var/www/html/public/build

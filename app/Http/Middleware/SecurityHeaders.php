@@ -95,11 +95,8 @@ class SecurityHeaders
      */
     private const PERMISSIONS_POLICY = [
         'accelerometer=()',
-        'ambient-light-sensor=()',
         'autoplay=(self "https://www.youtube.com" "https://www.youtube-nocookie.com")',
-        'battery=()',
         'camera=()',
-        'document-domain=()',
         'fullscreen=(self "https://www.youtube.com" "https://www.youtube-nocookie.com")',
         'geolocation=()',
         'gyroscope=()',
