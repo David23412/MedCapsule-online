@@ -668,6 +668,12 @@ let lastMonetizedPrice = (() => {
     return Number.isFinite(initialPrice) && initialPrice > 0 ? priceInput.value : '';
 })();
 
+function setImageInputFile(file) {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    imageFileInput.files = transfer.files;
+}
+
 function formatPriceLabel(value) {
     const price = parseFloat(value);
 
@@ -881,6 +887,7 @@ uploadArea.addEventListener('drop', (e) => {
 
     const files = e.dataTransfer.files;
     if (files.length > 0) {
+        setImageInputFile(files[0]);
         handleFileUpload(files[0]);
     }
 });

@@ -438,6 +438,12 @@ class CourseService
             } elseif (isset($validated['image_url']) && $validated['image_url']) {
                 if ($this->isValidImageUrl($validated['image_url'])) {
                     $updateData['image'] = $validated['image_url'];
+                } else {
+                    return [
+                        'success' => false,
+                        'message' => 'Invalid image URL provided.',
+                        'errors' => ['image_url' => ['Invalid image URL provided.']],
+                    ];
                 }
             }
 
@@ -874,19 +880,7 @@ class CourseService
                 return false;
             }
 
-            // Check if URL has image extension
-            $path = $parsedUrl['path'] ?? '';
-            $imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-            $hasImageExtension = false;
-
-            foreach ($imageExtensions as $ext) {
-                if (str_ends_with(strtolower($path), $ext)) {
-                    $hasImageExtension = true;
-                    break;
-                }
-            }
-
-            return $hasImageExtension;
+            return true;
 
         } catch (\Exception $e) {
             Log::warning('Image URL validation failed', [

@@ -546,6 +546,12 @@ const accessTypeInput = document.getElementById('access_type');
 const priceInput = document.getElementById('price');
 const imageFileInput = document.getElementById('image_file');
 const imageUrlInput = document.getElementById('image_url');
+const uploadArea = document.getElementById('uploadArea');
+const uploadContent = document.getElementById('uploadContent');
+const uploadPreview = document.getElementById('uploadPreview');
+const previewImg = document.getElementById('previewImg');
+const fileName = document.getElementById('fileName');
+const removeImageBtn = document.getElementById('removeImage');
 
 const previewTitle = document.getElementById('previewTitle');
 const previewTooltip = document.getElementById('previewTooltip');
@@ -556,6 +562,42 @@ const previewActionText = document.getElementById('previewActionText');
 // Colors
 const colorPreview = document.getElementById('colorPreview');
 const titleColorPreview = document.getElementById('titleColorPreview');
+
+function setImageInputFile(file) {
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    imageFileInput.files = transfer.files;
+}
+
+function showUploadPreview(src, label) {
+    previewImg.src = src;
+    fileName.textContent = label;
+    uploadContent.classList.add('d-none');
+    uploadPreview.classList.remove('d-none');
+}
+
+function clearUploadSelection() {
+    imageFileInput.value = '';
+    uploadContent.classList.remove('d-none');
+    uploadPreview.classList.add('d-none');
+}
+
+function handleSelectedImageFile(file) {
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        imageFileInput.value = '';
+        return;
+    }
+
+    imageUrlInput.value = '';
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        previewImage.style.backgroundImage = `url('${e.target.result}')`;
+        showUploadPreview(e.target.result, file.name);
+    };
+    reader.readAsDataURL(file);
+}
 
 function updatePreview() {
     // Basic text
@@ -603,13 +645,12 @@ function updatePreview() {
         const reader = new FileReader();
         reader.onload = (e) => {
             previewImage.style.backgroundImage = `url('${e.target.result}')`;
-            document.getElementById('previewImg').src = e.target.result;
-            document.getElementById('uploadContent').classList.add('d-none');
-            document.getElementById('uploadPreview').classList.remove('d-none');
+            showUploadPreview(e.target.result, imageFileInput.files[0].name);
         };
         reader.readAsDataURL(imageFileInput.files[0]);
     } else if (imageUrlInput.value) {
         previewImage.style.backgroundImage = `url('${imageUrlInput.value}')`;
+        clearUploadSelection();
     }
 }
 
@@ -621,16 +662,56 @@ updatePreview();
     input.addEventListener('input', updatePreview);
 });
 
-imageFileInput.addEventListener('change', updatePreview);
+imageFileInput.addEventListener('change', () => {
+    if (imageFileInput.files && imageFileInput.files[0]) {
+        handleSelectedImageFile(imageFileInput.files[0]);
+    } else {
+        updatePreview();
+    }
+});
 
 // Image management
-document.getElementById('uploadArea').addEventListener('click', () => imageFileInput.click());
-document.getElementById('removeImage').addEventListener('click', (e) => {
+uploadArea.addEventListener('click', () => imageFileInput.click());
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = '#0056b3';
+    uploadArea.style.backgroundColor = '#f8f9ff';
+});
+uploadArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = '#007bff';
+    uploadArea.style.backgroundColor = 'transparent';
+});
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = '#007bff';
+    uploadArea.style.backgroundColor = 'transparent';
+
+    const file = e.dataTransfer.files[0];
+    if (file) {
+        setImageInputFile(file);
+        handleSelectedImageFile(file);
+    }
+});
+removeImageBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    imageFileInput.value = '';
-    document.getElementById('uploadContent').classList.remove('d-none');
-    document.getElementById('uploadPreview').classList.add('d-none');
+    clearUploadSelection();
     updatePreview();
+});
+
+imageUrlInput.addEventListener('input', () => {
+    if (imageUrlInput.value.trim()) {
+        clearUploadSelection();
+        previewImage.style.backgroundImage = `url('${imageUrlInput.value.trim()}')`;
+    }
+});
+
+document.getElementById('upload-tab').addEventListener('click', () => {
+    imageUrlInput.value = '';
+});
+
+document.getElementById('url-tab').addEventListener('click', () => {
+    clearUploadSelection();
 });
 
 // Type Selection logic

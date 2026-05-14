@@ -34,7 +34,7 @@ class SecurityHeaders
      */
     private const CSP_BASE_DIRECTIVES = [
         "default-src 'self' blob: https://cdn.jsdelivr.net",
-        "font-src 'self' https://fonts.gstatic.com data: https://cdnjs.cloudflare.com",
+        "font-src 'self' https://fonts.gstatic.com https://fonts.bunny.net data: https://cdnjs.cloudflare.com",
         "img-src 'self' data: https: blob:",
         "media-src 'self' https: blob:",
         "object-src 'none'",
@@ -61,6 +61,7 @@ class SecurityHeaders
         "'self'",
         "'unsafe-inline'",
         'https://fonts.googleapis.com',
+        'https://fonts.bunny.net',
         'https://cdn.jsdelivr.net',
         'https://cdnjs.cloudflare.com',
     ];
@@ -74,6 +75,7 @@ class SecurityHeaders
         'https://www.googleapis.com',
         'https://fonts.googleapis.com',
         'https://fonts.gstatic.com',
+        'https://fonts.bunny.net',
         'https://cdn.jsdelivr.net',
     ];
 
