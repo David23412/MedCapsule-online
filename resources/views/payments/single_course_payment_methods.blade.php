@@ -285,10 +285,6 @@
             </div>
             <div class="payment-benefit-item">
                 <span class="payment-benefit-check"><i class="fas fa-check"></i></span>
-                <span>فيديوهات حل على كل Lecture متاحة جوه التوبيك</span>
-            </div>
-            <div class="payment-benefit-item">
-                <span class="payment-benefit-check"><i class="fas fa-check"></i></span>
                 <span>مكتبة Visual Anatomy Atlas كاملة للـ Upper Limb وLower Limb وNeuroanatomy: Bones, Joints, Muscles بصور High Quality</span>
             </div>
             <div class="payment-benefit-item">
