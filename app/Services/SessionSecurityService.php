@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Normalizer;
 
 class SessionSecurityService
@@ -330,9 +331,16 @@ class SessionSecurityService
      */
     private function isDifferentGeolocation(string $ip1, string $ip2): bool
     {
-        // Simple check - in production, use a proper geolocation service
+        if ($ip1 === $ip2 || $this->isPrivateOrReservedIP($ip1) || $this->isPrivateOrReservedIP($ip2)) {
+            return false;
+        }
+
         $ip1Parts = explode('.', $ip1);
         $ip2Parts = explode('.', $ip2);
+
+        if (count($ip1Parts) < 2 || count($ip2Parts) < 2) {
+            return false;
+        }
         
         // If first two octets are different, likely different regions
         return ($ip1Parts[0] !== $ip2Parts[0] || $ip1Parts[1] !== $ip2Parts[1]);
@@ -375,20 +383,7 @@ class SessionSecurityService
         $currentSessionToken = $request->session()->getId();
         $currentFingerprint = $this->generateDeviceFingerprint($request);
 
-        DB::table('sessions')
-            ->where('user_id', $user->id)
-            ->where('id', '!=', $currentSessionToken)
-            ->delete();
-
-        DB::table('sessions')
-            ->where('id', $currentSessionToken)
-            ->update([
-                'user_id' => $user->id,
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'fingerprint' => $currentFingerprint,
-                'is_visitor' => false,
-            ]);
+        $this->syncDatabaseSessionMetadata($user, $request, $currentSessionToken, $currentFingerprint);
         
         // Update user with new session information
         $user->update([
@@ -504,11 +499,6 @@ class SessionSecurityService
             }
         }
 
-        // Check for suspicious IP patterns (private/test ranges used in attacks)
-        if (preg_match('/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/', $ip)) {
-            return true;
-        }
-
         return false;
     }
 
@@ -550,20 +540,63 @@ class SessionSecurityService
      */
     private function isSuspiciousIP(string $ip): bool
     {
-        // Check for common attack IP patterns
-        $suspiciousPatterns = [
-            '/^10\.0\.0\./', // Test range often used in attacks
-            '/^192\.168\.1\./', // Common internal range
-            '/^172\.16\.0\./', // Private range
-        ];
-
-        foreach ($suspiciousPatterns as $pattern) {
-            if (preg_match($pattern, $ip)) {
-                return true;
-            }
-        }
-
         return false;
+    }
+
+    private function syncDatabaseSessionMetadata(
+        User $user,
+        Request $request,
+        string $currentSessionToken,
+        string $currentFingerprint
+    ): void {
+        try {
+            if (config('session.driver') !== 'database' || ! Schema::hasTable('sessions')) {
+                return;
+            }
+
+            $columns = [
+                'user_id' => Schema::hasColumn('sessions', 'user_id'),
+                'ip_address' => Schema::hasColumn('sessions', 'ip_address'),
+                'user_agent' => Schema::hasColumn('sessions', 'user_agent'),
+                'fingerprint' => Schema::hasColumn('sessions', 'fingerprint'),
+                'is_visitor' => Schema::hasColumn('sessions', 'is_visitor'),
+            ];
+
+            if ($columns['user_id']) {
+                DB::table('sessions')
+                    ->where('user_id', $user->id)
+                    ->where('id', '!=', $currentSessionToken)
+                    ->delete();
+            }
+
+            $metadata = array_filter([
+                'user_id' => $columns['user_id'] ? $user->id : null,
+                'ip_address' => $columns['ip_address'] ? $request->ip() : null,
+                'user_agent' => $columns['user_agent'] ? $request->userAgent() : null,
+                'fingerprint' => $columns['fingerprint'] ? $currentFingerprint : null,
+                'is_visitor' => $columns['is_visitor'] ? false : null,
+            ], static fn (mixed $value): bool => $value !== null);
+
+            if ($metadata !== []) {
+                DB::table('sessions')
+                    ->where('id', $currentSessionToken)
+                    ->update($metadata);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Database session metadata sync skipped', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function isPrivateOrReservedIP(string $ip): bool
+    {
+        return filter_var(
+            $ip,
+            FILTER_VALIDATE_IP,
+            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+        ) === false;
     }
 
     /**

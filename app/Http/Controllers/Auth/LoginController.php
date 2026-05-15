@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 
 // TODO: Inject services in constructor
     // TODO: Inject services in constructor
@@ -75,10 +76,8 @@ use Illuminate\Support\Facades\Cache;
             // CRITICAL FIX: Ensure session is saved immediately
             $request->session()->save();
             
-            // Update session to mark as not a visitor
-            DB::table('sessions')
-                ->where('id', $request->session()->getId())
-                ->update(['is_visitor' => false]);
+            // Update optional session analytics without risking the login itself.
+            $this->markCurrentSessionAsAuthenticated($request);
 
             $user = Auth::user();
             
@@ -168,5 +167,27 @@ use Illuminate\Support\Facades\Cache;
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');
+    }
+
+    private function markCurrentSessionAsAuthenticated(Request $request): void
+    {
+        try {
+            if (
+                config('session.driver') !== 'database' ||
+                ! Schema::hasTable('sessions') ||
+                ! Schema::hasColumn('sessions', 'is_visitor')
+            ) {
+                return;
+            }
+
+            DB::table('sessions')
+                ->where('id', $request->session()->getId())
+                ->update(['is_visitor' => false]);
+        } catch (\Throwable $e) {
+            Log::warning('Login session analytics update skipped', [
+                'error' => $e->getMessage(),
+                'session_id_prefix' => substr((string) $request->session()->getId(), 0, 8),
+            ]);
+        }
     }
 }
