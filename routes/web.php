@@ -114,6 +114,7 @@ Route::group([], function () {
         Route::post('/add-course', [CourseController::class, 'addCourse'])->name('add-course');
         Route::get('/add-question', [QuestionController::class, 'showAddQuestionForm'])->name('add-question.form');
         Route::post('/add-question', [QuestionController::class, 'storeQuestion'])->name('add-question');
+        Route::post('/questions/import-tsv', [QuestionController::class, 'importTsv'])->name('questions.import-tsv');
     });
 
     

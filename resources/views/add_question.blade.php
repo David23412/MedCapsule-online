@@ -104,6 +104,23 @@
                             </div>
                         @endif
 
+                        @if(session('error'))
+                            <div class="alert alert-danger">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+
+                        @if(session('import_errors'))
+                            <div class="alert alert-danger">
+                                <div class="fw-semibold mb-2">TSV import failed</div>
+                                <ul class="mb-0">
+                                    @foreach(session('import_errors') as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
                         @if($errors->any())
                             <div class="alert alert-danger">
                                 <ul class="mb-0">
@@ -113,6 +130,46 @@
                                 </ul>
                             </div>
                         @endif
+
+                        <div class="border rounded-3 p-3 p-md-4 mb-4 bg-light">
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                                <div>
+                                    <h5 class="mb-1">Paste TSV Import</h5>
+                                    <div class="text-muted small">Choose the topic once, paste rows from Excel/Sheets, then import directly.</div>
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ route('questions.import-tsv') }}">
+                                @csrf
+                                <div class="mb-3">
+                                    <label class="form-label">Topic for imported rows</label>
+                                    <select name="topic_id" class="form-select" required>
+                                        <option value="" disabled {{ old('topic_id') ? '' : 'selected' }}>Select a topic</option>
+                                        @foreach($topics as $topic)
+                                            <option value="{{ $topic->id }}" {{ old('topic_id') == $topic->id ? 'selected' : '' }}>{{ $topic->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">TSV rows</label>
+                                    <textarea
+                                        name="tsv"
+                                        class="form-control font-monospace"
+                                        rows="8"
+                                        spellcheck="false"
+                                        placeholder="143	Question text	MedCapsule	A	B	C	D	E	C	multiple_choice	Explanation"
+                                        required
+                                    >{{ old('tsv') }}</textarea>
+                                    <div class="form-text text-muted">
+                                        Accepted columns: optional old topic id, question, source, option A, option B, option C, option D, option E, correct answer, question type, explanation.
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-dark">
+                                        <i class="fas fa-file-import me-1"></i>Import TSV
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
 
                         <form method="POST" action="{{ secure_url('add-question') }}" enctype="multipart/form-data">
                             @csrf
@@ -226,6 +283,10 @@
                                         <label class="form-label">Option D</label>
                                         <input type="text" name="option_d" class="form-control mc-required" value="{{ old('option_d') }}">
                                     </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Option E (Optional)</label>
+                                        <input type="text" name="option_e" class="form-control" value="{{ old('option_e') }}">
+                                    </div>
                                 </div>
 
                                 <div class="mb-4">
@@ -235,6 +296,7 @@
                                         <option value="B" {{ old('correct_answer') === 'B' ? 'selected' : '' }}>B</option>
                                         <option value="C" {{ old('correct_answer') === 'C' ? 'selected' : '' }}>C</option>
                                         <option value="D" {{ old('correct_answer') === 'D' ? 'selected' : '' }}>D</option>
+                                        <option value="E" {{ old('correct_answer') === 'E' ? 'selected' : '' }}>E</option>
                                     </select>
                                 </div>
                             </div>

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Question;
 use App\Models\Topic;
+use App\Services\TsvQuestionImportService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -143,6 +144,7 @@ class QuestionController extends Controller
         $optionB = $request->question_type === 'multiple_choice' ? $request->option_b : '';
         $optionC = $request->question_type === 'multiple_choice' ? $request->option_c : '';
         $optionD = $request->question_type === 'multiple_choice' ? $request->option_d : '';
+        $optionE = $request->question_type === 'multiple_choice' ? $request->option_e : '';
 
         // Create the question
         $topic = Topic::query()->select('id', 'course_id', 'name')->findOrFail((int) $request->topic_id);
@@ -156,6 +158,7 @@ class QuestionController extends Controller
             'option_b' => $optionB,
             'option_c' => $optionC,
             'option_d' => $optionD,
+            'option_e' => $optionE,
             'correct_answer' => $correctAnswer,
             'alternative_answers' => $alternativeAnswers,
             'image_url' => $imageUrl,
@@ -170,6 +173,27 @@ class QuestionController extends Controller
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Operation failed: ' . $e->getMessage());
         }
+    }
+
+    public function importTsv(Request $request, TsvQuestionImportService $importer)
+    {
+        $validated = $request->validate([
+            'topic_id' => 'required|integer|exists:topics,id',
+            'tsv' => 'required|string',
+        ]);
+
+        $result = $importer->import($validated['tsv'], (int) $validated['topic_id']);
+
+        if (!empty($result['errors'])) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('import_errors', $result['errors']);
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', "Imported {$result['imported']} questions from TSV.");
     }
 
     private function syncQuestionConcepts(Question $question, Topic $topic, ?string $rawConceptNames): void
