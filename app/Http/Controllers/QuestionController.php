@@ -178,11 +178,12 @@ class QuestionController extends Controller
     public function importTsv(Request $request, TsvQuestionImportService $importer)
     {
         $validated = $request->validate([
-            'topic_id' => 'required|integer|exists:topics,id',
+            'topic_id' => 'nullable|integer|exists:topics,id',
             'tsv' => 'required|string',
         ]);
 
-        $result = $importer->import($validated['tsv'], (int) $validated['topic_id']);
+        $fallbackTopicId = isset($validated['topic_id']) ? (int) $validated['topic_id'] : null;
+        $result = $importer->import($validated['tsv'], $fallbackTopicId);
 
         if (!empty($result['errors'])) {
             return redirect()

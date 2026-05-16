@@ -135,19 +135,22 @@
                             <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
                                 <div>
                                     <h5 class="mb-1">Paste TSV Import</h5>
-                                    <div class="text-muted small">Choose the topic once, paste rows from Excel/Sheets, then import directly.</div>
+                                    <div class="text-muted small">Paste mixed-topic rows directly. If column 1 is a topic id, each row imports into that topic.</div>
                                 </div>
                             </div>
                             <form method="POST" action="{{ route('questions.import-tsv') }}">
                                 @csrf
                                 <div class="mb-3">
-                                    <label class="form-label">Topic for imported rows</label>
-                                    <select name="topic_id" class="form-select" required>
-                                        <option value="" disabled {{ old('topic_id') ? '' : 'selected' }}>Select a topic</option>
+                                    <label class="form-label">Fallback topic</label>
+                                    <select name="topic_id" class="form-select">
+                                        <option value="" {{ old('topic_id') ? '' : 'selected' }}>Use topic id from TSV</option>
                                         @foreach($topics as $topic)
                                             <option value="{{ $topic->id }}" {{ old('topic_id') == $topic->id ? 'selected' : '' }}>{{ $topic->name }}</option>
                                         @endforeach
                                     </select>
+                                    <div class="form-text text-muted">
+                                        Leave this as "Use topic id from TSV" for mixed-topic dumps. Pick a fallback only for rows that do not include topic id as column 1.
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">TSV rows</label>
@@ -160,7 +163,7 @@
                                         required
                                     >{{ old('tsv') }}</textarea>
                                     <div class="form-text text-muted">
-                                        Accepted columns: optional old topic id, question, source, option A, option B, option C, option D, option E, correct answer, question type, explanation.
+                                        Accepted columns: topic id, question, source, option A, option B, option C, option D, option E, correct answer, question type, explanation.
                                     </div>
                                 </div>
                                 <div class="text-end">

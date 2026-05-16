@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\Models\Question;
+use App\Models\Topic;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class TsvQuestionImportService
 {
-    public function import(string $tsv, int $topicId): array
+    public function import(string $tsv, ?int $fallbackTopicId = null): array
     {
-        $parsed = $this->parse($tsv, $topicId);
+        $parsed = $this->parse($tsv, $fallbackTopicId);
 
         if (!empty($parsed['errors'])) {
             return [
@@ -31,7 +32,7 @@ class TsvQuestionImportService
         ];
     }
 
-    public function parse(string $tsv, int $topicId): array
+    public function parse(string $tsv, ?int $fallbackTopicId = null): array
     {
         $questions = [];
         $errors = [];
@@ -55,10 +56,21 @@ class TsvQuestionImportService
             }
 
             $offset = $this->resolveOffset($columns);
+            $rowTopicId = $this->resolveTopicId($columns, $offset, $fallbackTopicId);
             $expectedColumns = $offset + 10;
 
             if (count($columns) < $expectedColumns) {
                 $errors[] = "Row {$rowNumber}: expected " . (string) $expectedColumns . ' tab-separated columns, got ' . count($columns) . '.';
+                continue;
+            }
+
+            if ($rowTopicId === null) {
+                $errors[] = "Row {$rowNumber}: topic id is required. Add it as the first TSV column or choose a fallback topic.";
+                continue;
+            }
+
+            if (!Topic::query()->whereKey($rowTopicId)->exists()) {
+                $errors[] = "Row {$rowNumber}: topic id {$rowTopicId} does not exist.";
                 continue;
             }
 
@@ -96,7 +108,7 @@ class TsvQuestionImportService
             }
 
             $questionData = [
-                'topic_id' => $topicId,
+                'topic_id' => $rowTopicId,
                 'question' => $questionText,
                 'source' => $source,
                 'option_a' => $questionType === Question::TYPE_MULTIPLE_CHOICE ? $this->nullableCell($columns[$offset + 2] ?? '') : null,
@@ -134,6 +146,15 @@ class TsvQuestionImportService
     private function resolveOffset(array $columns): int
     {
         return count($columns) >= 11 && is_numeric($columns[0] ?? null) ? 1 : 0;
+    }
+
+    private function resolveTopicId(array $columns, int $offset, ?int $fallbackTopicId): ?int
+    {
+        if ($offset === 1) {
+            return (int) $columns[0];
+        }
+
+        return $fallbackTopicId;
     }
 
     private function looksLikeHeader(array $columns): bool

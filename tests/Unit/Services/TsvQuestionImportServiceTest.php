@@ -12,23 +12,23 @@ class TsvQuestionImportServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_imports_rows_using_selected_topic_and_supported_tsv_shape(): void
+    public function test_imports_rows_using_topic_id_from_each_tsv_row(): void
     {
-        $selectedTopic = Topic::factory()->create();
-        $pastedTopic = Topic::factory()->create();
+        $firstTopic = Topic::factory()->create();
+        $secondTopic = Topic::factory()->create();
 
         $tsv = implode("\n", [
-            "{$pastedTopic->id}\tEnumerate bone resorption markers.\tMedCapsule\t-\t-\t-\t-\t-\tTRAP, CTP, betaCTX, NTX\twritten\tWritten explanation.",
-            "{$pastedTopic->id}\tWhich marker reflects bone formation?\tMedCapsule\tNTX\tTRAP\tOsteocalcin\tbetaCTX\tCTP\tC\tmultiple_choice\tMCQ explanation.",
+            "{$firstTopic->id}\tEnumerate bone resorption markers.\tMedCapsule\t-\t-\t-\t-\t-\tTRAP, CTP, betaCTX, NTX\twritten\tWritten explanation.",
+            "{$secondTopic->id}\tWhich marker reflects bone formation?\tMedCapsule\tNTX\tTRAP\tOsteocalcin\tbetaCTX\tCTP\tC\tmultiple_choice\tMCQ explanation.",
         ]);
 
-        $result = app(TsvQuestionImportService::class)->import($tsv, $selectedTopic->id);
+        $result = app(TsvQuestionImportService::class)->import($tsv);
 
         $this->assertSame(2, $result['imported']);
         $this->assertSame([], $result['errors']);
 
         $this->assertDatabaseHas('questions', [
-            'topic_id' => $selectedTopic->id,
+            'topic_id' => $firstTopic->id,
             'question' => 'Enumerate bone resorption markers.',
             'source' => 'MedCapsule',
             'correct_answer' => 'TRAP, CTP, betaCTX, NTX',
@@ -37,13 +37,41 @@ class TsvQuestionImportServiceTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('questions', [
-            'topic_id' => $selectedTopic->id,
+            'topic_id' => $secondTopic->id,
             'question' => 'Which marker reflects bone formation?',
             'option_a' => 'NTX',
             'option_e' => 'CTP',
             'correct_answer' => 'C',
             'question_type' => Question::TYPE_MULTIPLE_CHOICE,
         ]);
+    }
+
+    public function test_uses_fallback_topic_for_rows_without_topic_id_column(): void
+    {
+        $topic = Topic::factory()->create();
+
+        $result = app(TsvQuestionImportService::class)->import(
+            "Which marker reflects bone formation?\tMedCapsule\tNTX\tTRAP\tOsteocalcin\tbetaCTX\tCTP\tC\tmultiple_choice\tMCQ explanation.",
+            $topic->id
+        );
+
+        $this->assertSame(1, $result['imported']);
+        $this->assertSame([], $result['errors']);
+        $this->assertDatabaseHas('questions', [
+            'topic_id' => $topic->id,
+            'question' => 'Which marker reflects bone formation?',
+        ]);
+    }
+
+    public function test_returns_error_when_no_row_topic_or_fallback_topic_exists(): void
+    {
+        $result = app(TsvQuestionImportService::class)->import(
+            "Question without topic\tMedCapsule\tA\tB\tC\tD\tE\tA\tmultiple_choice\tExplanation."
+        );
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertSame(['Row 1: topic id is required. Add it as the first TSV column or choose a fallback topic.'], $result['errors']);
+        $this->assertDatabaseCount('questions', 0);
     }
 
     public function test_returns_errors_without_importing_invalid_rows(): void
