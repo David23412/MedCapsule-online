@@ -97,6 +97,40 @@ class TsvQuestionImportServiceTest extends TestCase
         ]);
     }
 
+    public function test_allows_true_false_multiple_choice_rows_with_empty_later_options(): void
+    {
+        $topic = Topic::factory()->create();
+
+        $result = app(TsvQuestionImportService::class)->import(
+            "{$topic->id}\tThe clavicle connects the upper limb to the trunk.\tAssuit\tTrue\tFalse\t-\t-\t-\tA\tmultiple_choice\tThe clavicle is the only direct bony connection.",
+        );
+
+        $this->assertSame(1, $result['imported']);
+        $this->assertSame([], $result['errors']);
+        $this->assertDatabaseHas('questions', [
+            'topic_id' => $topic->id,
+            'question' => 'The clavicle connects the upper limb to the trunk.',
+            'option_a' => 'True',
+            'option_b' => 'False',
+            'option_c' => null,
+            'option_d' => null,
+            'correct_answer' => 'A',
+        ]);
+    }
+
+    public function test_rejects_multiple_choice_when_correct_answer_points_to_empty_option(): void
+    {
+        $topic = Topic::factory()->create();
+
+        $result = app(TsvQuestionImportService::class)->import(
+            "{$topic->id}\tThe clavicle connects the upper limb to the trunk.\tAssuit\tTrue\tFalse\t-\t-\t-\tC\tmultiple_choice\tThe clavicle is the only direct bony connection.",
+        );
+
+        $this->assertSame(0, $result['imported']);
+        $this->assertSame(['Row 1: correct answer C points to an empty option.'], $result['errors']);
+        $this->assertDatabaseCount('questions', 0);
+    }
+
     public function test_returns_errors_without_importing_invalid_rows(): void
     {
         $topic = Topic::factory()->create();

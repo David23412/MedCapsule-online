@@ -122,11 +122,17 @@ class TsvQuestionImportService
             ];
 
             if ($questionType === Question::TYPE_MULTIPLE_CHOICE) {
-                foreach (['option_a', 'option_b', 'option_c', 'option_d'] as $option) {
+                foreach (['option_a', 'option_b'] as $option) {
                     if (($questionData[$option] ?? null) === null) {
                         $errors[] = "Row {$rowNumber}: " . strtoupper(str_replace('option_', 'option ', $option)) . ' is required for multiple-choice questions.';
                         continue 2;
                     }
+                }
+
+                $correctOption = 'option_' . strtolower($correctAnswer);
+                if (($questionData[$correctOption] ?? null) === null) {
+                    $errors[] = "Row {$rowNumber}: correct answer {$correctAnswer} points to an empty option.";
+                    continue;
                 }
             }
 
