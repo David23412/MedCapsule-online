@@ -70,8 +70,31 @@ class TsvQuestionImportServiceTest extends TestCase
         );
 
         $this->assertSame(0, $result['imported']);
-        $this->assertSame(['Row 1: topic id is required. Add it as the first TSV column or choose a fallback topic.'], $result['errors']);
+        $this->assertSame(['Row 1: topic id is required. Add it as the first TSV column or choose a selected topic mode.'], $result['errors']);
         $this->assertDatabaseCount('questions', 0);
+    }
+
+    public function test_can_force_all_rows_into_selected_topic(): void
+    {
+        $rowTopic = Topic::factory()->create();
+        $selectedTopic = Topic::factory()->create();
+
+        $result = app(TsvQuestionImportService::class)->import(
+            "{$rowTopic->id}\tWhich marker reflects bone formation?\tMedCapsule\tNTX\tTRAP\tOsteocalcin\tbetaCTX\tCTP\tC\tmultiple_choice\tMCQ explanation.",
+            $selectedTopic->id,
+            true
+        );
+
+        $this->assertSame(1, $result['imported']);
+        $this->assertSame([], $result['errors']);
+        $this->assertDatabaseHas('questions', [
+            'topic_id' => $selectedTopic->id,
+            'question' => 'Which marker reflects bone formation?',
+        ]);
+        $this->assertDatabaseMissing('questions', [
+            'topic_id' => $rowTopic->id,
+            'question' => 'Which marker reflects bone formation?',
+        ]);
     }
 
     public function test_returns_errors_without_importing_invalid_rows(): void

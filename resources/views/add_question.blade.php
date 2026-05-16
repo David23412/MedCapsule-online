@@ -135,21 +135,34 @@
                             <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
                                 <div>
                                     <h5 class="mb-1">Paste TSV Import</h5>
-                                    <div class="text-muted small">Paste mixed-topic rows directly. If column 1 is a topic id, each row imports into that topic.</div>
+                                    <div class="text-muted small">Default mode imports mixed-topic TSV dumps using the topic id in column 1.</div>
                                 </div>
                             </div>
                             <form method="POST" action="{{ route('questions.import-tsv') }}" enctype="multipart/form-data">
                                 @csrf
                                 <div class="mb-3">
-                                    <label class="form-label">Fallback topic</label>
+                                    <label class="form-label">Import mode</label>
+                                    <div class="d-flex flex-column gap-2">
+                                        <label class="form-check mb-0">
+                                            <input class="form-check-input" type="radio" name="topic_import_mode" value="mixed" {{ old('topic_import_mode', 'mixed') === 'mixed' ? 'checked' : '' }}>
+                                            <span class="form-check-label">Use topic IDs from TSV</span>
+                                        </label>
+                                        <label class="form-check mb-0">
+                                            <input class="form-check-input" type="radio" name="topic_import_mode" value="selected" {{ old('topic_import_mode') === 'selected' ? 'checked' : '' }}>
+                                            <span class="form-check-label">Force all rows into selected topic</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Selected topic</label>
                                     <select name="topic_id" class="form-select">
-                                        <option value="" {{ old('topic_id') ? '' : 'selected' }}>Use topic id from TSV</option>
+                                        <option value="" {{ old('topic_id') ? '' : 'selected' }}>No selected topic</option>
                                         @foreach($topics as $topic)
                                             <option value="{{ $topic->id }}" {{ old('topic_id') == $topic->id ? 'selected' : '' }}>{{ $topic->name }}</option>
                                         @endforeach
                                     </select>
                                     <div class="form-text text-muted">
-                                        Leave this as "Use topic id from TSV" for mixed-topic dumps. Pick a fallback only for rows that do not include topic id as column 1.
+                                        Leave empty for mixed dumps like your sample. Pick a topic only when forcing all rows into one topic, or as a fallback for rows without column 1 topic ids.
                                     </div>
                                 </div>
                                 <div class="mb-3">

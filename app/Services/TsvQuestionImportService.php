@@ -9,9 +9,9 @@ use InvalidArgumentException;
 
 class TsvQuestionImportService
 {
-    public function import(string $tsv, ?int $fallbackTopicId = null): array
+    public function import(string $tsv, ?int $fallbackTopicId = null, bool $forceFallbackTopic = false): array
     {
-        $parsed = $this->parse($tsv, $fallbackTopicId);
+        $parsed = $this->parse($tsv, $fallbackTopicId, $forceFallbackTopic);
 
         if (!empty($parsed['errors'])) {
             return [
@@ -32,7 +32,7 @@ class TsvQuestionImportService
         ];
     }
 
-    public function parse(string $tsv, ?int $fallbackTopicId = null): array
+    public function parse(string $tsv, ?int $fallbackTopicId = null, bool $forceFallbackTopic = false): array
     {
         $questions = [];
         $errors = [];
@@ -56,7 +56,7 @@ class TsvQuestionImportService
             }
 
             $offset = $this->resolveOffset($columns);
-            $rowTopicId = $this->resolveTopicId($columns, $offset, $fallbackTopicId);
+            $rowTopicId = $this->resolveTopicId($columns, $offset, $fallbackTopicId, $forceFallbackTopic);
             $expectedColumns = $offset + 10;
 
             if (count($columns) < $expectedColumns) {
@@ -65,7 +65,7 @@ class TsvQuestionImportService
             }
 
             if ($rowTopicId === null) {
-                $errors[] = "Row {$rowNumber}: topic id is required. Add it as the first TSV column or choose a fallback topic.";
+                $errors[] = "Row {$rowNumber}: topic id is required. Add it as the first TSV column or choose a selected topic mode.";
                 continue;
             }
 
@@ -148,8 +148,12 @@ class TsvQuestionImportService
         return count($columns) >= 11 && is_numeric($columns[0] ?? null) ? 1 : 0;
     }
 
-    private function resolveTopicId(array $columns, int $offset, ?int $fallbackTopicId): ?int
+    private function resolveTopicId(array $columns, int $offset, ?int $fallbackTopicId, bool $forceFallbackTopic): ?int
     {
+        if ($forceFallbackTopic) {
+            return $fallbackTopicId;
+        }
+
         if ($offset === 1) {
             return (int) $columns[0];
         }

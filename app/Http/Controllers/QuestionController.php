@@ -178,17 +178,27 @@ class QuestionController extends Controller
     public function importTsv(Request $request, TsvQuestionImportService $importer)
     {
         $validated = $request->validate([
+            'topic_import_mode' => 'nullable|in:mixed,selected',
             'topic_id' => 'nullable|integer|exists:topics,id',
             'tsv' => 'nullable|required_without:tsv_file|string',
             'tsv_file' => 'nullable|required_without:tsv|file|max:5120',
         ]);
 
         $fallbackTopicId = isset($validated['topic_id']) ? (int) $validated['topic_id'] : null;
+        $forceSelectedTopic = ($validated['topic_import_mode'] ?? 'mixed') === 'selected';
+
+        if ($forceSelectedTopic && $fallbackTopicId === null) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('import_errors', ['Select a topic or switch back to mixed TSV topic ids.']);
+        }
+
         $tsv = $request->hasFile('tsv_file')
             ? (string) file_get_contents($request->file('tsv_file')->getRealPath())
             : (string) $validated['tsv'];
 
-        $result = $importer->import($tsv, $fallbackTopicId);
+        $result = $importer->import($tsv, $fallbackTopicId, $forceSelectedTopic);
 
         if (!empty($result['errors'])) {
             return redirect()
