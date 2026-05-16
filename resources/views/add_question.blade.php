@@ -138,7 +138,7 @@
                                     <div class="text-muted small">Paste mixed-topic rows directly. If column 1 is a topic id, each row imports into that topic.</div>
                                 </div>
                             </div>
-                            <form method="POST" action="{{ route('questions.import-tsv') }}">
+                            <form method="POST" action="{{ route('questions.import-tsv') }}" enctype="multipart/form-data">
                                 @csrf
                                 <div class="mb-3">
                                     <label class="form-label">Fallback topic</label>
@@ -153,6 +153,13 @@
                                     </div>
                                 </div>
                                 <div class="mb-3">
+                                    <label class="form-label">TSV file</label>
+                                    <input type="file" name="tsv_file" class="form-control" accept=".tsv,.txt,.csv,text/tab-separated-values,text/plain,text/csv">
+                                    <div class="form-text text-muted">
+                                        Upload a full TSV dump, or paste rows below. Mixed topic ids are read from column 1.
+                                    </div>
+                                </div>
+                                <div class="mb-3">
                                     <label class="form-label">TSV rows</label>
                                     <textarea
                                         name="tsv"
@@ -160,7 +167,6 @@
                                         rows="8"
                                         spellcheck="false"
                                         placeholder="143	Question text	MedCapsule	A	B	C	D	E	C	multiple_choice	Explanation"
-                                        required
                                     >{{ old('tsv') }}</textarea>
                                     <div class="form-text text-muted">
                                         Accepted columns: topic id, question, source, option A, option B, option C, option D, option E, correct answer, question type, explanation.

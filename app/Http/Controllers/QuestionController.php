@@ -179,11 +179,16 @@ class QuestionController extends Controller
     {
         $validated = $request->validate([
             'topic_id' => 'nullable|integer|exists:topics,id',
-            'tsv' => 'required|string',
+            'tsv' => 'nullable|required_without:tsv_file|string',
+            'tsv_file' => 'nullable|required_without:tsv|file|max:5120',
         ]);
 
         $fallbackTopicId = isset($validated['topic_id']) ? (int) $validated['topic_id'] : null;
-        $result = $importer->import($validated['tsv'], $fallbackTopicId);
+        $tsv = $request->hasFile('tsv_file')
+            ? (string) file_get_contents($request->file('tsv_file')->getRealPath())
+            : (string) $validated['tsv'];
+
+        $result = $importer->import($tsv, $fallbackTopicId);
 
         if (!empty($result['errors'])) {
             return redirect()
@@ -194,7 +199,7 @@ class QuestionController extends Controller
 
         return redirect()
             ->back()
-            ->with('success', "Imported {$result['imported']} questions from TSV.");
+            ->with('success', "TSV import successful: {$result['imported']} questions were added to the question database.");
     }
 
     private function syncQuestionConcepts(Question $question, Topic $topic, ?string $rawConceptNames): void
