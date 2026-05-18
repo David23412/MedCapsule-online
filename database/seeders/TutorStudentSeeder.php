@@ -36,7 +36,7 @@ class TutorStudentSeeder extends Seeder
                 [
                     'name' => $tutorData['name'],
                     'password' => bcrypt('password'),
-                    'role' => 'tutor',
+                    'role' => User::ROLE_TUTOR,
                     'university' => $tutorData['university'],
                     'email_verified_at' => now(),
                     'profile_picture_url' => $tutorData['profile_picture_url'],
@@ -132,7 +132,7 @@ class TutorStudentSeeder extends Seeder
                 [
                     'name' => $data['name'],
                     'password' => bcrypt('password'),
-                    'role' => 'student',
+                    'role' => User::ROLE_STUDENT,
                     'university' => $data['university'],
                     'email_verified_at' => now(),
                     'profile_picture_url' => $data['profile_picture_url'],

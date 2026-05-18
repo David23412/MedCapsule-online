@@ -183,6 +183,21 @@ class User extends Authenticatable
         return (int)($this->role ?? 0) === self::ROLE_ADMIN;
     }
 
+    public function hasRole(string|int $role): bool
+    {
+        $roles = [
+            'admin' => self::ROLE_ADMIN,
+            'tutor' => self::ROLE_TUTOR,
+            'student' => self::ROLE_STUDENT,
+        ];
+
+        $expectedRole = is_string($role)
+            ? ($roles[strtolower($role)] ?? null)
+            : $role;
+
+        return $expectedRole !== null && (int)($this->role ?? 0) === (int)$expectedRole;
+    }
+
     /**
      * Handle role changes and automatic free course enrollment
      */
@@ -496,9 +511,17 @@ class User extends Authenticatable
 
     public function getPreviewTopicLimitForCourse(Course|int $course): ?int
     {
-        return $this->getCourseAccessLevel($course) === self::COURSE_ACCESS_PREVIEW
-            ? (int) config('free_course_survey.preview_topics_count', 5)
-            : null;
+        if ($this->getCourseAccessLevel($course) !== self::COURSE_ACCESS_PREVIEW) {
+            return null;
+        }
+
+        if ($course instanceof Course) {
+            return $course->getPreviewTopicLimit();
+        }
+
+        $courseModel = Course::query()->select('id')->find((int) $course);
+
+        return $courseModel?->getPreviewTopicLimit() ?? (int) config('free_course_survey.preview_topics_count', 5);
     }
 
     public function getPreviewAccessibleTopicIdsForCourse(Course|int $course): array
@@ -508,6 +531,21 @@ class User extends Authenticatable
 
         if ($previewLimit === null || $previewLimit <= 0) {
             return [];
+        }
+
+        if (Schema::hasColumn('topics', 'is_preview_enabled')) {
+            $explicitPreviewTopicIds = Topic::query()
+                ->where('course_id', $courseId)
+                ->where('is_preview_enabled', true)
+                ->orderBy('display_order')
+                ->orderBy('id')
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($explicitPreviewTopicIds !== []) {
+                return $explicitPreviewTopicIds;
+            }
         }
 
         return Topic::query()

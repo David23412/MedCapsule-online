@@ -87,6 +87,54 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 return 'Student';
             }
 
+            function normalizeSecurityStatus(status) {
+                status = status || {};
+                return {
+                    label: status.label || 'Clear',
+                    isBlocked: status.is_blocked === true || status.is_blocked === 1 || status.is_blocked === '1',
+                    isSuspicious: status.is_suspicious === true || status.is_suspicious === 1 || status.is_suspicious === '1',
+                    isPermanent: status.is_permanently_locked === true || status.is_permanently_locked === 1 || status.is_permanently_locked === '1',
+                    hardLockScore: Number.parseInt(status.hard_lock_score || 0, 10) || 0,
+                    loginAttempts: Number.parseInt(status.login_attempts || 0, 10) || 0,
+                    lastSuspiciousAt: status.last_suspicious_at || ''
+                };
+            }
+
+            function readSecurityStatusFromOption(option) {
+                const $option = $(option);
+                return normalizeSecurityStatus({
+                    label: $option.data('security-label') || 'Clear',
+                    is_blocked: $option.data('security-blocked'),
+                    is_suspicious: $option.data('security-suspicious'),
+                    is_permanently_locked: $option.data('security-permanent'),
+                    hard_lock_score: $option.data('security-score'),
+                    last_suspicious_at: $option.data('security-last')
+                });
+            }
+
+            function securityBadgeHtml(status) {
+                status = normalizeSecurityStatus(status);
+                if (status.isPermanent) {
+                    return '<span class="badge bg-danger"><i class="fas fa-lock me-1"></i>Permanently locked</span>';
+                }
+                if (status.isBlocked) {
+                    return '<span class="badge bg-warning text-dark"><i class="fas fa-ban me-1"></i>Temporarily blocked</span>';
+                }
+                if (status.isSuspicious) {
+                    return '<span class="badge bg-warning text-dark"><i class="fas fa-triangle-exclamation me-1"></i>Suspicious</span>';
+                }
+                return '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Clear</span>';
+            }
+
+            function securityDetailText(status) {
+                status = normalizeSecurityStatus(status);
+                const parts = [];
+                if (status.hardLockScore > 0) parts.push('hard-lock score ' + status.hardLockScore);
+                if (status.loginAttempts > 0) parts.push(status.loginAttempts + ' recent login attempts');
+                if (status.lastSuspiciousAt) parts.push('last suspicious ' + timeAgoLabel(status.lastSuspiciousAt));
+                return parts.length ? parts.join(' • ') : 'No active security flags.';
+            }
+
             function renderUserOption(user) {
                 if (user.loading || !user.id) {
                     return user.text;
@@ -96,6 +144,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 const safeName = $('<span>').text(user.name || 'Unknown').html();
                 const safeEmail = $('<span>').text(user.email || '').html();
                 const safeNumber = user.number ? $('<span>').text(user.number).html() : '';
+                const securityStatus = normalizeSecurityStatus(user.security_status);
 
                 let display = '<div class="d-flex align-items-center justify-content-between w-100">';
                 display += '<div class="flex-grow-1">';
@@ -105,7 +154,12 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     display += '<br><small class="text-muted">Number: ' + safeNumber + '</small>';
                 }
                 display += '</div>';
-                display += '<span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">' + roleName + '</span>';
+                display += '<div class="d-flex flex-column align-items-end gap-1 ms-2">';
+                display += '<span class="badge bg-secondary" style="font-size: 0.7rem;">' + roleName + '</span>';
+                if (securityStatus.isBlocked || securityStatus.isSuspicious) {
+                    display += securityBadgeHtml(securityStatus);
+                }
+                display += '</div>';
                 display += '</div>';
 
                 return display;
@@ -141,7 +195,8 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                             name: user.name,
                             email: user.email,
                             number: user.number,
-                            role: normalizeRole(user.role)
+                            role: normalizeRole(user.role),
+                            security_status: normalizeSecurityStatus(user.security_status)
                         };
                     })
                 };
@@ -192,21 +247,35 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 const optionText = renderUserSelection(user);
 
                 if (existingOption.length > 0) {
+                    const securityStatus = normalizeSecurityStatus(user.security_status);
                     existingOption
                         .text(optionText)
                         .attr('data-name', user.name || '')
                         .attr('data-email', user.email || '')
                         .attr('data-number', user.number || '')
-                        .attr('data-role', normalizeRole(user.role));
+                        .attr('data-role', normalizeRole(user.role))
+                        .attr('data-security-label', securityStatus.label)
+                        .attr('data-security-blocked', securityStatus.isBlocked ? '1' : '0')
+                        .attr('data-security-suspicious', securityStatus.isSuspicious ? '1' : '0')
+                        .attr('data-security-permanent', securityStatus.isPermanent ? '1' : '0')
+                        .attr('data-security-score', securityStatus.hardLockScore)
+                        .attr('data-security-last', securityStatus.lastSuspiciousAt);
                     return;
                 }
 
                 const option = new Option(optionText, user.id, true, true);
+                const securityStatus = normalizeSecurityStatus(user.security_status);
                 $(option)
                     .attr('data-name', user.name || '')
                     .attr('data-email', user.email || '')
                     .attr('data-number', user.number || '')
-                    .attr('data-role', normalizeRole(user.role));
+                    .attr('data-role', normalizeRole(user.role))
+                    .attr('data-security-label', securityStatus.label)
+                    .attr('data-security-blocked', securityStatus.isBlocked ? '1' : '0')
+                    .attr('data-security-suspicious', securityStatus.isSuspicious ? '1' : '0')
+                    .attr('data-security-permanent', securityStatus.isPermanent ? '1' : '0')
+                    .attr('data-security-score', securityStatus.hardLockScore)
+                    .attr('data-security-last', securityStatus.lastSuspiciousAt);
                 $select.append(option);
             }
             
@@ -300,9 +369,10 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         const userEmail = userOption.data('email');
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
+                        const securityStatus = readSecurityStatusFromOption(userOption);
 
                         // Safe integer handling for role
-                        const safeUserRole = (userRole && typeof userRole === 'number') ? userRole : 0;
+                        const safeUserRole = normalizeRole(userRole);
                         const displayRole = safeUserRole === 1 ? 'ADMIN' : safeUserRole === 2 ? 'TUTOR' : 'STUDENT';
 
                         // Set user initial (first letter of name) - safe handling
@@ -314,6 +384,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         $('#selectedUserEmail').text(userEmail || 'No Email');
                         $('#selectedUserNumber').text(userNumber ? `Number: ${userNumber}` : '');
                         $('#selectedUserRole').removeClass().addClass('badge').addClass(safeUserRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
+                        $('#selectedUserSecurity').html(securityBadgeHtml(securityStatus) + ' <span class="text-muted">' + escHtml(securityDetailText(securityStatus)) + '</span>');
                         $('#userInfoSection').show();
 
                         // Update course dropdown with enrollment status
@@ -321,6 +392,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     } else {
                         $('#userInfoSection').hide();
                         $('#selectedUserNumber').text('');
+                        $('#selectedUserSecurity').empty();
                         // Reset course dropdown
                         resetCourseDropdown();
                     }
@@ -390,6 +462,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             // Admin Management Variables
             let selectedAdminUserId = null;
             let selectedAdminIsAdmin = false;
+            let selectedAdminSecurityStatus = normalizeSecurityStatus();
             
             // Admin user selection handler
             $('#admin_user_id').on('change', function() {
@@ -403,6 +476,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         const userEmail = userOption.data('email');
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
+                        selectedAdminSecurityStatus = readSecurityStatusFromOption(userOption);
 
 
                         selectedAdminUserId = userId;
@@ -416,7 +490,11 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         $('#selectedAdminUserEmail').text(userEmail || 'No Email');
                         $('#selectedAdminUserNumber').text(userNumber ? `Number: ${userNumber}` : '');
                         $('#selectedAdminUserStatus').removeClass().addClass('badge').addClass(normalizedRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
+                        $('#selectedAdminSecurityStatus').html(securityBadgeHtml(selectedAdminSecurityStatus) + ' <span class="text-muted">' + escHtml(securityDetailText(selectedAdminSecurityStatus)) + '</span>');
                         $('#selectedUserInfo').show();
+                        $('#securityActionPanel').show();
+                        $('#securityActionText').text(securityDetailText(selectedAdminSecurityStatus));
+                        $('#clearSecurityLockBtn').prop('disabled', !(selectedAdminSecurityStatus.isBlocked || selectedAdminSecurityStatus.isSuspicious));
 
                         // FIXED: Update buttons - compare with boolean true/false
                         if (selectedAdminIsAdmin === true) {
@@ -436,6 +514,9 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         $('#adminActionHint').text('Select a user above to manage their admin privileges');
                         selectedAdminUserId = null;
                         selectedAdminIsAdmin = false;
+                        selectedAdminSecurityStatus = normalizeSecurityStatus();
+                        $('#selectedAdminSecurityStatus').empty();
+                        $('#securityActionPanel').hide();
                     }
                 } catch (error) {
                     console.error('Error in admin user selection handler:', error);
@@ -443,6 +524,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     $('#selectedUserInfo').hide();
                     $('#promoteToAdminBtn').prop('disabled', true);
                     $('#removeAdminBtn').prop('disabled', true);
+                    $('#securityActionPanel').hide();
                 }
             });
             
@@ -596,6 +678,133 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     }
                 });
             });
+
+            function markUserSecurityClear(userId, status) {
+                status = normalizeSecurityStatus(status);
+                $('option[value="' + userId + '"]').each(function() {
+                    $(this)
+                        .attr('data-security-label', status.label)
+                        .attr('data-security-blocked', status.isBlocked ? '1' : '0')
+                        .attr('data-security-suspicious', status.isSuspicious ? '1' : '0')
+                        .attr('data-security-permanent', status.isPermanent ? '1' : '0')
+                        .attr('data-security-score', status.hardLockScore)
+                        .attr('data-security-last', status.lastSuspiciousAt)
+                        .data('security-label', status.label)
+                        .data('security-blocked', status.isBlocked ? '1' : '0')
+                        .data('security-suspicious', status.isSuspicious ? '1' : '0')
+                        .data('security-permanent', status.isPermanent ? '1' : '0')
+                        .data('security-score', status.hardLockScore)
+                        .data('security-last', status.lastSuspiciousAt);
+                });
+            }
+
+            function clearSecurityLock(userId, btn) {
+                if (!userId) {
+                    showNotification('warning', 'No User Selected', 'Select a user before clearing a security lock.');
+                    return;
+                }
+
+                if (!confirm('Clear temporary/permanent security lock state for this user?')) {
+                    return;
+                }
+
+                const $btn = $(btn);
+                const originalHtml = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Clearing...');
+
+                $.ajax({
+                    url: '/manage-access/security-lock/clear',
+                    method: 'POST',
+                    data: {
+                        user_id: userId,
+                        _token: MANAGE_ACCESS_CONFIG.csrfToken
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            const status = normalizeSecurityStatus(response.security_status);
+                            markUserSecurityClear(userId, status);
+                            selectedAdminSecurityStatus = status;
+                            $('#selectedAdminSecurityStatus').html(securityBadgeHtml(status) + ' <span class="text-muted">' + escHtml(securityDetailText(status)) + '</span>');
+                            $('#securityActionText').text(securityDetailText(status));
+                            $('#clearSecurityLockBtn').prop('disabled', true);
+                            showNotification('success', 'Security Lock Cleared', response.message || 'Security lock state was cleared.');
+                            loadSecurityUsers();
+                        } else {
+                            showNotification('error', 'Clear Failed', response.message || 'Failed to clear security lock.');
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification('error', 'Clear Failed', xhr.responseJSON?.message || 'Failed to clear security lock.');
+                    },
+                    complete: function() {
+                        $btn.html(originalHtml);
+                        if ($btn.attr('id') === 'clearSecurityLockBtn' && (selectedAdminSecurityStatus.isBlocked || selectedAdminSecurityStatus.isSuspicious)) {
+                            $btn.prop('disabled', false);
+                        }
+                    }
+                });
+            }
+
+            $('#clearSecurityLockBtn').on('click', function(e) {
+                e.preventDefault();
+                clearSecurityLock(selectedAdminUserId, this);
+            });
+
+            function loadSecurityUsers() {
+                const tbody = $('#securityUsersTable tbody');
+                tbody.html('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading security watchlist...</td></tr>');
+
+                $.ajax({
+                    url: '/manage-access/security-users',
+                    method: 'GET',
+                    data: { limit: 50 },
+                    success: function(response) {
+                        tbody.empty();
+                        if (!response.success || !response.users || response.users.length === 0) {
+                            tbody.append('<tr><td colspan="5" class="text-center py-4 text-muted"><i class="fas fa-shield-alt fa-2x mb-2"></i><div>No suspicious or blocked accounts found</div></td></tr>');
+                            return;
+                        }
+
+                        response.users.forEach(function(user) {
+                            const status = normalizeSecurityStatus(user.security_status);
+                            const lastEvent = user.last_event_at
+                                ? escHtml((user.last_event_type || 'security_event') + ' • ' + timeAgoLabel(user.last_event_at))
+                                : '—';
+                            const disabled = status.isBlocked || status.isSuspicious ? '' : ' disabled';
+
+                            tbody.append(
+                                '<tr data-user-id="' + user.id + '">' +
+                                    '<td><div class="fw-medium">' + escHtml(user.name || 'Unknown') + '</div><small class="text-muted">' + escHtml(user.email || '') + '</small></td>' +
+                                    '<td>' + securityBadgeHtml(status) + '<div class="small text-muted mt-1">' + escHtml(securityDetailText(status)) + '</div></td>' +
+                                    '<td><span class="badge bg-secondary">' + escHtml(user.last_risk_level || 'high') + '</span><div class="small text-muted mt-1">' + lastEvent + '</div></td>' +
+                                    '<td>' + escHtml(String(user.high_risk_count || 0)) + '</td>' +
+                                    '<td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm clear-security-row-btn" data-user-id="' + user.id + '"' + disabled + '><i class="fas fa-unlock me-1"></i>Revoke Lock</button></td>' +
+                                '</tr>'
+                            );
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to load security watchlist:', xhr.responseText);
+                        tbody.html('<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load security watchlist.</td></tr>');
+                    }
+                });
+            }
+
+            $('#securityUsersTable').on('click', '.clear-security-row-btn', function(e) {
+                e.preventDefault();
+                clearSecurityLock($(this).data('user-id'), this);
+            });
+
+            $('#refreshSecurityUsers').on('click', function() {
+                const btn = $(this);
+                btn.find('i').addClass('fa-spin');
+                loadSecurityUsers();
+                setTimeout(function() {
+                    btn.find('i').removeClass('fa-spin');
+                }, 800);
+            });
+
+            loadSecurityUsers();
             
             // Enrollment filter handler
             $('#enrollmentFilter').change(function() {
@@ -1642,6 +1851,37 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
         }
 
         $(document).ready(function() {
+            $('#preview-topics-tab').on('click', function() {
+                const courseId = $('#preview_course_id').val();
+                if (courseId) {
+                    loadPreviewTopics(courseId);
+                }
+            });
+
+            if (MANAGE_ACCESS_CONFIG.activeTab === 'preview-topics') {
+                const courseId = $('#preview_course_id').val();
+                if (courseId) {
+                    loadPreviewTopics(courseId);
+                }
+            }
+
+            $('#preview_course_id').on('change', function() {
+                const courseId = $(this).val();
+                if (courseId) {
+                    loadPreviewTopics(courseId);
+                } else {
+                    resetPreviewTopics('Pick a course to manage preview topics.');
+                }
+            });
+
+            $('#previewSelectNone').on('click', function() {
+                $('.preview-topic-checkbox').prop('checked', false);
+            });
+
+            $('#savePreviewTopics').on('click', function() {
+                savePreviewTopics();
+            });
+
             $('#video-tab').on('click', function() {
                 loadVideos();
             });
@@ -1712,6 +1952,107 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 });
             });
         });
+
+        function resetPreviewTopics(message) {
+            $('#previewTopicsList').hide().empty();
+            $('#previewTopicsEmpty').text(message).show();
+            $('#savePreviewTopics, #previewSelectNone').prop('disabled', true);
+        }
+
+        function loadPreviewTopics(courseId) {
+            resetPreviewTopics('Loading topics...');
+
+            $.ajax({
+                url: `${MANAGE_ACCESS_ROUTES.courseTopicsBase || '/api/courses'}/${courseId}/topics`,
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(topics) {
+                    renderPreviewTopics(Array.isArray(topics) ? topics : []);
+                },
+                error: function() {
+                    resetPreviewTopics('Failed to load topics.');
+                    showNotification('error', 'Load Failed', 'Failed to load preview topics.');
+                }
+            });
+        }
+
+        function renderPreviewTopics(topics) {
+            const list = $('#previewTopicsList');
+            list.empty();
+
+            if (!topics.length) {
+                resetPreviewTopics('No topics found for this course.');
+                return;
+            }
+
+            topics.forEach(topic => {
+                const caseType = topic.case_type || 'quiz';
+                const badgeClass = caseType === 'practical' ? 'bg-success' : (caseType === 'cases' ? 'bg-info' : 'bg-secondary');
+                const checked = topic.is_preview_enabled ? 'checked' : '';
+                const locked = topic.is_locked ? '<span class="badge bg-warning text-dark ms-2">Locked</span>' : '';
+
+                list.append(`
+                    <label class="preview-topic-row d-flex align-items-center gap-3 border rounded p-3 mb-2" for="preview-topic-${topic.id}">
+                        <input class="form-check-input preview-topic-checkbox m-0" type="checkbox" value="${topic.id}" id="preview-topic-${topic.id}" ${checked}>
+                        <span class="flex-grow-1">
+                            <span class="fw-semibold">${escapeHtml(topic.name || 'Untitled topic')}</span>
+                            <span class="badge ${badgeClass} ms-2">${escapeHtml(caseType)}</span>
+                            ${locked}
+                        </span>
+                    </label>
+                `);
+            });
+
+            $('#previewTopicsEmpty').hide();
+            list.show();
+            $('#savePreviewTopics, #previewSelectNone').prop('disabled', false);
+        }
+
+        function savePreviewTopics() {
+            const courseId = $('#preview_course_id').val();
+            if (!courseId) {
+                showNotification('warning', 'Choose Course', 'Select a course first.');
+                return;
+            }
+
+            const topicIds = $('.preview-topic-checkbox:checked').map(function() {
+                return $(this).val();
+            }).get();
+
+            $('#savePreviewTopics').prop('disabled', true);
+
+            $.ajax({
+                url: `${MANAGE_ACCESS_ROUTES.previewTopicsBase || '/admin/courses'}/${courseId}/preview-topics`,
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    topic_ids: topicIds,
+                    _token: MANAGE_ACCESS_CONFIG.csrfToken
+                }),
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showNotification('success', 'Saved', response.message || 'Preview topics updated.');
+                        loadPreviewTopics(courseId);
+                    } else {
+                        showNotification('error', 'Save Failed', response.message || 'Failed to save preview topics.');
+                    }
+                },
+                error: function(xhr) {
+                    showNotification('error', 'Save Failed', xhr.responseJSON?.message || 'Failed to save preview topics.');
+                },
+                complete: function() {
+                    $('#savePreviewTopics').prop('disabled', false);
+                }
+            });
+        }
 
         function loadVideos() {
             const tbody = $('#videos-table-body');

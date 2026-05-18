@@ -667,7 +667,7 @@ class CourseService
             $course->requires_survey_unlock = $user->requiresSurveyUnlockForCourse($course);
             $course->is_preview_access = $course->access_level === User::COURSE_ACCESS_PREVIEW;
             $course->preview_topics_count = $course->is_preview_access
-                ? (int) config('free_course_survey.preview_topics_count', 5)
+                ? $course->getPreviewTopicLimit()
                 : null;
 
             // PRESERVE existing payment check logic

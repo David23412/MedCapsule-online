@@ -169,6 +169,26 @@ class UserCourseController extends Controller
         return response()->json($result, $result['success'] ? 200 : 400);
     }
 
+    public function securityUsers(Request $request)
+    {
+        $limit = min(100, max(1, (int) $request->input('limit', 50)));
+        $result = $this->userService->getSecurityWatchlist($limit);
+
+        return response()->json($result, $result['success'] ? 200 : 500);
+    }
+
+    public function clearSecurityLock(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|integer|exists:users,id',
+        ]);
+
+        $user = User::findOrFail($validated['user_id']);
+        $result = $this->userService->clearSecurityLock($user, auth()->user());
+
+        return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
     public function payments(GetPaymentsRequest $request)
     {
         try {

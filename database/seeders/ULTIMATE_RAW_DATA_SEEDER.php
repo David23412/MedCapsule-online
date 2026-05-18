@@ -57,7 +57,7 @@ class ULTIMATE_RAW_DATA_SEEDER extends Seeder
         User::updateOrCreate(['email' => 'admin@medcapsule.com'], [
             'name' => 'Admin',
             'password' => Hash::make('admin123'),
-            'role' => 'admin',
+            'role' => User::ROLE_ADMIN,
             'email_verified_at' => now(),
             'xp' => 10000,
             'study_streak_days' => 100,
@@ -78,7 +78,7 @@ class ULTIMATE_RAW_DATA_SEEDER extends Seeder
             User::updateOrCreate(['email' => $tutor['email']], [
                 'name' => $tutor['name'],
                 'password' => Hash::make('tutor123'),
-                'role' => 'tutor',
+                'role' => User::ROLE_TUTOR,
                 'email_verified_at' => now(),
                 'xp' => rand(5000, 8000),
                 'study_streak_days' => rand(30, 80),
@@ -102,7 +102,7 @@ class ULTIMATE_RAW_DATA_SEEDER extends Seeder
             User::updateOrCreate(['email' => $student['email']], [
                 'name' => $student['name'],
                 'password' => Hash::make('student123'),
-                'role' => 'student',
+                'role' => User::ROLE_STUDENT,
                 'email_verified_at' => now(),
                 'xp' => $student['xp'],
                 'study_streak_days' => $student['streak'],

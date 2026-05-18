@@ -8,7 +8,7 @@ class AssignmentCreateRequest extends FormRequest
 {
     public function authorize()
     {
-        return auth()->check() && in_array(auth()->user()->role, ['admin', 'tutor']);
+        return auth()->check() && (auth()->user()->isAdmin() || auth()->user()->isTutor());
     }
 
     public function rules()

@@ -254,6 +254,17 @@ class Course extends Model
 
     public function getPreviewTopicLimit(): int
     {
+        if (Schema::hasColumn('topics', 'is_preview_enabled')) {
+            $explicitPreviewCount = Topic::query()
+                ->where('course_id', $this->id)
+                ->where('is_preview_enabled', true)
+                ->count();
+
+            if ($explicitPreviewCount > 0) {
+                return (int) $explicitPreviewCount;
+            }
+        }
+
         return (int) config('free_course_survey.preview_topics_count', 5);
     }
 

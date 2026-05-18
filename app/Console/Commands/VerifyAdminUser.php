@@ -12,7 +12,7 @@ class VerifyAdminUser extends Command
 
     public function handle()
     {
-        $admin = User::where('is_admin', true)->first();
+        $admin = User::where('role', User::ROLE_ADMIN)->first();
 
         if (!$admin) {
             $this->error('No admin user found!');

@@ -132,8 +132,12 @@ Route::group([], function () {
 
         // API route for getting course topics
         Route::get('/api/courses/{course}/topics', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'getCourseTopics']);
+        Route::post('/admin/courses/{course}/preview-topics', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateCoursePreviewTopics'])
+            ->name('admin.courses.preview-topics.update');
         Route::get('/manage-access/user-courses/{userId}', [UserCourseController::class, 'userCourses'])->name('admin.user-course.user-courses');
         Route::post('/manage-access/toggle-admin', [UserCourseController::class, 'toggleAdmin'])->name('admin.user-course.toggle-admin');
+        Route::get('/manage-access/security-users', [UserCourseController::class, 'securityUsers'])->name('admin.user-course.security-users');
+        Route::post('/manage-access/security-lock/clear', [UserCourseController::class, 'clearSecurityLock'])->name('admin.user-course.security-lock.clear');
         // TEMPORARY: Move payments route outside admin middleware group for testing
         // Route::get('/manage-access/payments', [UserCourseController::class, 'payments'])->name('admin.user-course.payments')->withoutMiddleware([\App\Http\Middleware\AdminMiddleware::class]);
         Route::get('/manage-access/enrollments', [UserCourseController::class, 'getEnrollments'])->name('admin.user-course.enrollments');

@@ -1937,6 +1937,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link {{ $activeTab === 'preview-topics' ? 'active' : '' }}" id="preview-topics-tab" data-bs-toggle="tab" data-bs-target="#preview-topics" type="button" role="tab">
+                    <i class="fas fa-eye me-2"></i>Preview Topics
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $activeTab === 'payment-history' ? 'active' : '' }}" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment-history" type="button" role="tab">
                     <i class="fas fa-credit-card me-2"></i>Payment History
                 </button>
@@ -1993,7 +1998,8 @@
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-number="{{ $user->number ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}" data-mentored="{{ $user->is_mentored ? '1' : '0' }}">
+                                                @php $securityStatus = $user->security_status ?? []; @endphp
+                                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }} data-email="{{ $user->email ?? '' }}" data-number="{{ $user->number ?? '' }}" data-role="{{ $user->role ?? 0 }}" data-name="{{ $user->name ?? '' }}" data-mentored="{{ $user->is_mentored ? '1' : '0' }}" data-security-label="{{ $securityStatus['label'] ?? 'Clear' }}" data-security-blocked="{{ !empty($securityStatus['is_blocked']) ? '1' : '0' }}" data-security-suspicious="{{ !empty($securityStatus['is_suspicious']) ? '1' : '0' }}" data-security-permanent="{{ !empty($securityStatus['is_permanently_locked']) ? '1' : '0' }}" data-security-score="{{ $securityStatus['hard_lock_score'] ?? 0 }}" data-security-last="{{ $securityStatus['last_suspicious_at'] ?? '' }}">
                                                     {{ $user->name ?? 'Unknown' }} ({{ $user->email ?? 'No Email' }})
                                                 </option>
                                             @endforeach
@@ -2062,6 +2068,7 @@
                                             <div class="fw-bold" id="selectedUserName"></div>
                                             <div class="small text-muted" id="selectedUserEmail"></div>
                                             <div class="small text-muted" id="selectedUserNumber"></div>
+                                            <div class="small mt-1" id="selectedUserSecurity"></div>
                                         </div>
                                         <div class="ms-auto" id="userMentorshipBadge" style="display: none;">
                                             <span class="badge bg-success">MENTORED</span>
@@ -2092,7 +2099,8 @@
                                         <option value="">Type to search for user...</option>
                                         @if(isset($users) && $users->count() > 0)
                                             @foreach($users as $user)
-                                                <option value="{{ isset($user->id) ? $user->id : '' }}" data-email="{{ isset($user->email) ? $user->email : '' }}" data-number="{{ isset($user->number) ? $user->number : '' }}" data-role="{{ isset($user->role) ? $user->role : 0 }}" data-name="{{ isset($user->name) ? $user->name : '' }}">
+                                                @php $securityStatus = $user->security_status ?? []; @endphp
+                                                <option value="{{ isset($user->id) ? $user->id : '' }}" data-email="{{ isset($user->email) ? $user->email : '' }}" data-number="{{ isset($user->number) ? $user->number : '' }}" data-role="{{ isset($user->role) ? $user->role : 0 }}" data-name="{{ isset($user->name) ? $user->name : '' }}" data-security-label="{{ $securityStatus['label'] ?? 'Clear' }}" data-security-blocked="{{ !empty($securityStatus['is_blocked']) ? '1' : '0' }}" data-security-suspicious="{{ !empty($securityStatus['is_suspicious']) ? '1' : '0' }}" data-security-permanent="{{ !empty($securityStatus['is_permanently_locked']) ? '1' : '0' }}" data-security-score="{{ $securityStatus['hard_lock_score'] ?? 0 }}" data-security-last="{{ $securityStatus['last_suspicious_at'] ?? '' }}">
                                                     {{ isset($user->name) ? $user->name : 'Unknown' }} ({{ isset($user->email) ? $user->email : 'No Email' }}) {{ (isset($user->role) && $user->role === \App\Models\User::ROLE_ADMIN) ? '- ADMIN' : '' }}
                                                 </option>
                                             @endforeach
@@ -2115,6 +2123,7 @@
                                         </div>
                                         <div class="small text-muted" id="selectedAdminUserEmail">user@example.com</div>
                                         <div class="small text-muted" id="selectedAdminUserNumber"></div>
+                                        <div class="small mt-2" id="selectedAdminSecurityStatus"></div>
                                     </div>
                                     
                                     <div class="row g-2">
@@ -2133,6 +2142,56 @@
                                     <div class="mt-2 small text-muted text-center" id="adminActionHint">
                                         Select a user above to manage their admin privileges
                                     </div>
+                                    <div class="mt-3 border rounded p-3 bg-light" id="securityActionPanel" style="display: none;">
+                                        <div class="d-flex justify-content-between align-items-start gap-3">
+                                            <div>
+                                                <div class="fw-semibold">
+                                                    <i class="fas fa-shield-alt me-1"></i>Security Status
+                                                </div>
+                                                <div class="small text-muted" id="securityActionText">No suspicious lock state detected.</div>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" id="clearSecurityLockBtn" disabled>
+                                                <i class="fas fa-unlock me-1"></i>Revoke Lock
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-user-lock me-2"></i>Security Watchlist
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm" id="refreshSecurityUsers" title="Refresh security watchlist">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="securityUsersTable">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Status</th>
+                                                <th>Last Event</th>
+                                                <th>Risk Count</th>
+                                                <th class="text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                    <i class="fas fa-spinner fa-spin me-2"></i>Loading security watchlist...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -2363,6 +2422,61 @@
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade {{ $activeTab === 'preview-topics' ? 'show active' : '' }}" id="preview-topics" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-eye me-2"></i>Choose Preview Course
+                                </div>
+                                <span class="badge bg-info">Preview Users</span>
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label" for="preview_course_id">
+                                    <i class="fas fa-graduation-cap me-1"></i>Course
+                                </label>
+                                <select class="form-select" id="preview_course_id">
+                                    <option value="">Choose course...</option>
+                                    @if(isset($courses) && $courses->count() > 0)
+                                        @foreach($courses as $course)
+                                            <option value="{{ $course->id }}">{{ $course->name }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                <div class="form-text">
+                                    Select the topics that preview users can open before paying.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-7">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-list-check me-2"></i>Open Topics for Preview
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="previewSelectNone" disabled>
+                                        <i class="fas fa-xmark me-1"></i>None
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-sm" id="savePreviewTopics" disabled>
+                                        <i class="fas fa-save me-1"></i>Save
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="previewTopicsEmpty" class="text-muted text-center py-4">
+                                    Pick a course to manage preview topics.
+                                </div>
+                                <div id="previewTopicsList" class="preview-topic-list" style="display: none;"></div>
                             </div>
                         </div>
                     </div>
@@ -2972,6 +3086,7 @@
                 adminVideosIndex: '{{ route('admin.videos.index') }}',
                 adminVideosStore: '{{ route('admin.videos.store') }}',
                 adminVideosDestroyBase: '{{ url('/admin/videos') }}',
+                previewTopicsBase: '{{ url('/admin/courses') }}',
                 courseTopicsBase: '{{ url('/api/courses') }}'
             },
             courseOptions: {!! json_encode(

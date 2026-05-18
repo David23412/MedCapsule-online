@@ -22,7 +22,7 @@ class FastSeeder extends Seeder
                 'name' => 'Admin User',
                 'email' => 'admin@medcapsule.com',
                 'password' => Hash::make('password'),
-                'role' => 'admin',
+                'role' => User::ROLE_ADMIN,
                 'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now()
@@ -31,7 +31,7 @@ class FastSeeder extends Seeder
                 'name' => 'Test Tutor',
                 'email' => 'tutor@medcapsule.com',
                 'password' => Hash::make('password'),
-                'role' => 'tutor',
+                'role' => User::ROLE_TUTOR,
                 'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now()
@@ -40,7 +40,7 @@ class FastSeeder extends Seeder
                 'name' => 'Test Student',
                 'email' => 'student@medcapsule.com',
                 'password' => Hash::make('password'),
-                'role' => 'student',
+                'role' => User::ROLE_STUDENT,
                 'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now()

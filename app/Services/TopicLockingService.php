@@ -276,12 +276,12 @@ class TopicLockingService
     private function validateTutorPermission(Topic $topic, User $tutor): bool
     {
         // Admin users can lock/unlock any topic
-        if ($tutor->role === 'admin') {
+        if ($tutor->isAdmin()) {
             return true;
         }
         
         // Check if user is a tutor
-        if ($tutor->role !== 'tutor') {
+        if (!$tutor->isTutor()) {
             throw new \InvalidArgumentException('Only tutors and admins can lock/unlock topics');
         }
         
@@ -303,7 +303,7 @@ class TopicLockingService
     private function tutorHasCoursePermission(User $tutor, int $courseId): bool
     {
         // Admin users have permission for all courses
-        if ($tutor->role === 'admin') {
+        if ($tutor->isAdmin()) {
             return true;
         }
         

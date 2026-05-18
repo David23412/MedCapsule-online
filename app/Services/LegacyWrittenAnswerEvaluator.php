@@ -64,7 +64,7 @@ class LegacyWrittenAnswerEvaluator
                 $isCorrect,
                 $confidence,
                 $isCorrect ? 'legacy_similarity_match' : 'legacy_similarity_miss',
-                $isCorrect ? 'Your answer is close enough to the expected answer.' : 'Your answer does not sufficiently match the expected answer.',
+                $isCorrect ? 'Your answer is close enough to the expected answer.' : '',
                 [
                     'mode' => 'legacy',
                     'overlap' => $overlap,

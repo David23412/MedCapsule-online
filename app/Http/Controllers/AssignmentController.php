@@ -125,7 +125,7 @@ class AssignmentController extends Controller
         $user = auth()->user();
         
         // 👑 ADMIN SUPERIOR PRIVILEGES - Can delete ANY assignment
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
         } else {
             // Regular tutor deletion logging
         }
@@ -137,7 +137,7 @@ class AssignmentController extends Controller
             if ($result) {
                 return response()->json([
                     'success' => true,
-                    'message' => $user->role === 'admin' 
+                    'message' => $user->isAdmin() 
                         ? 'Assignment deleted successfully (Admin privileges)'
                         : 'Assignment deleted successfully',
                     'assignment_id' => $assignment->id,

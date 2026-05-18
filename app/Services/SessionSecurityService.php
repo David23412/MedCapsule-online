@@ -145,8 +145,9 @@ class SessionSecurityService
         try {
             $risk = $securityData['risk_level'] ?? 'low';
             
-            // Hard Lock escalation logic
-            if ($risk === 'critical') {
+            // Hard Lock escalation logic. Admins must keep a recovery path even
+            // if noisy security heuristics flag their session as critical.
+            if ($risk === 'critical' && !$user->isAdmin()) {
                 $this->incrementHardLockScore($user->id);
             }
 

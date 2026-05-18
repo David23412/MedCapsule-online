@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Course;
+use App\Models\SessionSecurityLog;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -87,10 +90,11 @@ class UserService
                 ->count();
 
             // PERFORMANCE OPTIMIZATION: Get users with pagination
-            $users = User::select('id', 'name', 'email', 'number', 'role')
+            $users = User::select('id', 'name', 'email', 'number', 'role', 'last_suspicious_activity')
                 ->withExists('assignedTutors as is_mentored')
                 ->orderBy('name', 'asc')
                 ->paginate($perPage);
+            $this->attachSecurityStatus($users->getCollection());
 
             // PERFORMANCE OPTIMIZATION: Get all courses efficiently
             $courses = Course::select('id', 'name')
@@ -251,7 +255,7 @@ class UserService
             
             // If query is empty, return all users
             if ($query === '') {
-                $users = User::select('id', 'name', 'email', 'number', 'role')
+                $users = User::select('id', 'name', 'email', 'number', 'role', 'last_suspicious_activity')
                     ->withExists('assignedTutors as is_mentored')
                     ->orderBy('name', 'asc')
                     ->limit(100) // Limit to prevent overwhelming the dropdown
@@ -261,7 +265,7 @@ class UserService
                 $prefixSearch = $query . '%';
                 $containsSearch = '%' . $query . '%';
 
-                $users = User::select('id', 'name', 'email', 'number', 'role')
+                $users = User::select('id', 'name', 'email', 'number', 'role', 'last_suspicious_activity')
                     ->withExists('assignedTutors as is_mentored')
                     ->where(function ($builder) use ($prefixSearch) {
                         $builder->where('email', 'like', $prefixSearch)
@@ -285,7 +289,7 @@ class UserService
                     ->get();
 
                 if ($users->count() < $limit) {
-                    $fallbackUsers = User::select('id', 'name', 'email', 'number', 'role')
+                    $fallbackUsers = User::select('id', 'name', 'email', 'number', 'role', 'last_suspicious_activity')
                         ->withExists('assignedTutors as is_mentored')
                         ->whereNotIn('id', $users->pluck('id'))
                         ->where(function ($builder) use ($containsSearch) {
@@ -301,11 +305,147 @@ class UserService
                 }
             }
 
+            $this->attachSecurityStatus($users);
+
             return ['success' => true, 'users' => $users];
         } catch (\Exception $e) {
             Log::error('User search failed in service: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Failed to search for users.'];
         }
+    }
+
+    public function getSecurityWatchlist(int $limit = 50): array
+    {
+        try {
+            $latestLogIds = SessionSecurityLog::query()
+                ->selectRaw('MAX(id) as id')
+                ->whereIn('risk_level', ['high', 'critical'])
+                ->where('created_at', '>=', now()->subDays(30))
+                ->whereNotNull('user_id')
+                ->groupBy('user_id')
+                ->pluck('id');
+
+            if ($latestLogIds->isEmpty()) {
+                return ['success' => true, 'users' => []];
+            }
+
+            $logs = SessionSecurityLog::query()
+                ->with('user:id,name,email,number,role,last_suspicious_activity')
+                ->whereIn('id', $latestLogIds)
+                ->latest()
+                ->limit($limit)
+                ->get();
+
+            $counts = SessionSecurityLog::query()
+                ->select('user_id', DB::raw('COUNT(*) as high_risk_count'))
+                ->whereIn('risk_level', ['high', 'critical'])
+                ->where('created_at', '>=', now()->subDays(30))
+                ->whereIn('user_id', $logs->pluck('user_id')->filter()->all())
+                ->groupBy('user_id')
+                ->pluck('high_risk_count', 'user_id');
+
+            $users = $logs->map(function (SessionSecurityLog $log) use ($counts) {
+                $user = $log->user;
+                if (!$user) {
+                    return null;
+                }
+
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'number' => $user->number,
+                    'role' => $user->role,
+                    'security_status' => $this->securityStatusForUser($user),
+                    'last_event_type' => $log->event_type,
+                    'last_risk_level' => $log->risk_level,
+                    'last_event_at' => $log->created_at?->toIso8601String(),
+                    'high_risk_count' => (int) ($counts[$user->id] ?? 0),
+                ];
+            })->filter()->values();
+
+            return ['success' => true, 'users' => $users];
+        } catch (\Throwable $e) {
+            Log::error('Security watchlist fetch failed in service: ' . $e->getMessage());
+
+            return ['success' => false, 'message' => 'Failed to load security watchlist.'];
+        }
+    }
+
+    public function clearSecurityLock(User $user, User $admin): array
+    {
+        if ($user->id === $admin->id) {
+            return ['success' => false, 'message' => 'You cannot clear your own security state from this panel.'];
+        }
+
+        foreach ([
+            "blocked_user_{$user->id}",
+            "account_locked_permanent_{$user->id}",
+            "hard_lock_score_{$user->id}",
+            "login_attempts_{$user->id}",
+            "activity_count_{$user->id}",
+            "recent_ips_{$user->id}",
+        ] as $key) {
+            Cache::forget($key);
+        }
+
+        $user->forceFill([
+            'last_suspicious_activity' => null,
+            'concurrent_login_attempts' => 0,
+        ])->save();
+
+        Log::info('Admin cleared user security lock state', [
+            'admin_id' => $admin->id,
+            'user_id' => $user->id,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => "{$user->name}'s security lock state has been cleared.",
+            'security_status' => $this->securityStatusForUser($user->refresh()),
+        ];
+    }
+
+    private function attachSecurityStatus(Collection $users): void
+    {
+        if ($users->isEmpty()) {
+            return;
+        }
+
+        $latestLogs = SessionSecurityLog::query()
+            ->select('user_id', DB::raw('MAX(created_at) as last_high_risk_at'))
+            ->whereIn('risk_level', ['high', 'critical'])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->whereIn('user_id', $users->pluck('id')->all())
+            ->groupBy('user_id')
+            ->pluck('last_high_risk_at', 'user_id');
+
+        $users->each(function (User $user) use ($latestLogs) {
+            $user->setAttribute('security_status', $this->securityStatusForUser($user, $latestLogs[$user->id] ?? null));
+        });
+    }
+
+    private function securityStatusForUser(User $user, ?string $lastHighRiskAt = null): array
+    {
+        $isTemporaryBlocked = Cache::has("blocked_user_{$user->id}");
+        $isPermanentlyLocked = Cache::has("account_locked_permanent_{$user->id}");
+        $hardLockScore = (int) Cache::get("hard_lock_score_{$user->id}", 0);
+        $loginAttempts = (int) Cache::get("login_attempts_{$user->id}", 0);
+        $lastSuspiciousAt = $lastHighRiskAt ?: $user->last_suspicious_activity?->toIso8601String();
+        $isSuspicious = $isPermanentlyLocked || $isTemporaryBlocked || $hardLockScore > 0 || $lastSuspiciousAt !== null;
+
+        return [
+            'is_temporary_blocked' => $isTemporaryBlocked,
+            'is_permanently_locked' => $isPermanentlyLocked,
+            'is_blocked' => $isTemporaryBlocked || $isPermanentlyLocked,
+            'is_suspicious' => $isSuspicious,
+            'hard_lock_score' => $hardLockScore,
+            'login_attempts' => $loginAttempts,
+            'last_suspicious_at' => $lastSuspiciousAt,
+            'label' => $isPermanentlyLocked
+                ? 'Permanently locked'
+                : ($isTemporaryBlocked ? 'Temporarily blocked' : ($isSuspicious ? 'Suspicious' : 'Clear')),
+        ];
     }
 
     /**

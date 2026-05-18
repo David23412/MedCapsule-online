@@ -14,7 +14,7 @@ class SkippedQuestionFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => User::factory()->create(['role' => 'student'])->id,
+            'user_id' => User::factory()->create(['role' => User::ROLE_STUDENT])->id,
             'question_id' => Question::factory()->create()->id,
             'skipped_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
             'session_type' => $this->faker->randomElement([

@@ -51,22 +51,24 @@ use Illuminate\Support\Facades\Schema;
         $user = \App\Models\User::where('email', $email)->first();
         
         if ($user) {
-            $blockKey = "blocked_user_{$user->id}";
-            if (Cache::has($blockKey)) {
-                return back()->withErrors([
-                    'email' => 'Account temporarily blocked due to suspicious activity. Please try again later.'
-                ])->onlyInput('email');
-            }
+            if (!$user->isAdmin()) {
+                $blockKey = "blocked_user_{$user->id}";
+                if (Cache::has($blockKey)) {
+                    return back()->withErrors([
+                        'email' => 'Account temporarily blocked due to suspicious activity. Please try again later.'
+                    ])->onlyInput('email');
+                }
 
-            // Check if user is permanently locked (Hard Lock escalation)
-            if ($this->securityService->isPermanentlyLocked($user->id)) {
-                return back()->withErrors([
-                    'email' => 'This account has been permanently locked due to multiple security violations. Please contact support.'
-                ])->onlyInput('email');
-            }
+                // Check if user is permanently locked (Hard Lock escalation)
+                if ($this->securityService->isPermanentlyLocked($user->id)) {
+                    return back()->withErrors([
+                        'email' => 'This account has been permanently locked due to multiple security violations. Please contact support.'
+                    ])->onlyInput('email');
+                }
 
-            // Increment login attempts for security tracking
-            $this->securityService->incrementLoginAttempts($user->id);
+                // Increment login attempts for security tracking
+                $this->securityService->incrementLoginAttempts($user->id);
+            }
         }
 
         if (Auth::attempt($credentials, $request->filled('remember'))) {

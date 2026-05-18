@@ -117,11 +117,11 @@ class TutorStudentRelationship extends Model
             $tutor = User::find($relationship->tutor_id);
             $student = User::find($relationship->student_id);
 
-            if (!$tutor || $tutor->role !== 'tutor') {
+            if (!$tutor || !$tutor->isTutor()) {
                 throw new \InvalidArgumentException('Invalid tutor ID or role');
             }
 
-            if (!$student || $student->role !== 'student') {
+            if (!$student || !$student->isStudent()) {
                 throw new \InvalidArgumentException('Invalid student ID or role');
             }
         });

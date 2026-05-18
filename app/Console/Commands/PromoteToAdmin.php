@@ -39,12 +39,12 @@ class PromoteToAdmin extends Command
             return 1;
         }
 
-        if ($user->is_admin) {
+        if ($user->isAdmin()) {
             $this->info("User {$email} is already an admin!");
             return 0;
         }
 
-        $user->update(['is_admin' => true]);
+        $user->update(['role' => User::ROLE_ADMIN]);
         $this->info("Successfully promoted {$email} to admin!");
         
         return 0;

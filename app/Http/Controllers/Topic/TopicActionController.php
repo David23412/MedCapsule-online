@@ -25,7 +25,7 @@ class TopicActionController extends Controller
             if (!auth()->check()) {
                 return redirect()->route('login')->with('error', 'Please login to continue.');
             }
-            if (auth()->user()->role !== 'admin') {
+            if (!auth()->user()->isAdmin()) {
                 return redirect()->route('courses.index')->with('error', 'Access denied. Only admins can manage topics.');
             }
             return $next($request);
@@ -40,7 +40,7 @@ class TopicActionController extends Controller
         if (!auth()->check()) {
             return redirect()->route('login')->with('error', 'Please login to continue.');
         }
-        if (auth()->user()->role !== 'admin') {
+        if (!auth()->user()->isAdmin()) {
             return redirect()->route('courses.index')->with('error', 'Access denied. Only admins can manage topics.');
         }
 

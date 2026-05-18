@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AdminSetting;
 use App\Models\Course;
+use App\Models\Topic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class AdminSettingsController extends Controller
 {
@@ -83,11 +85,66 @@ class AdminSettingsController extends Controller
             return response()->json(['success' => false, 'message' => 'Course not found'], 404);
         }
 
-        $topics = \App\Models\Topic::where('course_id', $courseId)
-            ->select('id', 'name')
+        $columns = ['id', 'name', 'case_type', 'display_order', 'is_locked'];
+        if (Schema::hasColumn('topics', 'is_preview_enabled')) {
+            $columns[] = 'is_preview_enabled';
+        }
+
+        $topics = Topic::where('course_id', $courseId)
+            ->select($columns)
             ->orderBy('display_order')
-            ->get();
+            ->orderBy('id')
+            ->get()
+            ->map(function (Topic $topic): array {
+                return [
+                    'id' => (int) $topic->id,
+                    'name' => (string) $topic->name,
+                    'case_type' => (string) ($topic->case_type ?? 'quiz'),
+                    'display_order' => (int) ($topic->display_order ?? 0),
+                    'is_locked' => (bool) ($topic->is_locked ?? false),
+                    'is_preview_enabled' => (bool) ($topic->is_preview_enabled ?? false),
+                ];
+            });
 
         return response()->json($topics);
+    }
+
+    public function updateCoursePreviewTopics(Request $request, Course $course): JsonResponse
+    {
+        if (! Schema::hasColumn('topics', 'is_preview_enabled')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Preview topic controls are not available until migrations run.',
+            ], 409);
+        }
+
+        $validated = $request->validate([
+            'topic_ids' => 'present|array',
+            'topic_ids.*' => 'integer|exists:topics,id',
+        ]);
+
+        $topicIds = Topic::query()
+            ->where('course_id', $course->id)
+            ->whereIn('id', $validated['topic_ids'])
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        Topic::query()
+            ->where('course_id', $course->id)
+            ->update(['is_preview_enabled' => false]);
+
+        if ($topicIds !== []) {
+            Topic::query()
+                ->where('course_id', $course->id)
+                ->whereIn('id', $topicIds)
+                ->update(['is_preview_enabled' => true]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Preview topics updated.',
+            'topic_ids' => $topicIds,
+        ]);
     }
 }

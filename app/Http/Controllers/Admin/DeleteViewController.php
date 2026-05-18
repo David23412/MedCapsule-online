@@ -147,7 +147,9 @@ class DeleteViewController extends Controller
         }
 
         if ($request->has('is_admin')) {
-            $query->where('is_admin', $request->is_admin);
+            $request->boolean('is_admin')
+                ? $query->where('role', User::ROLE_ADMIN)
+                : $query->where('role', '!=', User::ROLE_ADMIN);
         }
 
         $users = $query->orderBy('created_at', 'desc')->paginate(20);

@@ -170,7 +170,7 @@ class TopicController extends Controller
             ->get();
 
         $previewAccessibleTopicIds = $previewTopicLimit !== null
-            ? $topics->take($previewTopicLimit)->pluck('id')->map(fn ($id) => (int) $id)->all()
+            ? $user->getPreviewAccessibleTopicIdsForCourse($course)
             : [];
         $previewLockedTopicIds = [];
         foreach ($topics as $topic) {
@@ -181,7 +181,7 @@ class TopicController extends Controller
             $topic->is_locked = (bool) $topic->is_locked || $isPreviewLocked;
 
             if ($isPreviewLocked) {
-                $topic->lock_reason = 'Preview access only includes the first ' . $previewTopicLimit . ' topics.';
+                $topic->lock_reason = 'This topic is outside the free preview.';
                 $previewLockedTopicIds[] = $topic->id;
             }
         }

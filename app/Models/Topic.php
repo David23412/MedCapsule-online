@@ -27,6 +27,7 @@ class Topic extends Model
         'display_order',
         'case_type',
         'is_locked',
+        'is_preview_enabled',
         'is_exam',
         'locked_by_tutor_id',
         'lock_reason',
@@ -36,6 +37,7 @@ class Topic extends Model
 
     protected $casts = [
         'is_locked' => 'boolean',
+        'is_preview_enabled' => 'boolean',
         'is_exam' => 'boolean',
         'locked_at' => 'datetime',
         'unlocked_at' => 'datetime'

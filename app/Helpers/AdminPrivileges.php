@@ -12,7 +12,7 @@ if (!function_exists('isAdmin')) {
      */
     function isAdmin(): bool
     {
-        return auth()->check() && auth()->user()->role === 'admin';
+        return auth()->check() && auth()->user()->isAdmin();
     }
 }
 
@@ -22,7 +22,7 @@ if (!function_exists('isTutorOrAdmin')) {
      */
     function isTutorOrAdmin(): bool
     {
-        return auth()->check() && in_array(auth()->user()->role, ['admin', 'tutor']);
+        return auth()->check() && (auth()->user()->isAdmin() || auth()->user()->isTutor());
     }
 }
 
@@ -65,12 +65,12 @@ if (!function_exists('canDeleteAssignment')) {
         $user = auth()->user();
         
         // 👑 ADMIN SUPERIOR PRIVILEGES - Can delete ANY assignment
-        if ($user->role === 'admin') {
+        if ($user->isAdmin()) {
             return true;
         }
         
         // 🎓 TUTOR ACCESS - Can delete assignments
-        if ($user->role === 'tutor') {
+        if ($user->isTutor()) {
             return true;
         }
         
