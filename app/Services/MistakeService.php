@@ -128,6 +128,43 @@ class MistakeService
     }
 
     /**
+     * Delete all mistakes for a user, optionally limited to one course.
+     */
+    public function deleteMistakesForUser(int $userId, ?int $courseId = null): int
+    {
+        $affectedCourseIdsQuery = DB::table('mistakes')
+            ->join('questions', 'mistakes.question_id', '=', 'questions.id')
+            ->join('topics', 'questions.topic_id', '=', 'topics.id')
+            ->where('mistakes.user_id', $userId);
+
+        if ($courseId) {
+            $affectedCourseIdsQuery->where('topics.course_id', $courseId);
+        }
+
+        $affectedCourseIds = $affectedCourseIdsQuery
+            ->distinct()
+            ->pluck('topics.course_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $deleteQuery = Mistake::query()->where('user_id', $userId);
+
+        if ($courseId) {
+            $deleteQuery->whereHas('question.topic', function ($query) use ($courseId) {
+                $query->where('course_id', $courseId);
+            });
+        }
+
+        $deleted = $deleteQuery->delete();
+
+        if ($deleted > 0) {
+            $this->clearUserMistakeCaches($userId, $affectedCourseIds);
+        }
+
+        return (int) $deleted;
+    }
+
+    /**
      * Skip a mistake for a user.
      *
      * @param int $userId
@@ -177,7 +214,7 @@ class MistakeService
      *
      * @param int $userId
      */
-    public function clearUserMistakeCaches(int $userId): void
+    public function clearUserMistakeCaches(int $userId, array $courseIds = []): void
     {
         // SURGICAL OPTIMIZATION: Only clear specific user caches, not all courses
         $cacheKeys = [
@@ -202,6 +239,8 @@ class MistakeService
                 ->distinct()
                 ->pluck('topics.course_id')
                 ->toArray();
+
+            $userCourseIds = array_unique(array_map('intval', array_merge($courseIds, $userCourseIds)));
 
             // Clear only relevant course caches (surgical!)
             foreach ($userCourseIds as $courseId) {

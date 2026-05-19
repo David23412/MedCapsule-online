@@ -96,6 +96,8 @@ Route::group([], function () {
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->middleware('secure.study')->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove');
+    Route::post('/review/remove-all', [MistakeController::class, 'removeAllMistakes'])
+        ->name('review.remove-all');
     Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
         ->name('review.skip');
 

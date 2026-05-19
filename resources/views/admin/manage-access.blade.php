@@ -3,6 +3,7 @@
         'payments' => 'payment-history',
         'survey-results' => 'survey-results',
         'scheduler-quality' => 'scheduler-quality',
+        'security-watchlist', 'security' => 'security-watchlist',
         'videos' => 'video-management',
         'payment-settings', 'settings' => 'settings',
         default => 'access',
@@ -1962,6 +1963,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link {{ $activeTab === 'security-watchlist' ? 'active' : '' }}" id="security-watchlist-tab" data-bs-toggle="tab" data-bs-target="#security-watchlist" type="button" role="tab">
+                    <i class="fas fa-user-lock me-2"></i>Security Watchlist
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $activeTab === 'video-management' ? 'active' : '' }}" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-management" type="button" role="tab">
                     <i class="fas fa-video me-2"></i>Video Management
                 </button>
@@ -2155,43 +2161,6 @@
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <div>
-                                    <i class="fas fa-user-lock me-2"></i>Security Watchlist
-                                </div>
-                                <button class="btn btn-outline-secondary btn-sm" id="refreshSecurityUsers" title="Refresh security watchlist">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-hover mb-0" id="securityUsersTable">
-                                        <thead>
-                                            <tr>
-                                                <th>User</th>
-                                                <th>Status</th>
-                                                <th>Last Event</th>
-                                                <th>Risk Count</th>
-                                                <th class="text-end">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td colspan="5" class="text-center py-4 text-muted">
-                                                    <i class="fas fa-spinner fa-spin me-2"></i>Loading security watchlist...
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
                                 </div>
                             </div>
                         </div>
@@ -2421,6 +2390,45 @@
                                             Next <i class="fas fa-chevron-right"></i>
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade {{ $activeTab === 'security-watchlist' ? 'show active' : '' }}" id="security-watchlist" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-user-lock me-2"></i>Security Watchlist
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm" id="refreshSecurityUsers" title="Refresh security watchlist">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="securityUsersTable">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Status</th>
+                                                <th>Last Event</th>
+                                                <th>Risk Count</th>
+                                                <th class="text-end">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                    <i class="fas fa-spinner fa-spin me-2"></i>Loading security watchlist...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>

@@ -1,5 +1,6 @@
 const mistakesPageConfig = window.MistakesPageConfig || {};
 const reviewIndexUrl = String(mistakesPageConfig.reviewIndexUrl || '');
+const removeAllMistakesUrl = String(mistakesPageConfig.removeAllMistakesUrl || '/review/remove-all');
 
 let isFlashcardMode = false;
 let isFlipping = false;
@@ -242,6 +243,7 @@ async function loadFilteredMistakes(url, options = {}) {
         replaceSection('.header-section', nextDocument);
         replaceSection('.filter-section', nextDocument);
         replaceSection('#mistakes-content', nextDocument);
+        replaceSection('#deleteAllMistakesModal', nextDocument);
 
         if (pushState) {
             window.history.pushState({}, '', url);
@@ -250,6 +252,7 @@ async function loadFilteredMistakes(url, options = {}) {
         initializeFlashcardToggle();
         initializeExplanationToggles();
         initializeFilterControls();
+        initializeBulkDeleteMistakes();
         bindMistakeCardInteractions();
     } catch (error) {
         if (error.name === 'AbortError') return;
@@ -304,6 +307,84 @@ function initializeFilterControls() {
             loadFilteredMistakes(reviewIndexUrl);
         });
     }
+}
+
+function setBulkDeleteLoadingState(isLoading) {
+    const confirmButton = document.getElementById('confirmDeleteAllMistakesButton');
+    const courseSelect = document.getElementById('deleteMistakesCourseSelect');
+
+    if (confirmButton) {
+        confirmButton.disabled = isLoading;
+        confirmButton.innerHTML = isLoading
+            ? '<i class="fas fa-spinner fa-spin"></i> Deleting'
+            : 'Yes';
+    }
+
+    if (courseSelect) {
+        courseSelect.disabled = isLoading;
+    }
+}
+
+async function deleteAllMistakes() {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    const courseSelect = document.getElementById('deleteMistakesCourseSelect');
+    const selectedCourseId = String(courseSelect?.value || '').trim();
+
+    setBulkDeleteLoadingState(true);
+
+    try {
+        const response = await fetch(removeAllMistakesUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                course_id: selectedCourseId || null,
+            }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Failed to delete saved mistakes.');
+        }
+
+        const modalElement = document.getElementById('deleteAllMistakesModal');
+        const modalInstance = modalElement && window.bootstrap
+            ? window.bootstrap.Modal.getOrCreateInstance(modalElement)
+            : null;
+
+        if (modalElement && modalInstance) {
+            const modalHidden = new Promise((resolve) => {
+                modalElement.addEventListener('hidden.bs.modal', resolve, { once: true });
+            });
+            modalInstance.hide();
+            await modalHidden;
+        }
+
+        showToast(data.message || 'Saved mistakes deleted.', 'success');
+        await loadFilteredMistakes(window.location.href, { pushState: false });
+    } catch (error) {
+        console.error('Error deleting saved mistakes:', error);
+        showToast(error.message || 'Error deleting saved mistakes. Please try again.', 'error');
+    } finally {
+        setBulkDeleteLoadingState(false);
+    }
+}
+
+function initializeBulkDeleteMistakes() {
+    const confirmButton = document.getElementById('confirmDeleteAllMistakesButton');
+
+    if (!confirmButton || confirmButton.dataset.bound === 'true') return;
+
+    confirmButton.dataset.bound = 'true';
+    confirmButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        deleteAllMistakes();
+    });
 }
 
 function removeMistake(questionId) {
@@ -422,6 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeFlashcardToggle();
     initializeExplanationToggles();
     initializeFilterControls();
+    initializeBulkDeleteMistakes();
     bindMistakeCardInteractions();
 
     window.addEventListener('popstate', () => {

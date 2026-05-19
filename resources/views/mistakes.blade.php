@@ -225,11 +225,17 @@
                 <div>
                     <h1>Review Your Mistakes</h1>
                 </div>
-                <div class="d-flex align-items-center gap-3">
+                <div class="header-actions d-flex align-items-center justify-content-end gap-3 flex-wrap">
                     <button id="flashcardModeToggle" class="flashcard-mode-toggle">
                         <i class="fas fa-sync-alt"></i>
                         Flashcard Mode
                     </button>
+                    @if(!$mistakes->isEmpty())
+                        <button id="deleteAllMistakesButton" class="delete-all-mistakes-btn" type="button" data-bs-toggle="modal" data-bs-target="#deleteAllMistakesModal">
+                            <i class="fas fa-trash"></i>
+                            Delete Mistakes
+                        </button>
+                    @endif
                     @if($mistakes->isEmpty())
                         <span class="learn-mistakes-btn disabled">
                             No Mistakes to Learn <i class="fas fa-check-circle"></i>
@@ -400,11 +406,39 @@
         </div>
     </div>
 
+    <div class="modal fade" id="deleteAllMistakesModal" tabindex="-1" aria-labelledby="deleteAllMistakesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content delete-mistakes-modal">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="deleteAllMistakesModalLabel">Delete saved mistakes</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="delete-mistakes-warning">are you sure you want to delete all ur mistakes?</p>
+                    <label for="deleteMistakesCourseSelect" class="delete-mistakes-label">Mistakes to delete</label>
+                    <select id="deleteMistakesCourseSelect" class="form-select">
+                        <option value="">All Courses ({{ $totalMistakesCount ?? 0 }})</option>
+                        @foreach($mistakeStats['available_courses_sorted'] as $course)
+                            <option value="{{ $course->id }}" {{ $selectedCourse == $course->id ? 'selected' : '' }}>
+                                {{ $course->name }} ({{ $course->mistake_count ?? 0 }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="delete-mistakes-no-btn" data-bs-dismiss="modal">No</button>
+                    <button type="button" class="delete-mistakes-yes-btn" id="confirmDeleteAllMistakesButton">Yes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         window.MistakesPageConfig = {
             recentCourse: @json($recentCourse ?? null),
             coursesIndexUrl: @json(route('courses.index')),
-            reviewIndexUrl: @json(route('review.index'))
+            reviewIndexUrl: @json(route('review.index')),
+            removeAllMistakesUrl: @json(route('review.remove-all'))
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>

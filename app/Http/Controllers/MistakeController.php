@@ -113,6 +113,37 @@ class MistakeController extends Controller
             return response()->json(['success' => false, 'message' => 'Mistake not found.'], 404);
         }
     }
+
+    /**
+     * Remove every saved mistake for the user, optionally scoped to one course.
+     */
+    public function removeAllMistakes(Request $request)
+    {
+        $validated = $request->validate([
+            'course_id' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $deletedCount = $this->mistakeService->deleteMistakesForUser(
+            Auth::id(),
+            isset($validated['course_id']) ? (int) $validated['course_id'] : null
+        );
+
+        if ($deletedCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No saved mistakes were found.',
+                'deleted_count' => 0,
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $deletedCount === 1
+                ? '1 saved mistake deleted.'
+                : "{$deletedCount} saved mistakes deleted.",
+            'deleted_count' => $deletedCount,
+        ]);
+    }
     
     /**
      * 🚀 CRITICAL FIX: NUCLEAR CACHE INVALIDATION - CLEARS ALL MISTAKE CACHES
