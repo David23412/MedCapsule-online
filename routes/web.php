@@ -103,6 +103,10 @@ Route::group([], function () {
 
     // Mistakes routes - FIXED: Add missing mistakes.index route
     Route::resource('mistakes', MistakeController::class)->only(['index']);
+    Route::post('/learn/check/{question_id}', [LearnController::class, 'checkMistake'])
+        ->name('learn.check');
+    Route::post('/learn/finalize/{question_id}', [LearnController::class, 'finalizeMistake'])
+        ->name('learn.finalize');
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
         ->name('learn.review');
     Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])

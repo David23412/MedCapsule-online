@@ -632,7 +632,7 @@ function initializeMistakesLearnPage() {
             };
 
             const updateQueueSummary = () => {
-                const liveQuestions = questionsData.filter((question) => activeQuestions.has(question.id) && !question.skipped);
+                const liveQuestions = questionsData.filter((question) => activeQuestions.has(question.id) && !question.skipped && !question.sessionResolved);
                 const dueCount = liveQuestions.filter((question) => isDueNow(question)).length;
                 const highRiskCount = liveQuestions.filter((question) => question.retrievability <= 0.55).length;
                 const stabilizingCount = liveQuestions.filter((question) => question.stability >= 1.5 && question.retrievability > 0.55).length;
@@ -751,6 +751,78 @@ function initializeMistakesLearnPage() {
                 return payload;
             };
 
+            const buildSpacedInteractionPayload = (question) => ({
+                first_selected_answer: question.firstSelectedAnswer,
+                answer_change_count: question.answerChangeCount || 0,
+                time_to_first_selection: question.timeToFirstSelection,
+                first_confidence: question.firstConfidenceLevel,
+                confidence_change_count: question.confidenceChangeCount || 0,
+            });
+
+            const submitSpacedCheckAnswer = async (question, answer, timeSpentSeconds = 0) => {
+                const response = await fetch(`/learn/check/${question.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        selected_answer: answer,
+                        time_spent: timeSpentSeconds,
+                        confidence: question.confidenceLevel,
+                        ...buildSpacedInteractionPayload(question)
+                    })
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok || payload.success !== true) {
+                    throw new Error(payload.message || 'Failed to check answer');
+                }
+
+                return payload;
+            };
+
+            const finalizeSpacedQuestion = async (question, timeSpentSeconds = 0) => {
+                if (!question || question.finalized || !question.sessionResolved) {
+                    return null;
+                }
+
+                question.finalized = true;
+
+                const response = await fetch(`/learn/finalize/${question.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({
+                        session_successes: question.sessionSuccesses,
+                        session_failures: question.sessionFailures,
+                        best_confidence: question.bestConfidence || 'unsure',
+                        final_confidence: question.lastConfidenceLevel || question.bestConfidence || 'unsure',
+                        time_spent: question.lastResponseSeconds || timeSpentSeconds,
+                        first_selected_answer: question.firstSessionSelectedAnswer || question.firstSelectedAnswer,
+                        answer_change_count: question.totalAnswerChanges || question.answerChangeCount || 0,
+                        time_to_first_selection: question.timeToFirstSelection,
+                        first_confidence: question.firstSessionConfidenceLevel || question.firstConfidenceLevel,
+                        confidence_change_count: question.totalConfidenceChanges || question.confidenceChangeCount || 0,
+                    })
+                });
+
+                const payload = await response.json();
+
+                if (!response.ok || payload.success !== true) {
+                    question.finalized = false;
+                    question.sessionResolved = false;
+                    throw new Error(payload.message || 'Failed to save mastery');
+                }
+
+                syncAdaptiveState(question, payload);
+                question.sessionResolved = true;
+                return payload;
+            };
+
             const modeNeedsReload = (targetMode) => {
                 if (targetMode === 'spaced') {
                     return currentDeckMode !== 'spaced';
@@ -829,17 +901,73 @@ function initializeMistakesLearnPage() {
                 updateProgress();
             };
 
-            const applySpacedOutcome = (question, isCorrect, payload = null) => {
-                totalAttempts++;
+            const confidenceRank = {
+                guessed: 1,
+                unsure: 2,
+                knew: 3
+            };
 
-                if (isCorrect) {
-                    question.correctStreak = 0;
-                    question.sessionResolved = question.needsSameDayRelearn !== true && (question.isMastered || !isDueNow(question));
-                } else {
-                    question.correctStreak = 0;
-                    question.sessionResolved = false;
+            const rememberBestConfidence = (question, confidence) => {
+                if (!confidence) {
+                    return;
                 }
 
+                if (!question.bestConfidence || confidenceRank[confidence] > confidenceRank[question.bestConfidence]) {
+                    question.bestConfidence = confidence;
+                }
+            };
+
+            const computeRequiredSuccesses = (question, wasCorrect = true, confidence = question?.confidenceLevel) => {
+                if (!question) {
+                    return 1;
+                }
+
+                const lapses = question.lapseCount || 0;
+                const difficulty = question.difficulty || 5;
+                const retrievability = question.retrievability || 0.9;
+                const state = question.fsrsState || question.learningState || '';
+                const responseSeconds = question.frozenResponseSeconds || currentQuestionElapsedSeconds();
+                let required = question.requiredSuccesses ?? 2;
+
+                if (
+                    question.requiredSuccesses === null
+                    && wasCorrect
+                    && confidence === 'knew'
+                    && retrievability > 0.8
+                    && difficulty < 6
+                    && lapses === 0
+                    && !['learning', 'relearning', 'relearn'].includes(state)
+                    && responseSeconds <= 30
+                ) {
+                    required = 1;
+                }
+
+                if (confidence === 'unsure' || responseSeconds > 45) {
+                    required = Math.max(required, 2);
+                }
+
+                if (
+                    confidence === 'guessed'
+                    || retrievability < 0.6
+                    || difficulty >= 8
+                    || lapses >= 3
+                    || ['learning', 'relearning', 'relearn'].includes(state)
+                ) {
+                    required = Math.max(required, 3);
+                }
+
+                if (!wasCorrect && confidence === 'knew') {
+                    required = Math.max(required, 4);
+                }
+
+                if ((question.sessionFailures || 0) >= 2) {
+                    required = Math.max(required, 4);
+                }
+
+                return Math.max(1, Math.min(5, required));
+            };
+
+            const resetSpacedInteractionState = (question) => {
                 question.confidenceLevel = null;
                 question.firstConfidenceLevel = null;
                 question.confidenceChangeCount = 0;
@@ -848,6 +976,31 @@ function initializeMistakesLearnPage() {
                 question.answerChangeCount = 0;
                 question.timeToFirstSelection = null;
                 question.frozenResponseSeconds = null;
+            };
+
+            const applySpacedOutcome = (question, isCorrect, payload = null) => {
+                totalAttempts++;
+
+                const confidence = question.confidenceLevel;
+                rememberBestConfidence(question, confidence);
+                question.lastConfidenceLevel = confidence;
+                question.lastResponseSeconds = question.frozenResponseSeconds || currentQuestionElapsedSeconds();
+                question.totalAnswerChanges = (question.totalAnswerChanges || 0) + (question.answerChangeCount || 0);
+                question.totalConfidenceChanges = (question.totalConfidenceChanges || 0) + (question.confidenceChangeCount || 0);
+
+                if (isCorrect) {
+                    question.sessionSuccesses += 1;
+                    question.requiredSuccesses = computeRequiredSuccesses(question, true, confidence);
+                    question.sessionResolved = question.sessionSuccesses >= question.requiredSuccesses;
+                } else {
+                    question.sessionFailures += 1;
+                    question.sessionSuccesses = 0;
+                    question.requiredSuccesses = computeRequiredSuccesses(question, false, confidence);
+                    question.sessionResolved = false;
+                }
+
+                question.correctStreak = question.sessionSuccesses;
+                resetSpacedInteractionState(question);
                 renderConfidenceState(question);
                 renderSpacedSelectionState(question);
 
@@ -855,30 +1008,17 @@ function initializeMistakesLearnPage() {
                 updateProgress();
             };
 
-            const getSpacedEligibleQuestions = (includeScheduled = false) => {
-                const now = Date.now();
+            const getUnfinishedSpacedQuestions = () => questionsData
+                .map((question, index) => ({ question, index }))
+                .filter(({ question }) => !question.skipped && !question.sessionResolved);
 
-                return questionsData
-                    .map((question, index) => ({ question, index }))
-                    .filter(({ question }) => {
-                        if (question.skipped || question.sessionResolved) {
-                            return false;
-                        }
-
-                        if (!question.nextReviewAt) {
-                            return true;
-                        }
-
-                        return includeScheduled || question.nextReviewAt.getTime() <= now;
-                    });
-            };
+            const getSpacedEligibleQuestions = () => getUnfinishedSpacedQuestions();
 
             const getSpacedSessionDeck = () => questionsData.filter((question) => !question.skipped);
 
             const getSpacedReviewedCount = () => getSpacedSessionDeck().filter((question) => question.sessionResolved).length;
 
-            const getNextSpacedQuestionIndex = (excludeQuestionId = null) => {
-                const spacedQueueBucket = (question) => {
+            const spacedQueueBucket = (question) => {
                     const isDue = !question.nextReviewAt || question.nextReviewAt.getTime() <= Date.now();
                     const state = question.fsrsState || question.learningState;
 
@@ -905,7 +1045,7 @@ function initializeMistakesLearnPage() {
                     return 5;
                 };
 
-                const spacedOverdueRatio = (question) => {
+            const spacedOverdueRatio = (question) => {
                     if (!question.nextReviewAt) {
                         return 0;
                     }
@@ -916,7 +1056,20 @@ function initializeMistakesLearnPage() {
                     return overdueDays / intervalDays;
                 };
 
-                const sortSpacedQuestions = (questions) => questions.sort((left, right) => {
+            const sortSpacedQuestions = (questions) => questions.sort((left, right) => {
+                    const leftUnmet = Math.max(0, (left.question.requiredSuccesses ?? 1) - left.question.sessionSuccesses);
+                    const rightUnmet = Math.max(0, (right.question.requiredSuccesses ?? 1) - right.question.sessionSuccesses);
+                    const leftFailures = left.question.sessionFailures || 0;
+                    const rightFailures = right.question.sessionFailures || 0;
+
+                    if (leftFailures !== rightFailures) {
+                        return rightFailures - leftFailures;
+                    }
+
+                    if (leftUnmet !== rightUnmet) {
+                        return rightUnmet - leftUnmet;
+                    }
+
                     const leftBucket = spacedQueueBucket(left.question);
                     const rightBucket = spacedQueueBucket(right.question);
                     if (leftBucket !== rightBucket) {
@@ -958,28 +1111,27 @@ function initializeMistakesLearnPage() {
                         return right.question.conceptRiskScore - left.question.conceptRiskScore;
                     }
 
+                    if (left.question.lastShownAt !== right.question.lastShownAt) {
+                        return left.question.lastShownAt - right.question.lastShownAt;
+                    }
+
                     const leftAttempt = left.question.lastAttemptAt ? left.question.lastAttemptAt.getTime() : 0;
                     const rightAttempt = right.question.lastAttemptAt ? right.question.lastAttemptAt.getTime() : 0;
 
                     return leftAttempt - rightAttempt;
                 });
 
-                let eligibleQuestions = sortSpacedQuestions(getSpacedEligibleQuestions());
-                const scheduledQuestions = sortSpacedQuestions(getSpacedEligibleQuestions(true));
+            const getNextSpacedQuestionIndex = (excludeQuestionId = null) => {
+                const eligibleQuestions = sortSpacedQuestions(getUnfinishedSpacedQuestions());
 
                 if (excludeQuestionId !== null) {
                     const alternativeQuestion = eligibleQuestions.find(({ question }) => question.id !== excludeQuestionId);
                     if (alternativeQuestion) {
                         return alternativeQuestion.index;
                     }
-
-                    const scheduledAlternativeQuestion = scheduledQuestions.find(({ question }) => question.id !== excludeQuestionId);
-                    if (scheduledAlternativeQuestion) {
-                        return scheduledAlternativeQuestion.index;
-                    }
                 }
 
-                return eligibleQuestions[0]?.index ?? scheduledQuestions[0]?.index ?? null;
+                return eligibleQuestions[0]?.index ?? null;
             };
 
             const updateSidebarProgress = () => {
@@ -987,13 +1139,10 @@ function initializeMistakesLearnPage() {
                     const total = initialSpacedDeckCount;
                     const reviewed = getSpacedReviewedCount();
                     const remaining = Math.max(total - reviewed, 0);
-                    const dueNow = getSpacedEligibleQuestions().length;
                     const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
 
                     if (sidebarProgressSummary) {
-                        sidebarProgressSummary.textContent = dueNow > 0
-                            ? `${reviewed} reviewed, ${dueNow} due now`
-                            : `${reviewed} reviewed this run`;
+                        sidebarProgressSummary.textContent = `${reviewed} of ${total} mastered this session`;
                     }
 
                     if (sidebarProgressPercent) {
@@ -1088,9 +1237,21 @@ function initializeMistakesLearnPage() {
                     isDueNow: card.dataset.isDueNow === 'true',
                     confidenceLevel: null,
                     firstConfidenceLevel: null,
+                    firstSessionConfidenceLevel: null,
                     confidenceChangeCount: 0,
+                    sessionSuccesses: 0,
+                    requiredSuccesses: null,
+                    sessionFailures: 0,
+                    lastShownAt: 0,
+                    bestConfidence: null,
+                    lastConfidenceLevel: null,
+                    lastResponseSeconds: 0,
+                    totalAnswerChanges: 0,
+                    totalConfidenceChanges: 0,
+                    finalized: false,
                     selectedAnswer: null,
                     firstSelectedAnswer: null,
+                    firstSessionSelectedAnswer: null,
                     answerChangeCount: 0,
                     timeToFirstSelection: null,
                     frozenResponseSeconds: null,
@@ -1266,12 +1427,24 @@ function initializeMistakesLearnPage() {
                 questionsData.forEach(q => {
                     q.correctStreak = 0;
                     q.sessionResolved = false;
+                    q.sessionSuccesses = 0;
+                    q.requiredSuccesses = null;
+                    q.sessionFailures = 0;
+                    q.lastShownAt = 0;
+                    q.bestConfidence = null;
+                    q.lastConfidenceLevel = null;
+                    q.lastResponseSeconds = 0;
+                    q.totalAnswerChanges = 0;
+                    q.totalConfidenceChanges = 0;
+                    q.finalized = false;
                     q.isActive = true;
                     q.confidenceLevel = null;
                     q.firstConfidenceLevel = null;
+                    q.firstSessionConfidenceLevel = null;
                     q.confidenceChangeCount = 0;
                     q.selectedAnswer = null;
                     q.firstSelectedAnswer = null;
+                    q.firstSessionSelectedAnswer = null;
                     q.answerChangeCount = 0;
                     q.timeToFirstSelection = null;
                     q.frozenResponseSeconds = null;
@@ -1331,17 +1504,30 @@ function initializeMistakesLearnPage() {
                     
                     // Check the answer on the server
                     const timeSpentSeconds = currentQuestionElapsedSeconds();
+                    if (selectedMode === 'spaced') {
+                        if (!currentQuestion.firstSelectedAnswer) {
+                            currentQuestion.firstSelectedAnswer = submittedAnswer;
+                            currentQuestion.firstSessionSelectedAnswer = currentQuestion.firstSessionSelectedAnswer || submittedAnswer;
+                            currentQuestion.timeToFirstSelection = timeSpentSeconds;
+                            currentQuestion.frozenResponseSeconds = timeSpentSeconds;
+                        } else if (currentQuestion.selectedAnswer && currentQuestion.selectedAnswer !== submittedAnswer) {
+                            currentQuestion.answerChangeCount = (currentQuestion.answerChangeCount || 0) + 1;
+                        }
+                        currentQuestion.selectedAnswer = submittedAnswer;
+                    }
 
-                    submitReviewAnswer(questionId, submittedAnswer, timeSpentSeconds, currentQuestion.confidenceLevel)
+                    const answerRequest = selectedMode === 'spaced'
+                        ? submitSpacedCheckAnswer(currentQuestion, submittedAnswer, timeSpentSeconds)
+                        : submitReviewAnswer(questionId, submittedAnswer, timeSpentSeconds, currentQuestion.confidenceLevel);
+
+                    answerRequest
                     .then(data => {
                         if (data.success) {
                             // Use the is_correct flag from the server response instead of parsing the message
                             const isCorrect = data.is_correct === true;
-                            
-                            // Debug logging to help track any future issues
-
-                            
-                            syncAdaptiveState(currentQuestion, data);
+                            if (selectedMode !== 'spaced') {
+                                syncAdaptiveState(currentQuestion, data);
+                            }
                             
                             if (isCorrect) {
                                 // Play correct sound
@@ -1377,11 +1563,14 @@ function initializeMistakesLearnPage() {
                             }
 
                             applySessionOutcome(currentQuestion, isCorrect);
+                            const finalizePromise = selectedMode === 'spaced' && currentQuestion.sessionResolved
+                                ? finalizeSpacedQuestion(currentQuestion, timeSpentSeconds)
+                                : Promise.resolve(null);
                             
                             // Correct: cycle at the same speed as normal MC questions (600ms)
                             // Incorrect: 2500ms so the user can read the correct answer
                             const cycleDelay = isCorrect ? 600 : 2500;
-                            setTimeout(() => {
+                            return finalizePromise.then(() => setTimeout(() => {
                                 // Reset the form
                                 textarea.value = '';
                                 textarea.disabled = false;
@@ -1400,7 +1589,7 @@ function initializeMistakesLearnPage() {
                                 // Move to next question using patch cycling
                                 showNextQuestion();
                                 updateStageIndicator();
-                            }, cycleDelay);
+                            }, cycleDelay));
                         } else {
                             console.error('Error checking answer:', data.message);
                             feedbackElement.textContent = 'Error checking answer. Please try again.';
@@ -1559,6 +1748,7 @@ function initializeMistakesLearnPage() {
                         if (selectedMode === 'spaced') {
                             if (!currentQuestion.firstSelectedAnswer) {
                                 currentQuestion.firstSelectedAnswer = selectedOption;
+                                currentQuestion.firstSessionSelectedAnswer = currentQuestion.firstSessionSelectedAnswer || selectedOption;
                                 currentQuestion.timeToFirstSelection = timeSpentSeconds;
                                 currentQuestion.frozenResponseSeconds = timeSpentSeconds;
                             } else if (currentQuestion.selectedAnswer && currentQuestion.selectedAnswer !== selectedOption) {
@@ -1568,16 +1758,18 @@ function initializeMistakesLearnPage() {
                         }
 
                         if (selectedMode === 'spaced') {
-                            submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
+                            submitSpacedCheckAnswer(currentQuestion, selectedOption, timeSpentSeconds)
                                 .then((data) => {
-                                    syncAdaptiveState(currentQuestion, data);
                                     applySpacedOutcome(currentQuestion, data.is_correct === true, data);
+                                    const finalizePromise = currentQuestion.sessionResolved
+                                        ? finalizeSpacedQuestion(currentQuestion, timeSpentSeconds)
+                                        : Promise.resolve(null);
 
-                                    setTimeout(() => {
+                                    return finalizePromise.then(() => setTimeout(() => {
                                         this.parentElement.classList.remove('answered');
                                         this.classList.remove('correct', 'incorrect');
                                         showNextQuestion();
-                                    }, 600);
+                                    }, 600));
                                 })
                                 .catch((error) => {
                                     console.error('Error syncing spaced review:', error);
@@ -1645,9 +1837,11 @@ function initializeMistakesLearnPage() {
                     currentQuestion.sessionResolved = true;
                     currentQuestion.confidenceLevel = null;
                     currentQuestion.firstConfidenceLevel = null;
+                    currentQuestion.firstSessionConfidenceLevel = null;
                     currentQuestion.confidenceChangeCount = 0;
                     currentQuestion.selectedAnswer = null;
                     currentQuestion.firstSelectedAnswer = null;
+                    currentQuestion.firstSessionSelectedAnswer = null;
                     currentQuestion.answerChangeCount = 0;
                     currentQuestion.timeToFirstSelection = null;
                     currentQuestion.frozenResponseSeconds = null;
@@ -1672,6 +1866,7 @@ function initializeMistakesLearnPage() {
 
                     if (!question.firstConfidenceLevel) {
                         question.firstConfidenceLevel = this.dataset.confidence;
+                        question.firstSessionConfidenceLevel = question.firstSessionConfidenceLevel || this.dataset.confidence;
                     } else if (question.confidenceLevel && question.confidenceLevel !== this.dataset.confidence) {
                         question.confidenceChangeCount = (question.confidenceChangeCount || 0) + 1;
                     }
@@ -1707,6 +1902,7 @@ function initializeMistakesLearnPage() {
                     questionsData[currentQuestionIndex].element.classList.add('active');
                     clearReviewSyncError(questionsData[currentQuestionIndex]);
                     currentQuestionShownAt = Date.now();
+                    questionsData[currentQuestionIndex].lastShownAt = currentQuestionShownAt;
                     renderMemoryState(questionsData[currentQuestionIndex]);
                     renderSpacedSelectionState(questionsData[currentQuestionIndex]);
                     updateConfidencePanels();
@@ -1793,12 +1989,9 @@ function initializeMistakesLearnPage() {
                 if (selectedMode === 'spaced') {
                     const total = initialSpacedDeckCount;
                     const reviewed = getSpacedReviewedCount();
-                    const dueNow = getSpacedEligibleQuestions().length;
                     const percent = total > 0 ? (reviewed / total) * 100 : 0;
 
-                    progressText.textContent = dueNow > 0
-                        ? `${reviewed} of ${total} reviewed this run, ${dueNow} due now`
-                        : `${reviewed} of ${total} reviewed this run`;
+                    progressText.textContent = `${reviewed} of ${total} mastered this session`;
                     progressFill.style.width = `${percent}%`;
                     updateSidebarProgress();
                     return;
@@ -1818,7 +2011,9 @@ function initializeMistakesLearnPage() {
                 
                 // Calculate completion percentage for sound selection
                 const totalQuestions = questionsData.length;
-                const masteredQuestions = questionsData.length - activeQuestions.size;
+                const masteredQuestions = selectedMode === 'spaced'
+                    ? getSpacedReviewedCount()
+                    : questionsData.length - activeQuestions.size;
                 const completionPercentage = totalQuestions > 0 ? (masteredQuestions / totalQuestions) * 100 : 0;
                 
                 // 💀 LETHAL FINAL GRADING SOUND - ENCOURAGEMENT FOR LEARN MISTAKES 💀

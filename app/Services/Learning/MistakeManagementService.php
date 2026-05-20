@@ -186,7 +186,7 @@ class MistakeManagementService
     private function applySpacedSessionFilters($query)
     {
         if (Mistake::hasColumn('skip_until')) {
-            return $query->where(function ($innerQuery) {
+            $query->where(function ($innerQuery) {
                 $innerQuery
                     ->where('skipped', false)
                     ->orWhere(function ($skipQuery) {
@@ -196,9 +196,23 @@ class MistakeManagementService
                             ->where('skip_until', '<=', now());
                     });
             });
+        } else {
+            $query->where('skipped', false);
         }
 
-        return $query->where('skipped', false);
+        if (Mistake::hasColumn('next_review_at')) {
+            $query->where(function ($innerQuery) {
+                $innerQuery
+                    ->whereNull('next_review_at')
+                    ->orWhere('next_review_at', '<=', now()->addHours(24));
+
+                if (Mistake::hasColumn('learning_state')) {
+                    $innerQuery->orWhereIn('learning_state', ['learning', 'relearning', 'relearn']);
+                }
+            });
+        }
+
+        return $query;
     }
 
     private function applySpacedSessionOrdering($query)
@@ -319,6 +333,64 @@ class MistakeManagementService
     /**
      * Process mistake review
      */
+    public function checkMistakeAnswer(
+        int $userId,
+        int $questionId,
+        string $response,
+        int $responseSeconds = 0,
+        ?string $confidence = null,
+        array $interactionSignals = []
+    ): array {
+        $mistake = $this->findMistakeForAnswering($userId, $questionId);
+
+        if (!$mistake) {
+            return [
+                'success' => false,
+                'message' => 'Mistake not found',
+            ];
+        }
+
+        $resolvedConfidence = $this->normalizeConfidence($confidence);
+        $evaluation = $this->evaluateMistakeResponse($mistake, $response);
+
+        return $this->buildMistakeReviewPayload(
+            $mistake,
+            $evaluation['is_correct'],
+            $this->resolveRatingFromAnswerOutcome($evaluation['is_correct'], 'spaced', $resolvedConfidence),
+            $resolvedConfidence,
+            $evaluation['feedback'],
+            mutateMode: false
+        );
+    }
+
+    public function finalizeSpacedMistake(int $userId, int $questionId, array $sessionResult): array
+    {
+        $sessionFailures = max(0, (int) ($sessionResult['session_failures'] ?? 0));
+        $bestConfidence = $this->normalizeConfidence($sessionResult['best_confidence'] ?? null) ?? 'unsure';
+        $finalConfidence = $this->normalizeConfidence($sessionResult['final_confidence'] ?? null) ?? $bestConfidence;
+        $responseSeconds = isset($sessionResult['time_spent'])
+            ? max(0, (int) $sessionResult['time_spent'])
+            : 0;
+
+        $rating = $this->resolveSpacedFinalizationRating($sessionFailures, $bestConfidence);
+        $interactionSignals = $this->normalizeInteractionSignals(
+            $sessionResult,
+            (string) $rating,
+            $finalConfidence,
+            $responseSeconds
+        );
+
+        return $this->reviewMistake(
+            $userId,
+            $questionId,
+            $rating,
+            $responseSeconds,
+            'spaced',
+            $finalConfidence,
+            $interactionSignals
+        );
+    }
+
     public function reviewMistake(
         int $userId,
         int $questionId,
@@ -338,36 +410,7 @@ class MistakeManagementService
         $effectiveResponseSeconds = $responseSeconds;
 
         return DB::transaction(function () use ($userId, $questionId, $response, $resolvedMode, $resolvedConfidence, $normalizedSignals, $effectiveResponseSeconds) {
-            $mistake = Mistake::select(array_merge([
-                    'id',
-                    'user_id',
-                    'question_id',
-                    'correct_streak',
-                    'last_attempt_date',
-                    'mastered',
-                ], Mistake::availableColumns([
-                    'next_review_at',
-                    'interval_days',
-                    'ease_factor',
-                    'review_count',
-                    'lapse_count',
-                    'quick_correct_count',
-                    'quiz_correct_count',
-                    'difficulty',
-                    'stability',
-                    'retrievability',
-                    'last_response_seconds',
-                    'last_review_rating',
-                    'hesitation_score',
-                    'learning_state',
-                    'same_day_relearn_step',
-                    'same_day_relearn_count',
-                    'last_reviewed_at',
-                ])))
-                ->where('user_id', $userId)
-                ->where('question_id', $questionId)
-                ->with('question:id,question_type,correct_answer,explanation,topic_id')
-                ->first();
+            $mistake = $this->findMistakeForAnswering($userId, $questionId);
 
             if (!$mistake) {
                 return [
@@ -385,15 +428,9 @@ class MistakeManagementService
                 $isCorrect = $usedRating >= 2;
             } else {
                 $selectedAnswer = (string) $response;
-
-                if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
-                    $evaluation = app(\App\Services\WrittenAnswerEvaluationService::class)
-                        ->evaluateQuestionAnswer($mistake->question, $selectedAnswer);
-                    $isCorrect = (bool) ($evaluation['isCorrect'] ?? false);
-                    $writtenFeedback = $evaluation['feedback'] ?? null;
-                } else {
-                    $isCorrect = strtolower(trim($selectedAnswer)) === strtolower(trim($mistake->question->correct_answer));
-                }
+                $evaluation = $this->evaluateMistakeResponse($mistake, $selectedAnswer);
+                $isCorrect = $evaluation['is_correct'];
+                $writtenFeedback = $evaluation['feedback'];
 
                 $usedRating = $this->resolveRatingFromAnswerOutcome($isCorrect, $resolvedMode, $resolvedConfidence);
             }
@@ -420,30 +457,15 @@ class MistakeManagementService
                 );
             }
 
-            return [
-                'success' => true,
-                'is_correct' => $isCorrect,
-                'rating' => $usedRating,
-                'confidence' => $resolvedConfidence,
-                'correct_answer' => $mistake->question->correct_answer,
-                'explanation' => $mistake->question->explanation,
-                'new_streak' => $mistake->correct_streak,
-                'is_mastered' => $mistake->isMastered($resolvedMode),
-                'next_review_at' => optional($mistake->next_review_at)->toIso8601String(),
-                'interval_days' => (int) $mistake->interval_days,
-                'review_count' => (int) $mistake->review_count,
-                'stability' => (float) ($mistake->stability ?? 0),
-                'difficulty' => (float) ($mistake->difficulty ?? 0),
-                'retrievability' => $mistake->currentRetrievability(),
-                'learning_state' => Mistake::hasColumn('learning_state') ? $mistake->learning_state : null,
-                'same_day_relearn_step' => (int) ($mistake->same_day_relearn_step ?? 0),
-                'needs_same_day_relearn' => $this->needsSameDayRelearn($mistake, $resolvedMode),
-                'hesitation_score' => (float) ($mistake->hesitation_score ?? 0),
-                'fsrs_state' => $this->fsrsScheduler->currentState($mistake),
-                'is_due_now' => $this->isDueNow($mistake),
-                'elapsed_days_since_last_review' => $this->elapsedDaysSinceLastReview($mistake),
-                'message' => $writtenFeedback ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!')
-            ];
+            return $this->buildMistakeReviewPayload(
+                $mistake,
+                $isCorrect,
+                $usedRating,
+                $resolvedConfidence,
+                $writtenFeedback,
+                mutateMode: true,
+                resolvedMode: $resolvedMode
+            );
         });
     }
     
@@ -561,6 +583,107 @@ class MistakeManagementService
             'final_confidence' => $this->normalizeConfidence($signals['final_confidence'] ?? $confidence),
             'confidence_change_count' => max(0, min(50, (int) ($signals['confidence_change_count'] ?? 0))),
         ];
+    }
+
+    private function findMistakeForAnswering(int $userId, int $questionId): ?Mistake
+    {
+        return Mistake::select(array_merge([
+                'id',
+                'user_id',
+                'question_id',
+                'correct_streak',
+                'last_attempt_date',
+                'mastered',
+            ], Mistake::availableColumns([
+                'next_review_at',
+                'interval_days',
+                'ease_factor',
+                'review_count',
+                'lapse_count',
+                'quick_correct_count',
+                'quiz_correct_count',
+                'difficulty',
+                'stability',
+                'retrievability',
+                'last_response_seconds',
+                'last_review_rating',
+                'hesitation_score',
+                'learning_state',
+                'same_day_relearn_step',
+                'same_day_relearn_count',
+                'last_reviewed_at',
+            ])))
+            ->where('user_id', $userId)
+            ->where('question_id', $questionId)
+            ->with('question:id,question,question_type,correct_answer,explanation,topic_id')
+            ->first();
+    }
+
+    private function evaluateMistakeResponse(Mistake $mistake, string $selectedAnswer): array
+    {
+        if (isset($mistake->question->question_type) && $mistake->question->question_type === 'written') {
+            $evaluation = app(\App\Services\WrittenAnswerEvaluationService::class)
+                ->evaluateQuestionAnswer($mistake->question, $selectedAnswer);
+
+            return [
+                'is_correct' => (bool) ($evaluation['isCorrect'] ?? false),
+                'feedback' => $evaluation['feedback'] ?? null,
+            ];
+        }
+
+        return [
+            'is_correct' => strtolower(trim($selectedAnswer)) === strtolower(trim($mistake->question->correct_answer)),
+            'feedback' => null,
+        ];
+    }
+
+    private function buildMistakeReviewPayload(
+        Mistake $mistake,
+        bool $isCorrect,
+        int $rating,
+        ?string $confidence,
+        ?string $feedback,
+        bool $mutateMode,
+        string $resolvedMode = 'spaced'
+    ): array {
+        return [
+            'success' => true,
+            'is_correct' => $isCorrect,
+            'rating' => $rating,
+            'confidence' => $confidence,
+            'correct_answer' => $mistake->question->correct_answer,
+            'explanation' => $mistake->question->explanation,
+            'new_streak' => (int) $mistake->correct_streak,
+            'is_mastered' => $mutateMode ? $mistake->isMastered($resolvedMode) : false,
+            'next_review_at' => optional($mistake->next_review_at)->toIso8601String(),
+            'interval_days' => (int) $mistake->interval_days,
+            'review_count' => (int) $mistake->review_count,
+            'stability' => (float) ($mistake->stability ?? 0),
+            'difficulty' => (float) ($mistake->difficulty ?? 0),
+            'retrievability' => $mistake->currentRetrievability(),
+            'learning_state' => Mistake::hasColumn('learning_state') ? $mistake->learning_state : null,
+            'same_day_relearn_step' => (int) ($mistake->same_day_relearn_step ?? 0),
+            'needs_same_day_relearn' => $this->needsSameDayRelearn($mistake, $resolvedMode),
+            'hesitation_score' => (float) ($mistake->hesitation_score ?? 0),
+            'fsrs_state' => $this->fsrsScheduler->currentState($mistake),
+            'is_due_now' => $this->isDueNow($mistake),
+            'elapsed_days_since_last_review' => $this->elapsedDaysSinceLastReview($mistake),
+            'message' => $feedback ?? ($isCorrect ? 'Correct!' : 'Incorrect. Try again!'),
+            'mutated' => $mutateMode,
+        ];
+    }
+
+    private function resolveSpacedFinalizationRating(int $sessionFailures, string $bestConfidence): int
+    {
+        if ($sessionFailures >= 1) {
+            return FsrsScheduler::GRADE_HARD;
+        }
+
+        return match ($bestConfidence) {
+            'knew' => FsrsScheduler::GRADE_EASY,
+            'guessed' => FsrsScheduler::GRADE_HARD,
+            default => FsrsScheduler::GRADE_GOOD,
+        };
     }
 
     private function needsSameDayRelearn(Mistake $mistake, string $mode): bool

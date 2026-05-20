@@ -196,6 +196,105 @@ class LearnController extends Controller
     /**
      * Handle the review (rating) for a mistake.
      */
+    public function checkMistake(Request $request, $questionId)
+    {
+        $startTime = microtime(true);
+        $requestId = uniqid('check_mistake_');
+
+        try {
+            $validated = $request->validate([
+                'selected_answer' => 'required|string|max:1000',
+                'time_spent' => 'nullable|integer|min:0|max:3600',
+                'confidence' => 'required|string|in:guessed,unsure,knew',
+                'first_selected_answer' => 'nullable|string|max:1000',
+                'answer_change_count' => 'nullable|integer|min:0|max:50',
+                'time_to_first_selection' => 'nullable|integer|min:0|max:3600',
+                'first_confidence' => 'nullable|string|in:guessed,unsure,knew',
+                'confidence_change_count' => 'nullable|integer|min:0|max:50',
+            ]);
+
+            $selectedAnswer = (string) $validated['selected_answer'];
+            $confidence = $validated['confidence'];
+            $interactionSignals = [
+                'first_selected_answer' => $validated['first_selected_answer'] ?? null,
+                'final_selected_answer' => $selectedAnswer,
+                'answer_change_count' => (int) ($validated['answer_change_count'] ?? 0),
+                'time_to_first_selection' => isset($validated['time_to_first_selection'])
+                    ? (int) $validated['time_to_first_selection']
+                    : null,
+                'first_confidence' => $validated['first_confidence'] ?? null,
+                'final_confidence' => $confidence,
+                'confidence_change_count' => (int) ($validated['confidence_change_count'] ?? 0),
+            ];
+
+            $result = $this->mistakeService->checkMistakeAnswer(
+                auth()->id(),
+                (int) $questionId,
+                $selectedAnswer,
+                (int) ($validated['time_spent'] ?? 0),
+                $confidence,
+                $interactionSignals
+            );
+
+            return response()->json($result, $result['success'] ? 200 : 404);
+        } catch (\Exception $e) {
+            Log::error('Error in checkMistake:', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'question_id' => $questionId,
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while checking your answer.',
+            ], 500);
+        }
+    }
+
+    public function finalizeMistake(Request $request, $questionId)
+    {
+        $startTime = microtime(true);
+        $requestId = uniqid('finalize_mistake_');
+
+        try {
+            $validated = $request->validate([
+                'session_successes' => 'required|integer|min:0|max:20',
+                'session_failures' => 'required|integer|min:0|max:20',
+                'best_confidence' => 'required|string|in:guessed,unsure,knew',
+                'final_confidence' => 'required|string|in:guessed,unsure,knew',
+                'time_spent' => 'nullable|integer|min:0|max:3600',
+                'first_selected_answer' => 'nullable|string|max:1000',
+                'answer_change_count' => 'nullable|integer|min:0|max:50',
+                'time_to_first_selection' => 'nullable|integer|min:0|max:3600',
+                'first_confidence' => 'nullable|string|in:guessed,unsure,knew',
+                'confidence_change_count' => 'nullable|integer|min:0|max:50',
+            ]);
+
+            $result = $this->mistakeService->finalizeSpacedMistake(
+                auth()->id(),
+                (int) $questionId,
+                $validated
+            );
+
+            return response()->json($result, $result['success'] ? 200 : 404);
+        } catch (\Exception $e) {
+            Log::error('Error in finalizeMistake:', [
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'question_id' => $questionId,
+                'user_id' => auth()->id(),
+                'execution_time_ms' => round((microtime(true) - $startTime) * 1000, 2),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while saving mastery.',
+            ], 500);
+        }
+    }
+
     public function reviewMistake(Request $request, $questionId)
     {
         $startTime = microtime(true);

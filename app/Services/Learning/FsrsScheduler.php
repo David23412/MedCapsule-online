@@ -76,9 +76,9 @@ class FsrsScheduler
             $this->applyReviewCardReview($mistake, $grade, $now, $difficulty, $stability, $retrievability);
         }
 
-        $profile = $this->calibrationService->getProfile($normalizedMode, (int) $mistake->user_id);
-
         if ($recordTelemetry) {
+            $profile = $this->calibrationService->getProfile($normalizedMode, (int) $mistake->user_id);
+
             $this->calibrationService->recordReviewEvent(
                 $mistake,
                 before: $before,

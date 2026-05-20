@@ -83,12 +83,43 @@ class MistakeManagementServiceTest extends TestCase
         $this->assertLessThan(0, $this->compare($service, $unscheduled, $future, $now));
     }
 
+    public function test_spaced_finalization_grade_uses_clean_confidence_mapping(): void
+    {
+        $service = new MistakeManagementService(
+            $this->createMock(UserMistakeMasteryService::class),
+            new FsrsScheduler($this->createMock(SchedulerCalibrationService::class))
+        );
+
+        $this->assertSame(FsrsScheduler::GRADE_EASY, $this->finalizationRating($service, 0, 'knew'));
+        $this->assertSame(FsrsScheduler::GRADE_GOOD, $this->finalizationRating($service, 0, 'unsure'));
+        $this->assertSame(FsrsScheduler::GRADE_HARD, $this->finalizationRating($service, 0, 'guessed'));
+    }
+
+    public function test_spaced_finalization_with_failures_uses_hard_grade(): void
+    {
+        $service = new MistakeManagementService(
+            $this->createMock(UserMistakeMasteryService::class),
+            new FsrsScheduler($this->createMock(SchedulerCalibrationService::class))
+        );
+
+        $this->assertSame(FsrsScheduler::GRADE_HARD, $this->finalizationRating($service, 1, 'knew'));
+        $this->assertSame(FsrsScheduler::GRADE_HARD, $this->finalizationRating($service, 2, 'knew'));
+    }
+
     private function compare(MistakeManagementService $service, Mistake $left, Mistake $right, Carbon $now): int
     {
         $method = new \ReflectionMethod($service, 'compareSpacedQueuePriority');
         $method->setAccessible(true);
 
         return (int) $method->invoke($service, $left, $right, $now);
+    }
+
+    private function finalizationRating(MistakeManagementService $service, int $sessionFailures, string $bestConfidence): int
+    {
+        $method = new \ReflectionMethod($service, 'resolveSpacedFinalizationRating');
+        $method->setAccessible(true);
+
+        return (int) $method->invoke($service, $sessionFailures, $bestConfidence);
     }
 
     private function makeMistake(array $attributes): Mistake
