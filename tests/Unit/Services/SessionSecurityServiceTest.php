@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Services\SessionSecurityService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
+use Illuminate\Session\ArraySessionHandler;
+use Illuminate\Session\Store;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use ReflectionMethod;
@@ -92,5 +94,81 @@ class SessionSecurityServiceTest extends TestCase
 
         $this->assertFalse($method->invoke($service, '192.168.1.10', '10.0.0.15'));
         $this->assertFalse($method->invoke($service, '2001:db8::1', '2001:db8::2'));
+    }
+
+    public function test_session_token_mismatch_is_allowed_by_default(): void
+    {
+        config(['features.login_single_session_enforced' => false]);
+
+        $user = new User();
+        $user->forceFill([
+            'id' => 10,
+            'email' => 'student@example.com',
+            'active_session_token' => 'previous-session-id',
+        ]);
+
+        $request = $this->requestWithSession('current-session-id');
+
+        $result = (new SessionSecurityService())->validateSessionSecurity($user, $request);
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('allow', $result['action']);
+    }
+
+    public function test_session_token_mismatch_can_still_be_enforced(): void
+    {
+        config(['features.login_single_session_enforced' => true]);
+
+        $user = new User();
+        $user->forceFill([
+            'id' => 10,
+            'email' => 'student@example.com',
+            'active_session_token' => 'previous-session-id',
+        ]);
+
+        $request = $this->requestWithSession('current-session-id');
+
+        $result = (new SessionSecurityService())->validateSessionSecurity($user, $request);
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame('logout', $result['action']);
+    }
+
+    public function test_ip_anomalies_are_logged_without_forcing_logout_by_default(): void
+    {
+        config(['features.login_anomaly_force_logout_enabled' => false]);
+
+        $user = new User();
+        $user->forceFill([
+            'id' => 10,
+            'email' => 'student@example.com',
+            'last_login_ip' => '8.8.8.8',
+            'device_fingerprint' => str_repeat('a', 64),
+        ]);
+
+        $request = $this->requestWithSession('current-session-id', [
+            'REMOTE_ADDR' => '1.1.1.1',
+            'HTTP_USER_AGENT' => 'Mozilla/5.0 Test Browser',
+        ]);
+
+        $result = (new SessionSecurityService())->validateSessionSecurity($user, $request);
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('allow', $result['action']);
+    }
+
+    private function requestWithSession(string $sessionId, array $server = []): Request
+    {
+        $request = Request::create('/courses', 'GET', [], [], [], array_merge([
+            'REMOTE_ADDR' => '192.168.1.24',
+            'HTTP_USER_AGENT' => 'Mozilla/5.0 Test Browser',
+        ], $server));
+
+        $session = new Store('test-session', new ArraySessionHandler(120));
+        $session->setId($sessionId);
+        $session->start();
+        $request->setLaravelSession($session);
+
+        return $request;
     }
 }

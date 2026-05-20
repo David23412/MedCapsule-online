@@ -217,7 +217,11 @@ class SessionSecurityService
 
         // 1. SESSION TOKEN LOCK (Primary Multi-Device Prevention)
         $currentSessionId = $request->session()->getId();
-        if ($user->active_session_token && $user->active_session_token !== $currentSessionId) {
+        if (
+            config('features.login_single_session_enforced', false) &&
+            $user->active_session_token &&
+            $user->active_session_token !== $currentSessionId
+        ) {
             $result = [
                 'valid' => false,
                 'action' => 'logout',
@@ -241,7 +245,8 @@ class SessionSecurityService
         // detectSessionHijacking check below to avoid two cache reads of the same key.
         $currentIP  = $request->ip();
         $recentIps  = $this->getRecentRequestIPs($user->id);
-        if ($this->detectConcurrentUsage($user->id, $currentIP, $recentIps)) {
+        $forceLogoutOnAnomaly = (bool) config('features.login_anomaly_force_logout_enabled', false);
+        if ($forceLogoutOnAnomaly && $this->detectConcurrentUsage($user->id, $currentIP, $recentIps)) {
             $result = [
                 'valid' => false,
                 'action' => 'force_logout',
@@ -251,7 +256,7 @@ class SessionSecurityService
         }
 
         // Advanced security checks (these can still run even if the above checks pass, for additional layers)
-        if ($this->detectSessionHijacking($user, $request, $recentIps)) {
+        if ($forceLogoutOnAnomaly && $this->detectSessionHijacking($user, $request, $recentIps)) {
             $result = [
                 'valid' => false,
                 'action' => 'force_logout',

@@ -57,4 +57,9 @@ return [
     'design_protection_watermark_enabled' => env('DESIGN_PROTECTION_WATERMARK_ENABLED', true),
     'design_protection_disable_for_admins' => env('DESIGN_PROTECTION_DISABLE_FOR_ADMINS', true),
     'design_protection_background_lock_delay_ms' => (int) env('DESIGN_PROTECTION_BACKGROUND_LOCK_DELAY_MS', 120),
+
+    // Login/session friction controls. Defaults favor easier student access while
+    // preserving logging, throttling, and explicit account-lock protections.
+    'login_single_session_enforced' => env('LOGIN_SINGLE_SESSION_ENFORCED', false),
+    'login_anomaly_force_logout_enabled' => env('LOGIN_ANOMALY_FORCE_LOGOUT_ENABLED', false),
 ];
