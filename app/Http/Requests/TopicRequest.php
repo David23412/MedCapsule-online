@@ -15,6 +15,7 @@ class TopicRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'subject' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:1000',
             'course_id' => 'required|integer|exists:courses,id',
             'order_index' => 'nullable|integer|min:0',

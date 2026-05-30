@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 // TODO: Inject services in constructor
@@ -214,19 +215,27 @@ use Symfony\Component\HttpFoundation\Response;
 
     private function loadTopicForAccess(int $topicId): Topic
     {
+        $columns = [
+            'topics.id',
+            'topics.course_id',
+            'topics.display_order',
+            'topics.is_locked',
+        ];
+        $relations = [];
+
+        foreach (['locked_by_tutor_id', 'lock_reason', 'locked_at'] as $optionalColumn) {
+            if (Schema::hasColumn('topics', $optionalColumn)) {
+                $columns[] = "topics.{$optionalColumn}";
+            }
+        }
+
+        if (Schema::hasColumn('topics', 'locked_by_tutor_id')) {
+            $relations[] = 'lockedByTutor:id,name';
+        }
+
         return Topic::query()
-            ->select([
-                'topics.id',
-                'topics.course_id',
-                'topics.display_order',
-                'topics.is_locked',
-                'topics.locked_by_tutor_id',
-                'topics.lock_reason',
-                'topics.locked_at',
-            ])
-            ->with([
-                'lockedByTutor:id,name',
-            ])
+            ->select($columns)
+            ->with($relations)
             ->findOrFail($topicId);
     }
 

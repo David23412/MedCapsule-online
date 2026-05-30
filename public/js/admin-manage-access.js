@@ -112,6 +112,16 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 });
             }
 
+            function escapeManageAccessHtml(value) {
+                if (value === null || value === undefined) return '';
+                return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
             function securityBadgeHtml(status) {
                 status = normalizeSecurityStatus(status);
                 if (status.isPermanent) {
@@ -354,6 +364,173 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
                     }
                 });
+            });
+
+            let currentSubjectLockRows = [];
+
+            function selectedSubjectLockCourseId() {
+                return $('#subject_lock_course_id').val();
+            }
+
+            function selectedSubjectLockSubject() {
+                return $('#subject_lock_subject').val();
+            }
+
+            function setSubjectLockControlsEnabled(enabled) {
+                $('#lockSubjectBtn, #unlockSubjectBtn').prop('disabled', !enabled);
+            }
+
+            function renderSubjectLockRows(subjects) {
+                const $tbody = $('#subjectLockTableBody');
+                const $select = $('#subject_lock_subject');
+                currentSubjectLockRows = subjects || [];
+
+                $tbody.empty();
+                $select.empty();
+
+                if (!currentSubjectLockRows.length) {
+                    $select.prop('disabled', true).append('<option value="">No subjects found</option>');
+                    $tbody.append('<tr><td colspan="3" class="text-muted text-center py-3">No topics with a subject were found for this course.</td></tr>');
+                    $('#subjectLockSummary').text('No subjects');
+                    $('#subjectLockStats').text('Add a subject to topics before using group locks.');
+                    setSubjectLockControlsEnabled(false);
+                    return;
+                }
+
+                $select.prop('disabled', false).append('<option value="">Choose subject...</option>');
+
+                currentSubjectLockRows.forEach(function(row) {
+                    const subject = row.subject || '';
+                    const total = Number.parseInt(row.total_topics || 0, 10);
+                    const locked = Number.parseInt(row.locked_topics || 0, 10);
+                    const escapedSubject = escapeManageAccessHtml(subject);
+
+                    $select.append(
+                        '<option value="' + escapedSubject + '" data-total="' + total + '" data-locked="' + locked + '">' +
+                            escapedSubject + ' (' + locked + '/' + total + ' locked)' +
+                        '</option>'
+                    );
+
+                    $tbody.append(
+                        '<tr>' +
+                            '<td>' + escapedSubject + '</td>' +
+                            '<td>' + total + '</td>' +
+                            '<td><span class="badge ' + (locked >= total && total > 0 ? 'bg-danger' : (locked > 0 ? 'bg-warning text-dark' : 'bg-success')) + '">' + locked + '/' + total + '</span></td>' +
+                        '</tr>'
+                    );
+                });
+
+                $('#subjectLockSummary').text(currentSubjectLockRows.length + ' subject(s)');
+                $('#subjectLockStats').text('Choose a subject to lock or unlock all matching topics in this course.');
+                setSubjectLockControlsEnabled(false);
+            }
+
+            function loadSubjectLocksForCourse() {
+                const courseId = selectedSubjectLockCourseId();
+                const $select = $('#subject_lock_subject');
+
+                setSubjectLockControlsEnabled(false);
+                currentSubjectLockRows = [];
+
+                if (!courseId) {
+                    $select.prop('disabled', true).html('<option value="">Select a course first...</option>');
+                    $('#subjectLockTableBody').html('<tr><td colspan="3" class="text-muted text-center py-3">Choose a course to view subject lock status.</td></tr>');
+                    $('#subjectLockSummary').text('Select a course');
+                    $('#subjectLockStats').text('Subjects are loaded from existing topics.');
+                    return;
+                }
+
+                $select.prop('disabled', true).html('<option value="">Loading subjects...</option>');
+                $('#subjectLockTableBody').html('<tr><td colspan="3" class="text-muted text-center py-3"><i class="fas fa-spinner fa-spin me-1"></i>Loading subjects...</td></tr>');
+                $('#subjectLockSummary').text('Loading...');
+
+                $.ajax({
+                    url: MANAGE_ACCESS_ROUTES.courseSubjects || '/manage-access/course-subjects',
+                    method: 'GET',
+                    data: { course_id: courseId },
+                    success: function(response) {
+                        if (response.success) {
+                            renderSubjectLockRows(response.subjects || []);
+                        } else {
+                            renderSubjectLockRows([]);
+                            showNotification('error', 'Subjects Failed', response.message || 'Could not load course subjects.');
+                        }
+                    },
+                    error: function(xhr) {
+                        renderSubjectLockRows([]);
+                        showNotification('error', 'Subjects Failed', xhr.responseJSON?.message || 'Could not load course subjects.');
+                    }
+                });
+            }
+
+            function updateSelectedSubjectStats() {
+                const selectedOption = $('#subject_lock_subject option:selected');
+                const subject = selectedSubjectLockSubject();
+
+                if (!subject) {
+                    $('#subjectLockStats').text('Choose a subject to lock or unlock all matching topics in this course.');
+                    setSubjectLockControlsEnabled(false);
+                    return;
+                }
+
+                const total = Number.parseInt(selectedOption.data('total') || 0, 10);
+                const locked = Number.parseInt(selectedOption.data('locked') || 0, 10);
+                $('#subjectLockStats').text(locked + ' of ' + total + ' topic(s) are currently locked.');
+                setSubjectLockControlsEnabled(true);
+            }
+
+            function updateSubjectLockState(shouldLock) {
+                const courseId = selectedSubjectLockCourseId();
+                const subject = selectedSubjectLockSubject();
+
+                if (!courseId || !subject) {
+                    showNotification('warning', 'Missing Selection', 'Please select both a course and a subject.');
+                    return;
+                }
+
+                const $btn = shouldLock ? $('#lockSubjectBtn') : $('#unlockSubjectBtn');
+                const originalHtml = $btn.html();
+                $('#lockSubjectBtn, #unlockSubjectBtn').prop('disabled', true);
+                $btn.html('<i class="fas fa-spinner fa-spin me-1"></i>Working...');
+
+                $.ajax({
+                    url: shouldLock
+                        ? (MANAGE_ACCESS_ROUTES.lockSubject || '/manage-access/subjects/lock')
+                        : (MANAGE_ACCESS_ROUTES.unlockSubject || '/manage-access/subjects/unlock'),
+                    method: 'POST',
+                    data: {
+                        course_id: courseId,
+                        subject: subject,
+                        _token: MANAGE_ACCESS_CONFIG.csrfToken
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification('success', shouldLock ? 'Subject Locked' : 'Subject Unlocked', response.message || 'Subject lock state updated.');
+                            loadSubjectLocksForCourse();
+                        } else {
+                            showNotification('error', 'Update Failed', response.message || 'Could not update subject lock state.');
+                            updateSelectedSubjectStats();
+                        }
+                    },
+                    error: function(xhr) {
+                        showNotification('error', 'Update Failed', xhr.responseJSON?.message || 'Could not update subject lock state.');
+                        updateSelectedSubjectStats();
+                    },
+                    complete: function() {
+                        $btn.html(originalHtml);
+                    }
+                });
+            }
+
+            $('#subject_lock_course_id').on('change', loadSubjectLocksForCourse);
+            $('#subject_lock_subject').on('change', updateSelectedSubjectStats);
+            $('#lockSubjectBtn').on('click', function(e) {
+                e.preventDefault();
+                updateSubjectLockState(true);
+            });
+            $('#unlockSubjectBtn').on('click', function(e) {
+                e.preventDefault();
+                updateSubjectLockState(false);
             });
             
 

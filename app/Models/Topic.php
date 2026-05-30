@@ -21,6 +21,7 @@ class Topic extends Model
     // Fields that are mass assignable
     protected $fillable = [
         'name',
+        'subject',
         'course_id',
         'user_id',
         'description',
@@ -295,6 +296,11 @@ class Topic extends Model
     public function scopeOrdered($query)
     {
         return $query->orderBy('display_order')->orderBy('id');
+    }
+
+    public function scopeForSubject($query, string $subject)
+    {
+        return $query->where('subject', trim($subject));
     }
 
     /**

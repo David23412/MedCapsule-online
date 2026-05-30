@@ -2167,6 +2167,74 @@
                     </div>
                 </div>
 
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <div>
+                                    <i class="fas fa-layer-group me-2"></i>Subject Locks
+                                </div>
+                                <span class="badge bg-secondary" id="subjectLockSummary">Select a course</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-5">
+                                        <label class="form-label" for="subject_lock_course_id">
+                                            <i class="fas fa-graduation-cap me-1"></i>Course
+                                        </label>
+                                        <select class="form-select" id="subject_lock_course_id">
+                                            <option value="">Choose course...</option>
+                                            @if(isset($courses) && $courses->count() > 0)
+                                                @foreach($courses as $course)
+                                                    <option value="{{ $course->id }}">{{ $course->name }}</option>
+                                                @endforeach
+                                            @endif
+                                        </select>
+                                    </div>
+
+                                    <div class="col-lg-4">
+                                        <label class="form-label" for="subject_lock_subject">
+                                            <i class="fas fa-bookmark me-1"></i>Subject
+                                        </label>
+                                        <select class="form-select" id="subject_lock_subject" disabled>
+                                            <option value="">Select a course first...</option>
+                                        </select>
+                                        <div class="form-text" id="subjectLockStats">Subjects are loaded from existing topics.</div>
+                                    </div>
+
+                                    <div class="col-lg-3">
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-danger flex-fill" id="lockSubjectBtn" disabled>
+                                                <i class="fas fa-lock me-1"></i>Lock
+                                            </button>
+                                            <button type="button" class="btn btn-success flex-fill" id="unlockSubjectBtn" disabled>
+                                                <i class="fas fa-unlock me-1"></i>Unlock
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="table-responsive mt-3">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Subject</th>
+                                                <th>Total Topics</th>
+                                                <th>Locked Topics</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="subjectLockTableBody">
+                                            <tr>
+                                                <td colspan="3" class="text-muted text-center py-3">Choose a course to view subject lock status.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Enhanced Recent Activity -->
                 <div class="row mt-4">
                     <div class="col-lg-8">
@@ -3095,7 +3163,10 @@
                 adminVideosStore: '{{ route('admin.videos.store') }}',
                 adminVideosDestroyBase: '{{ url('/admin/videos') }}',
                 previewTopicsBase: '{{ url('/admin/courses') }}',
-                courseTopicsBase: '{{ url('/api/courses') }}'
+                courseTopicsBase: '{{ url('/api/courses') }}',
+                courseSubjects: '{{ route('admin.user-course.course-subjects') }}',
+                lockSubject: '{{ route('admin.user-course.subjects.lock') }}',
+                unlockSubject: '{{ route('admin.user-course.subjects.unlock') }}'
             },
             courseOptions: {!! json_encode(
                 isset($courses) && $courses->count() > 0

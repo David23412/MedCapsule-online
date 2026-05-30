@@ -207,6 +207,63 @@ class TopicLockingService
         
         return $results;
     }
+
+    public function lockSubject(Course $course, string $subject, User $admin): int
+    {
+        return $this->setSubjectLockState($course, $subject, $admin, true);
+    }
+
+    public function unlockSubject(Course $course, string $subject, User $admin): int
+    {
+        return $this->setSubjectLockState($course, $subject, $admin, false);
+    }
+
+    private function setSubjectLockState(Course $course, string $subject, User $admin, bool $locked): int
+    {
+        $subject = trim($subject);
+
+        if ($subject === '') {
+            throw new \InvalidArgumentException('Subject is required.');
+        }
+
+        if (!$this->tutorHasCoursePermission($admin, (int) $course->id)) {
+            throw new \InvalidArgumentException('You do not have permission to manage subjects in this course');
+        }
+
+        try {
+            return DB::transaction(function () use ($course, $subject, $locked) {
+                $topics = Topic::query()
+                    ->where('course_id', $course->id)
+                    ->forSubject($subject)
+                    ->get();
+
+                if ($topics->isEmpty()) {
+                    return 0;
+                }
+
+                $updatedCount = Topic::query()
+                    ->whereIn('id', $topics->pluck('id'))
+                    ->update(['is_locked' => $locked]);
+
+                foreach ($topics as $topic) {
+                    $topic->is_locked = $locked;
+                    $this->invalidateCache($topic);
+                }
+
+                return $updatedCount;
+            });
+        } catch (\Exception $e) {
+            Log::error('Failed to update subject lock state', [
+                'course_id' => $course->id,
+                'subject' => $subject,
+                'locked' => $locked,
+                'admin_id' => $admin->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
     
     /**
      * Get all locked topics for a course
@@ -324,7 +381,11 @@ class TopicLockingService
     {
         // PHASE 2: Use cache tags for targeted invalidation
         // This clears all user-specific progress and topic data caches at once
-        Cache::tags(['topic', "topic:{$topic->id}", "course:{$topic->course_id}"])->flush();
+        try {
+            Cache::tags(['topic', "topic:{$topic->id}", "course:{$topic->course_id}"])->flush();
+        } catch (\BadMethodCallException $e) {
+            // Some cache drivers do not support tags; explicit keys below still cover local/file caches.
+        }
         
         // Manual cleanup for drivers that don't support tags (like file)
         $cacheKeys = [
@@ -336,8 +397,10 @@ class TopicLockingService
         foreach ($cacheKeys as $key) {
             Cache::forget($key);
         }
-        
-        // Invalidate course categorization cache
-        app(CourseTypeService::class)->invalidateCache($topic->course);
+
+        // Invalidate course categorization cache when that optional service exists.
+        if (class_exists(CourseTypeService::class)) {
+            app(CourseTypeService::class)->invalidateCache($topic->course);
+        }
     }
 }

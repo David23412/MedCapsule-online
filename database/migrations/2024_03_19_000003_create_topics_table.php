@@ -13,6 +13,7 @@ return new class extends Migration {
             // REMOVED: user_id field - topics belong to courses, not users!
             // Individual user progress is tracked in user_topic_progress table
             $table->string('name'); // Name of the topic (quiz)
+            $table->string('subject')->nullable(); // Display subject/category name (e.g., Anatomy)
             $table->string('case_type')->default('quiz'); // Type: quiz (regular topic), cases, or practical
             $table->integer('display_order')->default(0); // Order of topics within a course
             $table->boolean('is_locked')->default(false); // Topic locking status
@@ -22,6 +23,7 @@ return new class extends Migration {
 
             // Add necessary indexes for optimized querying
             $table->index(['course_id', 'display_order']); // To query topics by course and order
+            $table->index(['course_id', 'subject']); // To lock/unlock subjects within a course
             $table->index('course_id'); // For fast look-up of all topics by course
             $table->index('display_order'); // To speed up ordering within courses
             $table->index('case_type'); // For filtering by case type

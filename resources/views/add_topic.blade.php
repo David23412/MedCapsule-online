@@ -135,6 +135,13 @@
                         </select>
                     </div>
 
+                    <!-- Subject Input -->
+                    <div class="mb-3">
+                        <label class="form-label">Subject:</label>
+                        <input type="text" name="subject" class="form-control" value="{{ old('subject') }}" maxlength="100" placeholder="Anatomy, Histology, Physiology">
+                        <div class="form-text text-muted">Topics with the same subject can be locked or unlocked together from Manage Access.</div>
+                    </div>
+
                     <!-- Topic Type Selection -->
                     <div class="mb-4">
                         <label class="form-label d-block mb-2">Topic Type:</label>

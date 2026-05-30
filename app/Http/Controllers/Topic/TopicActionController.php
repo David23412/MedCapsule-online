@@ -54,6 +54,7 @@ class TopicActionController extends Controller
 
             $topic = Topic::create([
                 'name' => $name,
+                'subject' => filled($validated['subject'] ?? null) ? trim($validated['subject']) : null,
                 'course_id' => $validated['course_id'],
                 'description' => $validated['description'] ?? '',
                 'display_order' => $validated['display_order'] ?? 0,

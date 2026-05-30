@@ -9,10 +9,12 @@ use App\Http\Requests\ToggleAdminRequest;
 use App\Http\Requests\SearchUsersRequest;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\Topic;
 use App\Services\UserCourseService;
 use App\Services\FreeCourseSurveyService;
 use App\Services\PaymentService;
 use App\Services\UserService;
+use App\Services\TopicLockingService;
 use App\Services\Learning\SchedulerCalibrationCoverageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,19 +28,22 @@ class UserCourseController extends Controller
     protected $userService;
     protected $freeCourseSurveyService;
     protected $analyticsService;
+    protected $topicLockingService;
 
     public function __construct(
         UserCourseService $userCourseService, 
         PaymentService $paymentService, 
         UserService $userService, 
         FreeCourseSurveyService $freeCourseSurveyService,
-        \App\Services\StudentAnalyticsService $analyticsService
+        \App\Services\StudentAnalyticsService $analyticsService,
+        TopicLockingService $topicLockingService
     ) {
         $this->userCourseService = $userCourseService;
         $this->paymentService = $paymentService;
         $this->userService = $userService;
         $this->freeCourseSurveyService = $freeCourseSurveyService;
         $this->analyticsService = $analyticsService;
+        $this->topicLockingService = $topicLockingService;
     }
 
     public function index()
@@ -92,6 +97,81 @@ class UserCourseController extends Controller
         $result = $this->userCourseService->revokeUserAccess($user, $course);
 
         return response()->json($result, $result['success'] ? 200 : 400);
+    }
+
+    public function courseSubjects(Request $request)
+    {
+        $validated = $request->validate([
+            'course_id' => 'required|integer|exists:courses,id',
+        ]);
+
+        $subjects = Topic::query()
+            ->where('course_id', $validated['course_id'])
+            ->whereNotNull('subject')
+            ->where('subject', '!=', '')
+            ->selectRaw('subject, COUNT(*) as total_topics, SUM(CASE WHEN is_locked = 1 THEN 1 ELSE 0 END) as locked_topics')
+            ->groupBy('subject')
+            ->orderBy('subject')
+            ->get()
+            ->map(fn ($row) => [
+                'subject' => (string) $row->subject,
+                'total_topics' => (int) $row->total_topics,
+                'locked_topics' => (int) $row->locked_topics,
+            ])
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'subjects' => $subjects,
+        ]);
+    }
+
+    public function lockSubject(Request $request)
+    {
+        return $this->updateSubjectLockState($request, true);
+    }
+
+    public function unlockSubject(Request $request)
+    {
+        return $this->updateSubjectLockState($request, false);
+    }
+
+    private function updateSubjectLockState(Request $request, bool $locked)
+    {
+        $validated = $request->validate([
+            'course_id' => 'required|integer|exists:courses,id',
+            'subject' => 'required|string|max:100',
+        ]);
+
+        try {
+            $course = Course::findOrFail($validated['course_id']);
+            $updatedCount = $locked
+                ? $this->topicLockingService->lockSubject($course, $validated['subject'], auth()->user())
+                : $this->topicLockingService->unlockSubject($course, $validated['subject'], auth()->user());
+
+            return response()->json([
+                'success' => true,
+                'message' => ($locked ? 'Locked' : 'Unlocked') . " {$updatedCount} topic(s) for {$validated['subject']}.",
+                'updated_count' => $updatedCount,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 403);
+        } catch (\Throwable $e) {
+            Log::error('Subject lock update failed', [
+                'course_id' => $validated['course_id'] ?? null,
+                'subject' => $validated['subject'] ?? null,
+                'locked' => $locked,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update subject lock state.',
+            ], 500);
+        }
     }
 
 

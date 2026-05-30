@@ -60,6 +60,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     // Manage Access Routes - SECURE with CSRF protection
     Route::post('/manage-access/enroll', [UserCourseController::class, 'enroll'])->name('admin.user-course.enroll');
     Route::post('/manage-access/revoke', [UserCourseController::class, 'revoke'])->name('admin.user-course.revoke');
+    Route::get('/manage-access/course-subjects', [UserCourseController::class, 'courseSubjects'])->name('admin.user-course.course-subjects');
+    Route::post('/manage-access/subjects/lock', [UserCourseController::class, 'lockSubject'])->name('admin.user-course.subjects.lock');
+    Route::post('/manage-access/subjects/unlock', [UserCourseController::class, 'unlockSubject'])->name('admin.user-course.subjects.unlock');
     
     // Admin Settings Routes
     Route::post('/admin/settings/update', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'update'])->name('admin.settings.update');
