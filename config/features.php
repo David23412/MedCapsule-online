@@ -62,4 +62,6 @@ return [
     // preserving logging, throttling, and explicit account-lock protections.
     'login_single_session_enforced' => env('LOGIN_SINGLE_SESSION_ENFORCED', false),
     'login_anomaly_force_logout_enabled' => env('LOGIN_ANOMALY_FORCE_LOGOUT_ENABLED', false),
+    'login_failed_attempt_limit' => (int) env('LOGIN_FAILED_ATTEMPT_LIMIT', 5),
+    'login_failed_block_minutes' => (int) env('LOGIN_FAILED_BLOCK_MINUTES', 15),
 ];

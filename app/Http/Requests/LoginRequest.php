@@ -16,7 +16,7 @@ class LoginRequest extends FormRequest
     {
         return [
             'email' => 'required|email|max:255',
-            'password' => 'required|string|max:255',
+            'password' => 'required|string|min:8|max:255',
             'remember' => 'nullable|boolean'
         ];
     }
@@ -26,7 +26,8 @@ class LoginRequest extends FormRequest
         return [
             'email.required' => 'Email is required',
             'email.email' => 'Please enter a valid email address',
-            'password.required' => 'Password is required'
+            'password.required' => 'Password is required',
+            'password.min' => 'Password must be at least 8 characters'
         ];
     }
 

@@ -66,8 +66,6 @@ use Illuminate\Support\Facades\Schema;
                     ])->onlyInput('email');
                 }
 
-                // Increment login attempts for security tracking
-                $this->securityService->incrementLoginAttempts($user->id);
             }
         }
 
@@ -91,6 +89,7 @@ use Illuminate\Support\Facades\Schema;
             
             // Log the login event
             $this->securityService->logSecurityEvent($user, 'login', $request, $securityAnalysis);
+            $this->securityService->clearLoginAttemptState($user->id);
             
             // Handle high-risk logins
             if ($securityAnalysis['risk_level'] === 'critical') {
@@ -134,6 +133,7 @@ use Illuminate\Support\Facades\Schema;
 
         // Log failed login attempt
         if ($user) {
+            $this->securityService->recordFailedLoginAttempt($user->id);
             $this->securityService->logSecurityEvent($user, 'failed_login', $request, [
                 'risk_level' => 'medium',
                 'reason' => 'Invalid credentials'

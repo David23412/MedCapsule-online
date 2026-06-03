@@ -474,13 +474,38 @@ class SessionSecurityService
     }
 
     /**
-     * Increment login attempt counter
+     * Record a failed login attempt and apply a short temporary block when the
+     * configured threshold is reached.
      */
-    public function incrementLoginAttempts(int $userId): void
+    public function recordFailedLoginAttempt(int $userId): int
     {
         $cacheKey = "login_attempts_{$userId}";
         $count = Cache::get($cacheKey, 0);
-        Cache::put($cacheKey, $count + 1, 900); // 15 minutes
+        $count++;
+
+        $windowSeconds = max(1, (int) config('features.login_failed_block_minutes', 15)) * 60;
+        Cache::put($cacheKey, $count, $windowSeconds);
+
+        $limit = max(1, (int) config('features.login_failed_attempt_limit', 5));
+        if ($count >= $limit) {
+            Cache::put("blocked_user_{$userId}", true, $windowSeconds);
+        }
+
+        return $count;
+    }
+
+    /**
+     * Backwards-compatible alias for older callers.
+     */
+    public function incrementLoginAttempts(int $userId): void
+    {
+        $this->recordFailedLoginAttempt($userId);
+    }
+
+    public function clearLoginAttemptState(int $userId): void
+    {
+        Cache::forget("login_attempts_{$userId}");
+        Cache::forget("blocked_user_{$userId}");
     }
 
     /**

@@ -8,6 +8,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Session\ArraySessionHandler;
 use Illuminate\Session\Store;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use ReflectionMethod;
@@ -155,6 +156,39 @@ class SessionSecurityServiceTest extends TestCase
 
         $this->assertTrue($result['valid']);
         $this->assertSame('allow', $result['action']);
+    }
+
+    public function test_failed_login_attempts_apply_temporary_block_at_threshold(): void
+    {
+        config([
+            'features.login_failed_attempt_limit' => 3,
+            'features.login_failed_block_minutes' => 15,
+        ]);
+
+        Cache::forget('login_attempts_10');
+        Cache::forget('blocked_user_10');
+
+        $service = new SessionSecurityService();
+
+        $this->assertSame(1, $service->recordFailedLoginAttempt(10));
+        $this->assertFalse(Cache::has('blocked_user_10'));
+
+        $this->assertSame(2, $service->recordFailedLoginAttempt(10));
+        $this->assertFalse(Cache::has('blocked_user_10'));
+
+        $this->assertSame(3, $service->recordFailedLoginAttempt(10));
+        $this->assertTrue(Cache::has('blocked_user_10'));
+    }
+
+    public function test_successful_login_can_clear_failed_login_state(): void
+    {
+        Cache::put('login_attempts_10', 3, 900);
+        Cache::put('blocked_user_10', true, 900);
+
+        (new SessionSecurityService())->clearLoginAttemptState(10);
+
+        $this->assertFalse(Cache::has('login_attempts_10'));
+        $this->assertFalse(Cache::has('blocked_user_10'));
     }
 
     private function requestWithSession(string $sessionId, array $server = []): Request
