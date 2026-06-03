@@ -44,7 +44,11 @@ use Illuminate\Support\Facades\Schema;
 
     public function login(\App\Http\Requests\LoginRequest $request)
     {
-        $credentials = $request->validated();
+        $validated = $request->validated();
+        $credentials = [
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+        ];
 
         // Check if user is temporarily blocked
         $email = $credentials['email'];
