@@ -96,6 +96,7 @@ Route::group([], function () {
 
     // Review routes with CSRF and rate limiting
     Route::get('/review', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'showMistakes'])->middleware('secure.study')->name('review.index');
+    Route::get('/review/download-pdf', [App\Http\Controllers\Quiz\QuizMistakeController::class, 'downloadMistakesPdf'])->middleware('secure.study')->name('review.download-pdf');
     Route::get('/review/learn', [LearnController::class, 'learnMistakes'])->middleware('secure.study')->name('review.learn');
     Route::post('/review/remove/{question_id}', [MistakeController::class, 'removeMistake'])
         ->name('review.remove');

@@ -7,6 +7,8 @@ use App\Models\Mistake;
 use App\Models\Course;
 use App\Models\QuizAttempt;
 use App\Services\StudentViewDataService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -248,6 +250,55 @@ class QuizMistakeController extends Controller
         }
     }
 
+    public function downloadMistakesPdf(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Please sign in to download your mistakes.');
+        }
+
+        $courseFilter = $request->input('course');
+        if ($courseFilter === 'skipped') {
+            $courseFilter = null;
+        }
+
+        $mistakes = $this->getMistakesForPdf((int) $user->id, $courseFilter);
+
+        if ($mistakes->isEmpty()) {
+            return redirect()
+                ->route('review.index', $courseFilter ? ['course' => $courseFilter] : [])
+                ->with('info', 'No mistakes are available to download.');
+        }
+
+        $courseName = $courseFilter
+            ? optional($mistakes->first())->course_name
+            : 'All Courses';
+
+        $html = view('mistakes.pdf', [
+            'mistakes' => $mistakes,
+            'user' => $user,
+            'courseName' => $courseName,
+            'generatedAt' => now(),
+        ])->render();
+
+        $options = new Options();
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isRemoteEnabled', false);
+        $options->set('isHtml5ParserEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('a4', 'portrait');
+        $dompdf->render();
+
+        $fileName = 'my-mistakes-' . now()->format('Y-m-d') . '.pdf';
+
+        return response($dompdf->output(), 200)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+    }
+
     /**
      * 🎯 NORMALIZE SUBMITTED ANSWER FOR PROPER DISPLAY
      * Ensures consistent handling of unanswered questions and submitted answers
@@ -264,6 +315,89 @@ class QuizMistakeController extends Controller
 
         // Return the actual submitted answer for display
         return $submittedAnswer;
+    }
+
+    private function getMistakesForPdf(int $userId, $courseFilter)
+    {
+        $query = DB::table('mistakes')
+            ->join('questions', 'mistakes.question_id', '=', 'questions.id')
+            ->join('topics', 'questions.topic_id', '=', 'topics.id')
+            ->join('courses', 'topics.course_id', '=', 'courses.id')
+            ->select([
+                'mistakes.id',
+                'mistakes.question_id',
+                'mistakes.submitted_answer',
+                'mistakes.skipped',
+                'mistakes.last_attempt_date',
+                'questions.question',
+                'questions.correct_answer',
+                'questions.explanation',
+                'questions.question_type',
+                'questions.option_a',
+                'questions.option_b',
+                'questions.option_c',
+                'questions.option_d',
+                'topics.name as topic_name',
+                'courses.id as course_id',
+                'courses.name as course_name',
+            ])
+            ->where('mistakes.user_id', $userId);
+
+        if ($courseFilter) {
+            $query->where('courses.id', $courseFilter);
+        }
+
+        return $query
+            ->orderBy('courses.name')
+            ->orderBy('topics.name')
+            ->orderBy('questions.id')
+            ->orderBy('mistakes.id')
+            ->get()
+            ->values()
+            ->map(function ($mistake, $index) {
+                $normalizedSubmittedAnswer = $this->normalizeSubmittedAnswer(
+                    $mistake->submitted_answer,
+                    (bool) $mistake->skipped
+                );
+
+                $mistake->number = $index + 1;
+                $mistake->submitted_answer_display = $this->formatAnswerForPdf(
+                    $mistake,
+                    $normalizedSubmittedAnswer,
+                    (bool) $mistake->skipped
+                );
+                $mistake->correct_answer_display = $this->formatAnswerForPdf(
+                    $mistake,
+                    $mistake->correct_answer,
+                    false
+                );
+
+                return $mistake;
+            });
+    }
+
+    private function formatAnswerForPdf($mistake, $answer, bool $isSkipped): string
+    {
+        if ($isSkipped || $answer === 'unanswered' || $answer === '' || $answer === null) {
+            return 'UNANSWERED';
+        }
+
+        if (($mistake->question_type ?? null) === 'written') {
+            return (string) $answer;
+        }
+
+        $optionKey = strtolower(trim((string) $answer));
+
+        if (in_array($optionKey, ['a', 'b', 'c', 'd'], true)) {
+            $optionField = 'option_' . $optionKey;
+            $optionText = $mistake->{$optionField} ?? null;
+
+            if ($optionText !== null && $optionText !== '') {
+                return strtoupper($optionKey) . '. ' . $optionText;
+            }
+        }
+
+        return (string) $answer;
     }
 
     /**

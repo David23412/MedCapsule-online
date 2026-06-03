@@ -231,6 +231,10 @@
                         Flashcard Mode
                     </button>
                     @if(!$mistakes->isEmpty())
+                        <a href="{{ route('review.download-pdf', $selectedCourse ? ['course' => $selectedCourse] : []) }}" class="learn-mistakes-btn">
+                            <i class="fas fa-file-pdf"></i>
+                            Download PDF
+                        </a>
                         <button id="deleteAllMistakesButton" class="delete-all-mistakes-btn" type="button" data-bs-toggle="modal" data-bs-target="#deleteAllMistakesModal">
                             <i class="fas fa-trash"></i>
                             Delete Mistakes
