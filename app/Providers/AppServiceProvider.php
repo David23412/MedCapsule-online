@@ -111,10 +111,11 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) {
             $email = Str::lower((string) $request->input('email'));
+            $loginKey = ($email !== '' ? $email : 'guest').'|'.$request->ip();
 
             return [
-                Limit::perMinute(5)->by($email.'|'.$request->ip()),
-                Limit::perHour(25)->by($request->ip()),
+                Limit::perMinute(5)->by('minute|'.$loginKey),
+                Limit::perHour(25)->by('hour|'.$loginKey),
             ];
         });
 

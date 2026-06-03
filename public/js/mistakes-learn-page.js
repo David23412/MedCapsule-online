@@ -1014,9 +1014,10 @@ function initializeMistakesLearnPage() {
 
             const getSpacedEligibleQuestions = () => getUnfinishedSpacedQuestions();
 
-            const getSpacedSessionDeck = () => questionsData.filter((question) => !question.skipped);
+            const getSpacedSessionDeck = () => questionsData.filter((question) => question.inCurrentSpacedSession);
 
-            const getSpacedReviewedCount = () => getSpacedSessionDeck().filter((question) => question.sessionResolved).length;
+            const getSpacedReviewedCount = () => getSpacedSessionDeck()
+                .filter((question) => question.sessionResolved || question.skipped).length;
 
             const spacedQueueBucket = (question) => {
                     const isDue = !question.nextReviewAt || question.nextReviewAt.getTime() <= Date.now();
@@ -1142,7 +1143,7 @@ function initializeMistakesLearnPage() {
                     const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
 
                     if (sidebarProgressSummary) {
-                        sidebarProgressSummary.textContent = `${reviewed} of ${total} mastered this session`;
+                        sidebarProgressSummary.textContent = `${reviewed} of ${total} reviewed this session`;
                     }
 
                     if (sidebarProgressPercent) {
@@ -1257,6 +1258,8 @@ function initializeMistakesLearnPage() {
                     frozenResponseSeconds: null,
                     isMastered: false,
                     skipped: card.dataset.skipped === 'true',
+                    skippedAtSessionStart: card.dataset.skipped === 'true',
+                    inCurrentSpacedSession: false,
                     sessionResolved: false,
                     lastReviewedAt: 0,
                     courseId: card.dataset.courseId || 'all',
@@ -1438,6 +1441,7 @@ function initializeMistakesLearnPage() {
                     q.totalConfidenceChanges = 0;
                     q.finalized = false;
                     q.isActive = true;
+                    q.inCurrentSpacedSession = false;
                     q.confidenceLevel = null;
                     q.firstConfidenceLevel = null;
                     q.firstSessionConfidenceLevel = null;
@@ -1696,6 +1700,9 @@ function initializeMistakesLearnPage() {
                 if (selectedMode !== 'spaced') {
                     createPatches();
                 } else {
+                    questionsData.forEach((question) => {
+                        question.inCurrentSpacedSession = !question.skipped;
+                    });
                     initialSpacedDeckCount = getSpacedSessionDeck().length;
                 }
 
@@ -1991,7 +1998,7 @@ function initializeMistakesLearnPage() {
                     const reviewed = getSpacedReviewedCount();
                     const percent = total > 0 ? (reviewed / total) * 100 : 0;
 
-                    progressText.textContent = `${reviewed} of ${total} mastered this session`;
+                    progressText.textContent = `${reviewed} of ${total} reviewed this session`;
                     progressFill.style.width = `${percent}%`;
                     updateSidebarProgress();
                     return;

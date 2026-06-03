@@ -16,7 +16,7 @@ class LoginRequest extends FormRequest
     {
         return [
             'email' => 'required|email|max:255',
-            'password' => 'required|string|min:8|max:255',
+            'password' => 'required|string|max:255',
             'remember' => 'nullable|boolean'
         ];
     }
@@ -26,15 +26,20 @@ class LoginRequest extends FormRequest
         return [
             'email.required' => 'Email is required',
             'email.email' => 'Please enter a valid email address',
-            'password.required' => 'Password is required',
-            'password.min' => 'Password must be at least 8 characters'
+            'password.required' => 'Password is required'
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $normalized = [
             'email' => IdentityInput::normalizeEmail($this->input('email')),
-        ]);
+        ];
+
+        if ($this->has('remember')) {
+            $normalized['remember'] = $this->boolean('remember');
+        }
+
+        $this->merge($normalized);
     }
 }
