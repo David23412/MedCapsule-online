@@ -14,8 +14,6 @@ class ProgressUpdateController extends Controller
      */
     public function storeProgressUpdate(Request $request): JsonResponse
     {
-        // Debug logging to see what data is being received
-
         try {
             $validated = $request->validate([
                 'topicId' => 'required|integer',
@@ -60,9 +58,6 @@ class ProgressUpdateController extends Controller
             
             Cache::put($globalKey, $globalUpdates, 300);
 
-            // 🔥 GENIUS: No sync needed - progress is calculated dynamically!
-
-
             return response()->json([
                 'success' => true,
                 'message' => 'Progress update stored successfully',
@@ -72,29 +67,24 @@ class ProgressUpdateController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             Log::error('Validation failed in store progress update', [
                 'errors' => $e->errors(),
-                'request_data' => $request->all(),
-                'request_headers' => $request->headers->all(),
-                'content_type' => $request->header('Content-Type'),
-                'raw_content' => $request->getContent()
+                'request' => $this->safeRequestContext($request),
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
                 'errors' => $e->errors(),
-                'received_data' => $request->all() // Include received data for debugging
             ], 422);
 
         } catch (\Exception $e) {
             Log::error('Failed to store progress update', [
                 'error' => $e->getMessage(),
-                'request_data' => $request->all(),
-                'trace' => $e->getTraceAsString()
+                'request' => $this->safeRequestContext($request),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to store progress update: ' . $e->getMessage()
+                'message' => 'Failed to store progress update'
             ], 500);
         }
     }
@@ -193,7 +183,7 @@ class ProgressUpdateController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to store assignment completion', [
                 'error' => $e->getMessage(),
-                'request_data' => $request->all()
+                'request' => $this->safeRequestContext($request),
             ]);
 
             return response()->json([
@@ -203,9 +193,6 @@ class ProgressUpdateController extends Controller
         }
     }
 
-    /**
-     * 🚀 GENIUS: Get assignment progress dynamically
-     */
     public function getAssignmentProgress(Request $request): JsonResponse
     {
         try {
@@ -237,7 +224,7 @@ class ProgressUpdateController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to get assignment progress', [
                 'error' => $e->getMessage(),
-                'request_data' => $request->all()
+                'request' => $this->safeRequestContext($request),
             ]);
 
             return response()->json([
@@ -246,4 +233,23 @@ class ProgressUpdateController extends Controller
             ], 500);
         }
     }
-} 
+
+    private function safeRequestContext(Request $request): array
+    {
+        return [
+            'user_id' => auth()->id(),
+            'route' => optional($request->route())->getName(),
+            'path' => $request->path(),
+            'method' => $request->method(),
+            'ip' => $request->ip(),
+            'content_type' => $request->header('Content-Type'),
+            'input_keys' => array_keys($request->except([
+                'password',
+                'password_confirmation',
+                'token',
+                '_token',
+                'authorization',
+            ])),
+        ];
+    }
+}

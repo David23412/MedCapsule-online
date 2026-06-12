@@ -192,22 +192,11 @@ class TopicController extends Controller
         $topicMistakeCounts = array_fill_keys($topicIds, 0);
 
         if (!empty($topicIds)) {
-            $mistakeQuestions = Question::query()
-                ->select(['questions.id', 'questions.topic_id', 'questions.extra_topic'])
-                ->join('mistakes', 'mistakes.question_id', '=', 'questions.id')
-                ->where('mistakes.user_id', $user->id)
-                ->where(function ($query) use ($topicIds) {
-                    foreach ($topicIds as $topicId) {
-                        $query->orWhere('questions.topic_id', $topicId)
-                            ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topicId]);
-                    }
-                })
-                ->distinct('questions.id')
-                ->get();
+            $mistakeQuestions = $this->mistakeQuestionsForTopicCounts($user->id, $topicIds);
 
             foreach ($mistakeQuestions as $mistakeQuestion) {
                 $relatedTopicIds = [(int) $mistakeQuestion->topic_id];
-                $extraTopicIds = array_filter(array_map('intval', explode(',', (string) ($mistakeQuestion->extra_topic ?? ''))));
+                $extraTopicIds = $this->parseExtraTopicIds($mistakeQuestion->extra_topic);
                 $relatedTopicIds = array_values(array_unique([...$relatedTopicIds, ...$extraTopicIds]));
 
                 foreach ($relatedTopicIds as $relatedTopicId) {
@@ -439,6 +428,56 @@ class TopicController extends Controller
             'topicCardData' => $topicCardData,
             'currentUserView' => $this->studentViewDataService->buildCurrentUserView($user),
         ]);
+    }
+
+    private function mistakeQuestionsForTopicCounts(int $userId, array $topicIds): Collection
+    {
+        $topicIds = array_values(array_unique(array_filter(array_map('intval', $topicIds))));
+
+        if ($topicIds === []) {
+            return collect();
+        }
+
+        $query = Question::query()
+            ->select(['questions.id', 'questions.topic_id', 'questions.extra_topic'])
+            ->join('mistakes', 'mistakes.question_id', '=', 'questions.id')
+            ->where('mistakes.user_id', $userId)
+            ->where(function ($query) use ($topicIds) {
+                $query->whereIn('questions.topic_id', $topicIds);
+
+                $query->orWhere(function ($extraTopicQuery) use ($topicIds) {
+                    $extraTopicQuery
+                        ->whereNotNull('questions.extra_topic')
+                        ->where('questions.extra_topic', '!=', '');
+
+                    if (DB::getDriverName() !== 'sqlite') {
+                        $extraTopicQuery->whereExists(function ($existsQuery) use ($topicIds) {
+                            $existsQuery
+                                ->select(DB::raw(1))
+                                ->from('topics')
+                                ->whereIn('topics.id', $topicIds)
+                                ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0');
+                        });
+                    }
+                });
+            })
+            ->distinct();
+
+        return $query->get();
+    }
+
+    private function parseExtraTopicIds(?string $extraTopic): array
+    {
+        if ($extraTopic === null || trim($extraTopic) === '') {
+            return [];
+        }
+
+        return collect(explode(',', $extraTopic))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

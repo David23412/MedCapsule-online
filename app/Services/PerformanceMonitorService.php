@@ -316,28 +316,55 @@ class PerformanceMonitorService
      */
     private function getActiveOperationsCount(): int
     {
-        if (!class_exists('Redis')) {
-            return 0;
-        }
-
         try {
             $connection = Redis::connection();
-            $cursor = null;
+            $cursor = 0;
             $count = 0;
+            $scanCount = 100;
 
             do {
-                $keys = $connection->scan($cursor, 'perf:operation:*', 100);
-                if ($keys === false) {
-                    $keys = [];
+                $result = $connection->scan($cursor, [
+                    'match' => 'perf:operation:*',
+                    'count' => $scanCount,
+                ]);
+
+                if ($result === false) {
+                    break;
                 }
 
-                $count += count($keys);
+                if (is_array($result) && array_key_exists(0, $result) && array_key_exists(1, $result)) {
+                    $cursor = (int) $result[0];
+                    $keys = $result[1];
+                } else {
+                    $cursor = 0;
+                    $keys = $result;
+                }
+
+                $count += count($this->normalizeRedisKeys(is_array($keys) ? $keys : [$keys]));
             } while ((int) $cursor !== 0);
 
             return $count;
         } catch (\Exception $e) {
             return 0;
         }
+    }
+
+    private function normalizeRedisKeys(array $keys): array
+    {
+        $normalized = [];
+
+        array_walk_recursive($keys, function ($value) use (&$normalized) {
+            if (!is_scalar($value)) {
+                return;
+            }
+
+            $key = trim((string) $value);
+            if ($key !== '') {
+                $normalized[] = $key;
+            }
+        });
+
+        return array_values(array_unique($normalized));
     }
 
     /**

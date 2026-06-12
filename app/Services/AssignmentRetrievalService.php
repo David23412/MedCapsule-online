@@ -166,10 +166,10 @@ class AssignmentRetrievalService
             }
             
             if ($user->isAdmin()) {
-                $students = User::select(['id', 'name', 'email'])->where('role', User::ROLE_STUDENT)->orderBy('name')->get();
+                $students = User::select(['id', 'name', 'username', 'email'])->where('role', User::ROLE_STUDENT)->orderBy('name')->get();
             } else {
                 $tutorCourseIds = $user->courses()->pluck('courses.id');
-                $students = User::select(['users.id', 'users.name', 'users.email'])
+                $students = User::select(['users.id', 'users.name', 'users.username', 'users.email'])
                     ->join('course_user', 'users.id', '=', 'course_user.user_id')
                     ->where('users.role', User::ROLE_STUDENT)
                     ->whereIn('course_user.course_id', $tutorCourseIds)

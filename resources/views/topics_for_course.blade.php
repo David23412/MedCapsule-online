@@ -282,7 +282,6 @@
                             </div>
                             <div class="courses-container">
                                 @if(isset($availableCourses) && $availableCourses->count() > 0)
-{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                                     @foreach($availableCourses as $availableCourse)
                                         <div class="form-check custom-checkbox">
                                             <input class="form-check-input" type="checkbox" 

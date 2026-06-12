@@ -82,10 +82,13 @@ class StudentProgressController extends Controller
     {
         try {
             $validatedData = $request->getValidatedWithDefaults();
+            $this->getAccessibleStudent($studentId);
             
             // Ultra-fast cache key for real-time data
             $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('student_realtime', [
                 'user_id' => $studentId,
+                'tutor_id' => auth()->id(),
+                'params' => $validatedData,
                 'timestamp' => now()->format('Y-m-d-H-i')
             ]);
             
@@ -96,9 +99,14 @@ class StudentProgressController extends Controller
 
             return $this->jsonResponse(true, 'Real-time updates retrieved', $realtimeData);
 
+        } catch (AuthorizationException $e) {
+            return $this->jsonResponse(false, $e->getMessage(), [], 403);
+        } catch (ModelNotFoundException $e) {
+            return $this->jsonResponse(false, 'Student not found', [], 404);
         } catch (\Exception $e) {
             Log::error('Real-time updates failed', [
                 'user_id' => $studentId,
+                'tutor_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
 
@@ -113,10 +121,12 @@ class StudentProgressController extends Controller
     {
         try {
             $validatedData = $request->getValidatedWithDefaults();
+            $this->getAccessibleStudent($studentId);
             
             // Performance analytics with aggressive caching
             $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('analytics', [
                 'user_id' => $studentId,
+                'tutor_id' => auth()->id(),
                 'params' => $validatedData
             ]);
             
@@ -126,9 +136,14 @@ class StudentProgressController extends Controller
 
             return $this->jsonResponse(true, 'Performance analytics retrieved', $analyticsData);
 
+        } catch (AuthorizationException $e) {
+            return $this->jsonResponse(false, $e->getMessage(), [], 403);
+        } catch (ModelNotFoundException $e) {
+            return $this->jsonResponse(false, 'Student not found', [], 404);
         } catch (\Exception $e) {
             Log::error('Performance analytics failed', [
                 'user_id' => $studentId,
+                'tutor_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
 
@@ -192,6 +207,7 @@ class StudentProgressController extends Controller
     {
         try {
             $validatedData = $request->getValidatedWithDefaults();
+            $this->getAccessibleStudent($studentId);
             
             // Ultra-fast comparison analytics
             $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('comparison_analytics', [
@@ -206,9 +222,14 @@ class StudentProgressController extends Controller
 
             return $this->jsonResponse(true, 'Comparison analytics retrieved', $comparisonData);
 
+        } catch (AuthorizationException $e) {
+            return $this->jsonResponse(false, $e->getMessage(), [], 403);
+        } catch (ModelNotFoundException $e) {
+            return $this->jsonResponse(false, 'Student not found', [], 404);
         } catch (\Exception $e) {
             Log::error('Comparison analytics failed', [
                 'user_id' => $studentId,
+                'tutor_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
 
@@ -223,6 +244,7 @@ class StudentProgressController extends Controller
     {
         try {
             $validatedData = $request->getValidatedWithDefaults();
+            $this->getAccessibleStudent($studentId);
             
             // Generate export data with caching
             $exportData = $this->studentProgressService->generateExportData($studentId, $validatedData);
@@ -233,9 +255,14 @@ class StudentProgressController extends Controller
                 'user_id' => $studentId
             ]);
 
+        } catch (AuthorizationException $e) {
+            return $this->jsonResponse(false, $e->getMessage(), [], 403);
+        } catch (ModelNotFoundException $e) {
+            return $this->jsonResponse(false, 'Student not found', [], 404);
         } catch (\Exception $e) {
             Log::error('Progress export failed', [
                 'user_id' => $studentId,
+                'tutor_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
 

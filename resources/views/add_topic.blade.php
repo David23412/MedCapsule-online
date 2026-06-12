@@ -128,7 +128,6 @@
                         <label class="form-label">Select Course:</label>
                         <select name="course_id" class="form-select" required>
                             <option value="" disabled selected>Select a course</option>
-{{-- 💀 N+1 FIX NEEDED: Eager load 'name' in controller --}}
                             @foreach($courses as $course)
                                 <option value="{{ $course->id }}">{{ $course->name }}</option>
                             @endforeach

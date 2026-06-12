@@ -117,7 +117,7 @@ class UltraPerformanceOptimizer
         return app(UltraConsolidatedCacheService::class)->remember($key, $query, $ttl);
     }
 
-    public static function asyncDelay(int $milliseconds, callable $callback = null): string
+    public static function asyncDelay(int $milliseconds, ?callable $callback = null): string
     {
         return AsyncOperationManager::delayAsync($milliseconds, $callback);
     }
@@ -152,7 +152,7 @@ class UltraPerformanceOptimizer
         app(UltraConsolidatedCacheService::class)->smartInvalidate($type, $id, $context);
     }
 
-    public static function streamFileRead(string $path, callable $processor = null): mixed
+    public static function streamFileRead(string $path, ?callable $processor = null): mixed
     {
         return FileIOOptimizer::streamRead($path, $processor);
     }
@@ -216,9 +216,6 @@ class UltraPerformanceOptimizer
     public static function emergencyOptimization(): array
     {
         $actions = [];
-
-        Cache::flush();
-        $actions[] = 'All caches cleared';
 
         $cacheService = app(UltraConsolidatedCacheService::class);
         $cleanup = $cacheService->emergencyCleanup();

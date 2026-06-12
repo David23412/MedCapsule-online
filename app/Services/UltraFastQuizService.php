@@ -22,6 +22,7 @@ class UltraFastQuizService
     private const HOT_CACHE_TTL = 300; // 5 minutes for hot data
     private const MEMORY_LIMIT = 64 * 1024 * 1024; // 64MB
     private const QUERY_LIMIT = 5; // Max 5 queries per operation
+    private const SCAN_MAX_KEYS = 500;
 
     private $redis = null;
     private bool $redisAvailable = false;
@@ -323,10 +324,38 @@ class UltraFastQuizService
             return [];
         }
 
-        // Using `keys` is more reliable across different Redis drivers (PhpRedis vs Predis)
-        // than custom iterating `scan`.
+        $matched = [];
+        $cursor = 0;
+        $batchSize = max(1, $count);
+        $maxKeys = max(1, (int) config('features.scan_invalidation_max_keys', self::SCAN_MAX_KEYS));
+
         try {
-            $keys = $this->redis->keys($pattern);
+            do {
+                $result = $this->redis->scan($cursor, [
+                    'match' => $pattern,
+                    'count' => $batchSize,
+                ]);
+
+                if ($result === false) {
+                    break;
+                }
+
+                if (is_array($result) && array_key_exists(0, $result) && array_key_exists(1, $result)) {
+                    $cursor = (int) $result[0];
+                    $keys = $result[1];
+                } else {
+                    $cursor = 0;
+                    $keys = $result;
+                }
+
+                foreach ($this->normalizeRedisKeys(is_array($keys) ? $keys : [$keys]) as $key) {
+                    $matched[] = $key;
+
+                    if (count($matched) >= $maxKeys) {
+                        return array_values(array_unique($matched));
+                    }
+                }
+            } while ((int) $cursor !== 0);
         } catch (\Throwable $e) {
             Log::warning('UltraFastQuizService: Redis key scan failed', [
                 'pattern' => $pattern,
@@ -336,11 +365,25 @@ class UltraFastQuizService
             return [];
         }
 
-        if (empty($keys) || $keys === false) {
-            return [];
-        }
+        return array_values(array_unique($matched));
+    }
 
-        return is_array($keys) ? $keys : [$keys];
+    private function normalizeRedisKeys(array $keys): array
+    {
+        $normalized = [];
+
+        array_walk_recursive($keys, function ($value) use (&$normalized) {
+            if (!is_scalar($value)) {
+                return;
+            }
+
+            $key = trim((string) $value);
+            if ($key !== '') {
+                $normalized[] = $key;
+            }
+        });
+
+        return $normalized;
     }
 
     /**

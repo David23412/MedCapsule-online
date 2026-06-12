@@ -8,6 +8,7 @@ use App\Services\QuizService;
 use App\Services\QuizPerformanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Models\Course;
@@ -550,57 +551,7 @@ class OptimizedRandomQuizController extends Controller
                 return response()->json(['success' => true, 'counts' => []]);
             }
 
-            // Build count per topic type
-            $typeCounts = [];
-            $topicTypes = ['quiz', 'practical', 'cases'];
-
-            foreach ($topicTypes as $type) {
-                $count = Question::query()
-                    ->where(function ($q) use ($selectedCourseIds) {
-                        $q->whereHas('topic', function ($query) use ($selectedCourseIds) {
-                            $query->whereIn('course_id', $selectedCourseIds);
-                        })
-                        ->orWhereExists(function ($sub) use ($selectedCourseIds) {
-                            $sub->select(\Illuminate\Support\Facades\DB::raw(1))
-                                ->from('topics')
-                                ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
-                                ->whereIn('topics.course_id', $selectedCourseIds);
-                        });
-                    })
-                    ->whereHas('topic', function ($query) use ($type) {
-                        $query->where('case_type', $type);
-                    })
-                    ->whereNotNull('question')
-                    ->where('question', '!=', '');
-
-                if (!in_array('all', $selectedSources)) {
-                    $count->whereIn('source', $selectedSources);
-                }
-
-                $typeCounts[$type] = $count->count();
-            }
-
-            // Total count (all types)
-            $totalQuery = Question::query()
-                ->where(function ($q) use ($selectedCourseIds) {
-                    $q->whereHas('topic', function ($query) use ($selectedCourseIds) {
-                        $query->whereIn('course_id', $selectedCourseIds);
-                    })
-                    ->orWhereExists(function ($sub) use ($selectedCourseIds) {
-                        $sub->select(\Illuminate\Support\Facades\DB::raw(1))
-                            ->from('topics')
-                            ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
-                            ->whereIn('topics.course_id', $selectedCourseIds);
-                    });
-                })
-                ->whereNotNull('question')
-                ->where('question', '!=', '');
-
-            if (!in_array('all', $selectedSources)) {
-                $totalQuery->whereIn('source', $selectedSources);
-            }
-
-            $typeCounts['all'] = $totalQuery->count();
+            $typeCounts = $this->countQuestionsByTopicType($selectedCourseIds, $selectedSources);
 
             return response()->json([
                 'success' => true,
@@ -683,5 +634,99 @@ class OptimizedRandomQuizController extends Controller
             $courseIds,
             fn ($courseId) => ($accessLevels[$courseId] ?? null) === \App\Models\User::COURSE_ACCESS_FULL
         ));
+    }
+
+    private function countQuestionsByTopicType(array $courseIds, array $sources): array
+    {
+        $topicTypeById = Topic::query()
+            ->whereIn('course_id', $courseIds)
+            ->pluck('case_type', 'id')
+            ->mapWithKeys(fn ($caseType, $id) => [(int) $id => (string) ($caseType ?: 'quiz')])
+            ->all();
+
+        if ($topicTypeById === []) {
+            return ['quiz' => 0, 'practical' => 0, 'cases' => 0, 'all' => 0];
+        }
+
+        $topicIds = array_keys($topicTypeById);
+        $questionIdsByType = [
+            'quiz' => [],
+            'practical' => [],
+            'cases' => [],
+        ];
+        $allQuestionIds = [];
+
+        $query = Question::query()
+            ->select(['id', 'topic_id', 'extra_topic'])
+            ->whereNotNull('question')
+            ->where('question', '!=', '')
+            ->where(function ($query) use ($topicIds, $courseIds) {
+                $query->whereIn('topic_id', $topicIds)
+                    ->orWhereExists(function ($subquery) use ($courseIds) {
+                        $subquery->select(DB::raw(1))
+                            ->from('topics')
+                            ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
+                            ->whereIn('topics.course_id', $courseIds);
+                    });
+            });
+
+        if (!in_array('all', $sources, true)) {
+            $query->whereIn('source', $sources);
+        }
+
+        $query->orderBy('id')->chunkById(1000, function ($questions) use (&$questionIdsByType, &$allQuestionIds, $topicTypeById) {
+            foreach ($questions as $question) {
+                $matchedTypes = [];
+                $directTopicId = (int) $question->topic_id;
+
+                if (isset($topicTypeById[$directTopicId])) {
+                    $matchedTypes[] = $topicTypeById[$directTopicId];
+                }
+
+                foreach ($this->parseExtraTopicIds($question->extra_topic) as $extraTopicId) {
+                    if (isset($topicTypeById[$extraTopicId])) {
+                        $matchedTypes[] = $topicTypeById[$extraTopicId];
+                    }
+                }
+
+                $matchedTypes = array_values(array_unique(array_filter($matchedTypes)));
+                if ($matchedTypes === []) {
+                    continue;
+                }
+
+                $questionId = (int) $question->id;
+                $allQuestionIds[$questionId] = true;
+
+                foreach ($matchedTypes as $type) {
+                    if (!array_key_exists($type, $questionIdsByType)) {
+                        continue;
+                    }
+
+                    $questionIdsByType[$type][$questionId] = true;
+                }
+            }
+        });
+
+        return [
+            'quiz' => count($questionIdsByType['quiz']),
+            'practical' => count($questionIdsByType['practical']),
+            'cases' => count($questionIdsByType['cases']),
+            'all' => count($allQuestionIds),
+        ];
+    }
+
+    private function parseExtraTopicIds(?string $extraTopic): array
+    {
+        if ($extraTopic === null || trim($extraTopic) === '') {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map(
+                static fn (string $topicId): int => (int) trim($topicId),
+                explode(',', $extraTopic)
+            ),
+            static fn (int $topicId): bool => $topicId > 0
+        )));
     }
 }

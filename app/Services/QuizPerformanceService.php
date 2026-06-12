@@ -15,6 +15,45 @@ use Carbon\Carbon;
 class QuizPerformanceService
 {
     /**
+     * Execute a quiz-related operation while recording lightweight timing data.
+     *
+     * Tracking must never break the request path; callers use this wrapper in
+     * quiz and tutor endpoints where a missing metrics backend should not turn
+     * into a user-visible failure.
+     *
+     * @template TReturn
+     * @param callable(): TReturn $callback
+     * @return TReturn
+     */
+    public static function trackQuizGeneration(int $topicId, ?int $userId, callable $callback)
+    {
+        $startedAt = microtime(true);
+
+        try {
+            return $callback();
+        } finally {
+            $durationMs = (microtime(true) - $startedAt) * 1000;
+
+            try {
+                app(self::class)->track('quiz_generation_ms', $durationMs);
+
+                Log::debug('Quiz operation completed', [
+                    'topic_id' => $topicId,
+                    'user_id' => $userId,
+                    'duration_ms' => round($durationMs, 2),
+                    'memory_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+                ]);
+            } catch (\Throwable $trackingError) {
+                Log::warning('Quiz performance tracking failed', [
+                    'topic_id' => $topicId,
+                    'user_id' => $userId,
+                    'error' => $trackingError->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
      * Track a performance metric
      *
      * @param string $metric

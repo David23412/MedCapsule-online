@@ -538,33 +538,85 @@ class AdvancedCacheService
         $failed = 0;
 
         try {
-            // Clear all cache tags/prefixes
+            $connection = Redis::connection();
             $prefixes = array_values(self::CACHE_PREFIXES);
 
             foreach ($prefixes as $prefix) {
                 $pattern = $prefix . '*';
-                // Use Redis SCAN if available
-                if (class_exists('Redis')) {
-                    $iterator = null;
-                    while ($keys = Redis::scan($iterator, $pattern, 100)) {
-                        foreach ($keys as $key) {
-                            if (Redis::del($key)) {
-                                $cleared++;
-                            } else {
-                                $failed++;
-                            }
-                        }
+
+                foreach (array_chunk($this->scanCacheKeys($connection, $pattern), 100) as $keys) {
+                    try {
+                        $deleted = $connection->del($keys);
+                        $cleared += is_numeric($deleted) ? (int) $deleted : count($keys);
+                    } catch (\Throwable $e) {
+                        $failed += count($keys);
+
+                        Log::warning('Emergency cache clear delete batch failed', [
+                            'pattern' => $pattern,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
-                } else {
-                    Cache::flush(); // Fallback for non-Redis
-                    break;
                 }
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Emergency cache clear failed', ['error' => $e->getMessage()]);
             $failed++;
         }
 
         return ['cleared' => $cleared, 'failed' => $failed];
+    }
+
+    private function scanCacheKeys($connection, string $pattern, int $batchSize = 100): array
+    {
+        $cursor = 0;
+        $matched = [];
+        $maxKeys = max(1, (int) config('features.scan_invalidation_max_keys', 1000));
+
+        do {
+            $result = $connection->scan($cursor, [
+                'match' => $pattern,
+                'count' => max(1, $batchSize),
+            ]);
+
+            if ($result === false) {
+                break;
+            }
+
+            if (is_array($result) && array_key_exists(0, $result) && array_key_exists(1, $result)) {
+                $cursor = (int) $result[0];
+                $keys = $result[1];
+            } else {
+                $cursor = 0;
+                $keys = $result;
+            }
+
+            foreach ($this->normalizeRedisKeys(is_array($keys) ? $keys : [$keys]) as $key) {
+                $matched[] = $key;
+
+                if (count($matched) >= $maxKeys) {
+                    return array_values(array_unique($matched));
+                }
+            }
+        } while ((int) $cursor !== 0);
+
+        return array_values(array_unique($matched));
+    }
+
+    private function normalizeRedisKeys(array $keys): array
+    {
+        $normalized = [];
+
+        array_walk_recursive($keys, function ($value) use (&$normalized) {
+            if (!is_scalar($value)) {
+                return;
+            }
+
+            $key = trim((string) $value);
+            if ($key !== '') {
+                $normalized[] = $key;
+            }
+        });
+
+        return $normalized;
     }
 }

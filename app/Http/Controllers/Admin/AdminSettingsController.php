@@ -8,10 +8,13 @@ use App\Models\Course;
 use App\Models\Topic;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class AdminSettingsController extends Controller
 {
+    private static ?bool $topicsHavePreviewEnabledColumn = null;
+
     /**
      * Update an admin setting.
      */
@@ -79,39 +82,82 @@ class AdminSettingsController extends Controller
      */
     public function getCourseTopics(int $courseId): JsonResponse
     {
-        $course = \App\Models\Course::find($courseId);
+        $courseExists = Course::query()
+            ->whereKey($courseId)
+            ->exists();
 
-        if (!$course) {
+        if (!$courseExists) {
             return response()->json(['success' => false, 'message' => 'Course not found'], 404);
         }
 
         $columns = ['id', 'name', 'case_type', 'display_order', 'is_locked'];
-        if (Schema::hasColumn('topics', 'is_preview_enabled')) {
+        $hasPreviewColumn = self::topicsHavePreviewEnabledColumn();
+
+        if ($hasPreviewColumn) {
             $columns[] = 'is_preview_enabled';
         }
 
-        $topics = Topic::where('course_id', $courseId)
+        $topics = DB::table('topics')
+            ->where('course_id', $courseId)
             ->select($columns)
             ->orderBy('display_order')
             ->orderBy('id')
-            ->get()
-            ->map(function (Topic $topic): array {
+            ->get();
+
+        $explicitPreviewTopicIds = $hasPreviewColumn
+            ? $topics
+                ->filter(fn ($topic) => (bool) ($topic->is_preview_enabled ?? false))
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all()
+            : [];
+
+        $effectivePreviewTopicIds = $explicitPreviewTopicIds;
+        $isUsingDefaultPreview = false;
+
+        if ($effectivePreviewTopicIds === []) {
+            $isUsingDefaultPreview = true;
+            $previewLimit = (int) config('free_course_survey.preview_topics_count', 5);
+            $effectivePreviewTopicIds = $previewLimit > 0
+                ? $topics->take($previewLimit)->pluck('id')->map(fn ($id) => (int) $id)->all()
+                : [];
+        }
+
+        $effectivePreviewLookup = array_fill_keys($effectivePreviewTopicIds, true);
+        $topicsPayload = $topics
+            ->map(function ($topic) use ($effectivePreviewLookup, $isUsingDefaultPreview): array {
+                $isOpenToPreview = isset($effectivePreviewLookup[(int) $topic->id]);
+
                 return [
                     'id' => (int) $topic->id,
                     'name' => (string) $topic->name,
                     'case_type' => (string) ($topic->case_type ?? 'quiz'),
                     'display_order' => (int) ($topic->display_order ?? 0),
                     'is_locked' => (bool) ($topic->is_locked ?? false),
-                    'is_preview_enabled' => (bool) ($topic->is_preview_enabled ?? false),
+                    'is_preview_enabled' => $isOpenToPreview,
+                    'is_explicit_preview_enabled' => (bool) ($topic->is_preview_enabled ?? false),
+                    'is_open_to_preview' => $isOpenToPreview,
+                    'standard_user_state' => $isOpenToPreview ? 'open_to_preview' : 'not_open_to_preview',
+                    'preview_source' => $isUsingDefaultPreview ? 'default_limit' : 'custom_selection',
                 ];
             });
 
-        return response()->json($topics);
+        return response()->json([
+            'success' => true,
+            'topics' => $topicsPayload,
+            'meta' => [
+                'total_topics' => $topicsPayload->count(),
+                'open_to_preview_count' => $topicsPayload->where('is_open_to_preview', true)->count(),
+                'not_open_to_preview_count' => $topicsPayload->where('is_open_to_preview', false)->count(),
+                'using_default_preview' => $isUsingDefaultPreview,
+                'preview_topics_column_available' => $hasPreviewColumn,
+            ],
+        ]);
     }
 
     public function updateCoursePreviewTopics(Request $request, Course $course): JsonResponse
     {
-        if (! Schema::hasColumn('topics', 'is_preview_enabled')) {
+        if (! self::topicsHavePreviewEnabledColumn()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Preview topic controls are not available until migrations run.',
@@ -146,5 +192,10 @@ class AdminSettingsController extends Controller
             'message' => 'Preview topics updated.',
             'topic_ids' => $topicIds,
         ]);
+    }
+
+    private static function topicsHavePreviewEnabledColumn(): bool
+    {
+        return self::$topicsHavePreviewEnabledColumn ??= Schema::hasColumn('topics', 'is_preview_enabled');
     }
 }

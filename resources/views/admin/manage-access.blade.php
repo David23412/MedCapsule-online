@@ -5,6 +5,7 @@
         'scheduler-quality' => 'scheduler-quality',
         'security-watchlist', 'security' => 'security-watchlist',
         'videos' => 'video-management',
+        'preview-topics' => 'preview-topics',
         'payment-settings', 'settings' => 'settings',
         default => 'access',
     };
@@ -2552,6 +2553,7 @@
                                 <div id="previewTopicsEmpty" class="text-muted text-center py-4">
                                     Pick a course to manage preview topics.
                                 </div>
+                                <div id="previewTopicsSummary" class="alert alert-info py-2 px-3 mb-3" style="display: none;"></div>
                                 <div id="previewTopicsList" class="preview-topic-list" style="display: none;"></div>
                             </div>
                         </div>

@@ -223,7 +223,6 @@
                 </tr>
             </thead>
             <tbody>
-{{-- 💀 N+1 FIX NEEDED: Eager load 'created_at' in controller --}}
                 @foreach($payments as $payment)
                 <tr data-payment-id="{{ $payment->id }}">
                     <td>{{ $payment->id }}</td>
@@ -272,4 +271,4 @@
         </div>
     </div>
 </div>
-@endsection 
+@endsection

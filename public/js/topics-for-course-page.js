@@ -1374,13 +1374,17 @@
                 }
 
                 const sortedIds = [...selectedCourses].sort().join(',');
+                const selectedSourceValues = Array.from(checkedSourceCheckboxes)
+                    .map(cb => cb.value)
+                    .sort()
+                    .join(',');
                 const data = await cachedFetchJson('/api/random-quiz-question-counts?' + queryParams.toString(), {
                     method: 'GET',
                     headers: {
                         'X-CSRF-TOKEN': csrfToken.content,
                         'Accept': 'application/json'
                     }
-                }, 30000, `question-counts:${sortedIds}`);
+                }, 30000, `question-counts:${sortedIds}:${selectedSourceValues || 'all'}`);
 
                 if (data.success && data.counts) {
                     const pills = pillContainer.querySelectorAll('.topic-type-pill');

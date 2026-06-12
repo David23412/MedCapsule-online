@@ -52,6 +52,11 @@ class TopicLockingViewController extends Controller
             // Admins can see all courses
             $courses = \App\Models\Course::query()
                 ->select('id', 'name')
+                ->withCount([
+                    'topics',
+                    'topics as locked_topics_count' => fn ($query) => $query->where('is_locked', true),
+                    'topics as unlocked_topics_count' => fn ($query) => $query->where('is_locked', false),
+                ])
                 ->with(['topics' => function($query) {
                     $query->select('id', 'course_id', 'name', 'is_locked')
                         ->orderBy('name');
@@ -65,6 +70,11 @@ class TopicLockingViewController extends Controller
             // Tutors can only see courses they're enrolled in
             $courses = $user->courses()
                 ->select('courses.id', 'courses.name')
+                ->withCount([
+                    'topics',
+                    'topics as locked_topics_count' => fn ($query) => $query->where('is_locked', true),
+                    'topics as unlocked_topics_count' => fn ($query) => $query->where('is_locked', false),
+                ])
                 ->with(['topics' => function($query) {
                     $query->select('id', 'course_id', 'name', 'is_locked')
                           ->orderBy('name');

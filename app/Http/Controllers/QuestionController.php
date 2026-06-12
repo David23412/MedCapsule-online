@@ -33,15 +33,18 @@ class QuestionController extends Controller
 
         $conceptSuggestionsByTopic = Cache::remember('admin_question_concepts_by_topic_v2', 3600, function () {
             return Question::query()
+                ->select('topic_id', 'concept')
                 ->whereNotNull('concept')
-                ->get(['topic_id', 'concept'])
+                ->where('concept', '!=', '')
+                ->distinct()
+                ->orderBy('topic_id')
+                ->orderBy('concept')
+                ->get()
                 ->groupBy('topic_id')
                 ->map(function (Collection $questions) {
                     return $questions
                         ->pluck('concept')
-                        ->filter(fn ($name) => is_string($name) && trim($name) !== '')
-                        ->unique(fn ($name) => Str::lower(trim($name)))
-                        ->sort()
+                        ->filter(fn ($name) => is_string($name))
                         ->values()
                         ->all();
                 })

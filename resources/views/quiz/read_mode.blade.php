@@ -99,6 +99,10 @@
             margin-bottom: 0;
         }
 
+        .question-card.has-image {
+            padding-right: 36px;
+        }
+
         .question-card:last-of-type {
             border-bottom: none;
             border-radius: 0 0 24px 24px;
@@ -139,6 +143,18 @@
             line-height: 1.7;
             font-weight: 600;
             color: #0f172a;
+        }
+
+        .question-body {
+            display: flex;
+            align-items: flex-start;
+            gap: 2.5rem;
+            width: 100%;
+        }
+
+        .question-main-content {
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         .badge-stack {
@@ -193,14 +209,29 @@
             opacity: 0.85;
         }
 
-        .question-media {
-            margin: 16px 0 18px;
+        .question-image-container {
+            flex: 0 0 450px;
+            max-width: 45%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
         }
 
-        .question-media img {
-            max-width: 100%;
-            border-radius: 16px;
-            border: 1px solid #cbd5e1;
+        .question-image {
+            width: 100%;
+            height: auto;
+            max-height: 550px;
+            border-radius: 12px;
+            object-fit: contain;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .question-image:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15);
         }
 
         .options-list {
@@ -359,8 +390,28 @@
                 border-bottom: 1px solid #f1f5f9;
             }
 
+            .question-card.has-image {
+                padding-right: 16px;
+            }
+
             .question-top {
                 flex-direction: column;
+            }
+
+            .question-body {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .question-image-container {
+                flex: none;
+                width: 100%;
+                max-width: 100%;
+                margin: 0 0 0.5rem;
+            }
+
+            .question-image {
+                max-height: 400px;
             }
 
             .question-header-main {
@@ -441,9 +492,10 @@
                     'B' => $question->option_b,
                     'C' => $question->option_c,
                     'D' => $question->option_d,
+                    'E' => $question->option_e,
                 ];
             @endphp
-            <article class="question-card">
+            <article class="question-card {{ $question->image_url ? 'has-image' : '' }}">
                 <div class="question-top">
                     <div class="question-header-main">
                         <div class="question-number">Question {{ $index + 1 }}</div>
@@ -480,48 +532,55 @@
                     </div>
                 </div>
 
-                @if($question->image_url)
-                    <div class="question-media">
-                        <img src="{{ asset($question->image_url) }}" alt="Question image">
-                    </div>
-                @endif
-
-                @if(($question->question_type ?? 'multiple_choice') === 'multiple_choice')
-                    <div class="options-list">
-                        @foreach($rawOptions as $letter => $optionValue)
-                            @if(!empty(trim((string) $optionValue)) && trim((string) $optionValue) !== '-')
-                                <div class="option-row {{ $question->correct_answer === $letter ? 'is-correct' : '' }}">
-                                    <span class="option-letter">{{ $letter }}</span>
-                                    <div class="option-body">{{ $optionValue }}</div>
-                                </div>
-                            @endif
-                        @endforeach
-                    </div>
-                @endif
-
-                <div class="correct-answer">
-                    <div class="panel-label">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Correct Answer</span>
-                    </div>
-                    <div class="panel-body">
+                <div class="question-body">
+                    <div class="question-main-content">
                         @if(($question->question_type ?? 'multiple_choice') === 'multiple_choice')
-                            {{ $question->correct_answer }}
-                            @if(!empty($rawOptions[$question->correct_answer] ?? null))
-                                : {{ $rawOptions[$question->correct_answer] }}
-                            @endif
-                        @else
-                            {{ $question->correct_answer ?: 'No model answer provided.' }}
+                            <div class="options-list">
+                                @foreach($rawOptions as $letter => $optionValue)
+                                    @if(!empty(trim((string) $optionValue)) && trim((string) $optionValue) !== '-')
+                                        <div class="option-row {{ $question->correct_answer === $letter ? 'is-correct' : '' }}">
+                                            <span class="option-letter">{{ $letter }}</span>
+                                            <div class="option-body">{{ $optionValue }}</div>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
                         @endif
-                    </div>
-                </div>
 
-                <div class="explanation-panel">
-                    <div class="panel-label">
-                        <i class="fas fa-lightbulb"></i>
-                        <span>Explanation</span>
+                        <div class="correct-answer">
+                            <div class="panel-label">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Correct Answer</span>
+                            </div>
+                            <div class="panel-body">
+                                @if(($question->question_type ?? 'multiple_choice') === 'multiple_choice')
+                                    {{ $question->correct_answer }}
+                                    @if(!empty($rawOptions[$question->correct_answer] ?? null))
+                                        : {{ $rawOptions[$question->correct_answer] }}
+                                    @endif
+                                @else
+                                    {{ $question->correct_answer ?: 'No model answer provided.' }}
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="explanation-panel">
+                            <div class="panel-label">
+                                <i class="fas fa-lightbulb"></i>
+                                <span>Explanation</span>
+                            </div>
+                            <div class="panel-body">{{ $question->explanation ?: 'No explanation available.' }}</div>
+                        </div>
                     </div>
-                    <div class="panel-body">{{ $question->explanation ?: 'No explanation available.' }}</div>
+
+                    @if($question->image_url)
+                        <div class="question-image-container">
+                            <img src="{{ asset($question->image_url) }}"
+                                 alt="Question image"
+                                 class="question-image"
+                                 onerror="this.closest('.question-image-container').style.display='none'">
+                        </div>
+                    @endif
                 </div>
             </article>
         @endforeach

@@ -2027,7 +2027,10 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             }
         }
 
+        let previewTopicsRequest = null;
+
         $(document).ready(function() {
+
             $('#preview-topics-tab').on('click', function() {
                 const courseId = $('#preview_course_id').val();
                 if (courseId) {
@@ -2077,7 +2080,8 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest'
                         },
-                        success: function(topics) {
+                        success: function(response) {
+                            const topics = Array.isArray(response) ? response : (response.topics || []);
                             topicSelect.empty().append('<option value="">Select topic...</option>');
                             topics.forEach(topic => {
                                 topicSelect.append(`<option value="${topic.id}">${topic.name}</option>`);
@@ -2132,6 +2136,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
 
         function resetPreviewTopics(message) {
             $('#previewTopicsList').hide().empty();
+            $('#previewTopicsSummary').hide().empty();
             $('#previewTopicsEmpty').text(message).show();
             $('#savePreviewTopics, #previewSelectNone').prop('disabled', true);
         }
@@ -2139,44 +2144,78 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
         function loadPreviewTopics(courseId) {
             resetPreviewTopics('Loading topics...');
 
-            $.ajax({
+            if (previewTopicsRequest) {
+                previewTopicsRequest.abort();
+            }
+
+            previewTopicsRequest = $.ajax({
                 url: `${MANAGE_ACCESS_ROUTES.courseTopicsBase || '/api/courses'}/${courseId}/topics`,
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                success: function(topics) {
-                    renderPreviewTopics(Array.isArray(topics) ? topics : []);
+                success: function(response) {
+                    const topics = Array.isArray(response) ? response : (response.topics || []);
+                    renderPreviewTopics(topics, response.meta || null);
                 },
-                error: function() {
+                error: function(xhr, status) {
+                    if (status === 'abort') {
+                        return;
+                    }
+
                     resetPreviewTopics('Failed to load topics.');
-                    showNotification('error', 'Load Failed', 'Failed to load preview topics.');
+                    showNotification('error', 'Load Failed', xhr.responseJSON?.message || 'Failed to load preview topics.');
+                },
+                complete: function() {
+                    previewTopicsRequest = null;
                 }
             });
         }
 
-        function renderPreviewTopics(topics) {
+        function renderPreviewTopics(topics, meta) {
             const list = $('#previewTopicsList');
+            const summary = $('#previewTopicsSummary');
             list.empty();
+            summary.hide().empty();
 
             if (!topics.length) {
                 resetPreviewTopics('No topics found for this course.');
                 return;
             }
 
+            const totalTopics = meta?.total_topics ?? topics.length;
+            const openCount = meta?.open_to_preview_count ?? topics.filter(topic => topic.is_open_to_preview || topic.is_preview_enabled).length;
+            const closedCount = meta?.not_open_to_preview_count ?? Math.max(totalTopics - openCount, 0);
+            const defaultNote = meta?.using_default_preview
+                ? ' No custom selection exists yet, so the app is using the default first topics preview rule.'
+                : '';
+
+            summary
+                .html(`<strong>${openCount}</strong> open to preview, <strong>${closedCount}</strong> not open for a standard preview user.${defaultNote}`)
+                .show();
+
             topics.forEach(topic => {
                 const caseType = topic.case_type || 'quiz';
                 const badgeClass = caseType === 'practical' ? 'bg-success' : (caseType === 'cases' ? 'bg-info' : 'bg-secondary');
-                const checked = topic.is_preview_enabled ? 'checked' : '';
+                const isOpenToPreview = Boolean(topic.is_open_to_preview ?? topic.is_preview_enabled);
+                const checked = isOpenToPreview ? 'checked' : '';
                 const locked = topic.is_locked ? '<span class="badge bg-warning text-dark ms-2">Locked</span>' : '';
+                const stateBadge = isOpenToPreview
+                    ? '<span class="badge bg-success ms-2">Open to preview</span>'
+                    : '<span class="badge bg-light text-dark border ms-2">Not in preview</span>';
+                const sourceBadge = topic.preview_source === 'default_limit'
+                    ? '<span class="badge bg-info text-dark ms-2">Default</span>'
+                    : '';
 
                 list.append(`
                     <label class="preview-topic-row d-flex align-items-center gap-3 border rounded p-3 mb-2" for="preview-topic-${topic.id}">
                         <input class="form-check-input preview-topic-checkbox m-0" type="checkbox" value="${topic.id}" id="preview-topic-${topic.id}" ${checked}>
                         <span class="flex-grow-1">
-                            <span class="fw-semibold">${escapeHtml(topic.name || 'Untitled topic')}</span>
-                            <span class="badge ${badgeClass} ms-2">${escapeHtml(caseType)}</span>
+                            <span class="fw-semibold">${escapeManageAccessHtml(topic.name || 'Untitled topic')}</span>
+                            <span class="badge ${badgeClass} ms-2">${escapeManageAccessHtml(caseType)}</span>
+                            ${stateBadge}
+                            ${sourceBadge}
                             ${locked}
                         </span>
                     </label>
