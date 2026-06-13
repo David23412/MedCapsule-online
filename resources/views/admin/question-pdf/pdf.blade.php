@@ -42,22 +42,12 @@
             z-index: 2;
         }
 
-        .course-band {
-            background: #1e5f9f;
-            color: #fff;
-            text-align: center;
-            font-size: 17px;
-            font-weight: 800;
-            padding: 5px 10px 6px;
-            margin: 18px 42px 12px;
-        }
-
         .topic-heading {
             color: #1e5f9f;
             text-align: center;
             font-size: 21px;
             font-weight: 800;
-            margin: 0 0 24px;
+            margin: 26px 72px 24px;
         }
 
         .topic-meta {
@@ -77,7 +67,7 @@
             color: rgba(0, 0, 0, 0.09);
             font-size: 72px;
             font-weight: 800;
-            transform: rotate(-42deg);
+            transform: rotate(-42deg) scaleX(1.16);
             z-index: 0;
         }
 
@@ -216,11 +206,9 @@
             right: 70px;
             text-align: center;
             color: #1e5f9f;
-            font-size: 11px;
-            font-weight: 800;
+            font-size: 15px;
+            font-weight: 900;
             line-height: 1.2;
-            direction: rtl;
-            unicode-bidi: isolate;
         }
 
         .topic-break {
@@ -230,7 +218,7 @@
 </head>
 <body>
     <div class="watermark">MedCapsule</div>
-    <div class="marketing-line">باقي الأسئلة على medcapsule.xyz</div>
+    <div class="marketing-line">medcapsule.xyz</div>
     <div class="footer">
         <script type="text/php">
             if (isset($pdf)) {
@@ -257,7 +245,6 @@
             <div class="page-shell {{ $printedTopicCount > 0 ? 'topic-break' : '' }}">
                 <img class="top-logo" src="data:image/svg+xml;base64,{{ $logoSvg }}" alt="MedCapsule">
                 <div class="content">
-                    <div class="course-band">{{ $course->name }}</div>
                     <h1 class="topic-heading">{{ $topic->name }}</h1>
                     <div class="topic-meta">
                         Sources: {{ $questions->pluck('source')->filter()->unique()->implode(', ') }}
