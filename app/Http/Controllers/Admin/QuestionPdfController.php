@@ -11,6 +11,8 @@ use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -35,15 +37,24 @@ class QuestionPdfController extends Controller
 
     public function topics(Course $course)
     {
+        $hasSubjectColumn = Schema::hasColumn('topics', 'subject');
+        $columns = ['id', 'name', 'display_order'];
+
+        if ($hasSubjectColumn) {
+            $columns[] = 'subject';
+        } else {
+            Log::warning('Topics table does not contain subject column; using fallback behavior.');
+        }
+
         $topics = Topic::query()
             ->where('course_id', $course->id)
             ->withCount('questions')
             ->orderByRaw('COALESCE(display_order, 999999), id')
-            ->get(['id', 'name', 'subject', 'display_order'])
+            ->get($columns)
             ->map(fn (Topic $topic) => [
                 'id' => $topic->id,
                 'name' => $topic->name,
-                'subject' => $topic->subject,
+                'subject' => $hasSubjectColumn ? ($topic->subject ?? '') : '',
                 'questions_count' => $topic->questions_count,
             ])
             ->values();
@@ -109,11 +120,20 @@ class QuestionPdfController extends Controller
             ]);
         }
 
+        $hasSubjectColumn = Schema::hasColumn('topics', 'subject');
+        $topicColumns = ['id', 'name'];
+
+        if ($hasSubjectColumn) {
+            $topicColumns[] = 'subject';
+        } else {
+            Log::warning('Topics table does not contain subject column; using fallback behavior.');
+        }
+
         $topics = Topic::query()
             ->whereIn('id', $topicIds)
             ->where('course_id', $course->id)
             ->orderByRaw('COALESCE(display_order, 999999), id')
-            ->get(['id', 'name', 'subject']);
+            ->get($topicColumns);
 
         $questionsByTopic = Question::query()
             ->whereIn('topic_id', $topics->pluck('id'))

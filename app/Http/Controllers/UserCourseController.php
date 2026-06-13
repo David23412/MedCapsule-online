@@ -105,6 +105,15 @@ class UserCourseController extends Controller
             'course_id' => 'required|integer|exists:courses,id',
         ]);
 
+        if (!Topic::hasSubjectColumn()) {
+            Topic::logMissingSubjectColumn();
+
+            return response()->json([
+                'success' => true,
+                'subjects' => [],
+            ]);
+        }
+
         $subjects = Topic::query()
             ->where('course_id', $validated['course_id'])
             ->whereNotNull('subject')
@@ -144,6 +153,16 @@ class UserCourseController extends Controller
         ]);
 
         try {
+            if (!Topic::hasSubjectColumn()) {
+                Topic::logMissingSubjectColumn();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Subject locking is unavailable because this installation does not store topic subjects.',
+                    'updated_count' => 0,
+                ], 422);
+            }
+
             $course = Course::findOrFail($validated['course_id']);
             $updatedCount = $locked
                 ? $this->topicLockingService->lockSubject($course, $validated['subject'], auth()->user())

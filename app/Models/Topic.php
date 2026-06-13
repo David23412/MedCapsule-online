@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Question;
 use App\Models\Course;
 use App\Models\User;
@@ -17,6 +19,16 @@ use App\Models\Video;
 class Topic extends Model
 {
     use HasFactory;
+
+    public static function hasSubjectColumn(): bool
+    {
+        return Schema::hasColumn('topics', 'subject');
+    }
+
+    public static function logMissingSubjectColumn(): void
+    {
+        Log::warning('Topics table does not contain subject column; using fallback behavior.');
+    }
 
     // Fields that are mass assignable
     protected $fillable = [
@@ -300,6 +312,12 @@ class Topic extends Model
 
     public function scopeForSubject($query, string $subject)
     {
+        if (!self::hasSubjectColumn()) {
+            self::logMissingSubjectColumn();
+
+            return $query->whereRaw('1 = 0');
+        }
+
         return $query->where('subject', trim($subject));
     }
 

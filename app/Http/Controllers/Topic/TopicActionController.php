@@ -52,15 +52,22 @@ class TopicActionController extends Controller
                 ? $request->boolean('is_exam') 
                 : (str_contains(strtolower($name), 'mid') || str_contains(strtolower($name), 'final') || str_contains(strtolower($name), 'exam'));
 
-            $topic = Topic::create([
+            $topicData = [
                 'name' => $name,
-                'subject' => filled($validated['subject'] ?? null) ? trim($validated['subject']) : null,
                 'course_id' => $validated['course_id'],
                 'description' => $validated['description'] ?? '',
                 'display_order' => $validated['display_order'] ?? 0,
                 'is_exam' => $isExam,
                 'created_by' => auth()->id()
-            ]);
+            ];
+
+            if (Topic::hasSubjectColumn()) {
+                $topicData['subject'] = filled($validated['subject'] ?? null) ? trim($validated['subject']) : null;
+            } else {
+                Topic::logMissingSubjectColumn();
+            }
+
+            $topic = Topic::create($topicData);
 
 
             return redirect()->back()->with('success', 'Topic added successfully!');
