@@ -140,6 +140,11 @@ Route::group([], function () {
         Route::post('/admin/videos', [App\Http\Controllers\VideoController::class, 'store'])->name('admin.videos.store');
         Route::delete('/admin/videos/{video}', [App\Http\Controllers\VideoController::class, 'destroy'])->name('admin.videos.destroy');
 
+        Route::get('/admin/question-pdf', [\App\Http\Controllers\Admin\QuestionPdfController::class, 'index'])->name('admin.question-pdf.index');
+        Route::get('/admin/question-pdf/courses/{course}/topics', [\App\Http\Controllers\Admin\QuestionPdfController::class, 'topics'])->name('admin.question-pdf.topics');
+        Route::get('/admin/question-pdf/sources', [\App\Http\Controllers\Admin\QuestionPdfController::class, 'sources'])->name('admin.question-pdf.sources');
+        Route::post('/admin/question-pdf/export', [\App\Http\Controllers\Admin\QuestionPdfController::class, 'export'])->name('admin.question-pdf.export');
+
         // API route for getting course topics
         Route::get('/api/courses/{course}/topics', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'getCourseTopics']);
         Route::post('/admin/courses/{course}/preview-topics', [\App\Http\Controllers\Admin\AdminSettingsController::class, 'updateCoursePreviewTopics'])

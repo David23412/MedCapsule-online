@@ -1974,6 +1974,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <a class="nav-link" href="{{ route('admin.question-pdf.index') }}">
+                    <i class="fas fa-file-pdf me-2"></i>Question PDF
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $activeTab === 'settings' ? 'active' : '' }}" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
                     <i class="fas fa-cog me-2"></i>Settings
                 </button>

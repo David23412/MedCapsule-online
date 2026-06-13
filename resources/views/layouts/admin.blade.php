@@ -196,6 +196,12 @@
                     <span>Questions</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.question-pdf.*') ? 'active' : '' }}" href="{{ route('admin.question-pdf.index') }}">
+                    <i class="fas fa-fw fa-file-pdf"></i>
+                    <span>Question PDF</span>
+                </a>
+            </li>
         </ul>
         
         <hr class="sidebar-divider">
