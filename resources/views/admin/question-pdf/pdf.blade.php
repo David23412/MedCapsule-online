@@ -127,10 +127,13 @@
 
         .written-lines {
             margin: 12px 0 4px 26px;
-            color: #111827;
-            font-size: 15px;
-            letter-spacing: 1px;
-            line-height: 1.55;
+            width: 88%;
+        }
+
+        .written-line {
+            border-bottom: 1.6px dashed #111827;
+            height: 18px;
+            margin-bottom: 10px;
         }
 
         .answer-key h2 {
@@ -163,6 +166,39 @@
             color: #1e5f9f;
         }
 
+        .written-key-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-top: 6px;
+        }
+
+        .written-key-table th,
+        .written-key-table td {
+            border: 1px solid #49648e;
+            padding: 7px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .written-key-table th {
+            background: #213f6d;
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .written-key-table td {
+            background: #eef4ff;
+            color: #111827;
+        }
+
+        .written-key-table .question-col {
+            width: 52px;
+            text-align: center;
+            font-weight: 800;
+            color: #1e5f9f;
+        }
+
         .footer {
             position: fixed;
             bottom: 15px;
@@ -175,13 +211,16 @@
 
         .marketing-line {
             position: fixed;
-            bottom: 30px;
-            left: 0;
-            right: 0;
+            bottom: 46px;
+            left: 70px;
+            right: 70px;
             text-align: center;
             color: #1e5f9f;
             font-size: 11px;
             font-weight: 800;
+            line-height: 1.2;
+            direction: rtl;
+            unicode-bidi: isolate;
         }
 
         .topic-break {
@@ -191,17 +230,11 @@
 </head>
 <body>
     <div class="watermark">MedCapsule</div>
+    <div class="marketing-line">باقي الأسئلة على medcapsule.xyz</div>
     <div class="footer">
         <script type="text/php">
-            if (!function_exists("mc_pdf_reverse_rtl")) {
-                function mc_pdf_reverse_rtl($text) {
-                    return implode("", array_reverse(preg_split("//u", $text, -1, PREG_SPLIT_NO_EMPTY)));
-                }
-            }
-
             if (isset($pdf)) {
                 $pdf->page_text(297, 812, "{PAGE_NUM}", "DejaVu Sans", 10, [0, 0, 0]);
-                $pdf->page_text(202, 796, "medcapsule.xyz " . mc_pdf_reverse_rtl("باقي الأسئلة على"), "DejaVu Sans", 11, [0.117, 0.373, 0.624]);
             }
         </script>
     </div>
@@ -217,7 +250,10 @@
         @endphp
 
         @if ($questions->isNotEmpty())
-            @php $topicAnswerRows = []; @endphp
+            @php
+                $topicAnswerRows = [];
+                $topicWrittenRows = [];
+            @endphp
             <div class="page-shell {{ $printedTopicCount > 0 ? 'topic-break' : '' }}">
                 <img class="top-logo" src="data:image/svg+xml;base64,{{ $logoSvg }}" alt="MedCapsule">
                 <div class="content">
@@ -243,7 +279,12 @@
                             $hasLongOption = $options->contains(fn ($value) => mb_strlen((string) $value) > 42);
                             $isWrittenQuestion = $options->isEmpty() || $question->question_type === \App\Models\Question::TYPE_WRITTEN;
 
-                            if (!$isWrittenQuestion) {
+                            if ($isWrittenQuestion) {
+                                $topicWrittenRows[] = [
+                                    'number' => $globalNumber,
+                                    'answer' => $question->correct_answer,
+                                ];
+                            } else {
                                 $topicAnswerRows[] = [
                                     'number' => $globalNumber,
                                     'answer' => $question->correct_answer,
@@ -281,9 +322,9 @@
                                 </table>
                             @else
                                 <div class="written-lines">
-                                    ---------<br>
-                                    ---------<br>
-                                    ---------
+                                    <div class="written-line"></div>
+                                    <div class="written-line"></div>
+                                    <div class="written-line"></div>
                                 </div>
                             @endif
                         </div>
@@ -313,6 +354,28 @@
                                         @endfor
                                     </tr>
                                 @endforeach
+                            </table>
+                        </div>
+                    @endif
+
+                    @if ($includeAnswerKey && count($topicWrittenRows) > 0)
+                        <div class="answer-key">
+                            <h2>Written Answer Key</h2>
+                            <table class="written-key-table">
+                                <thead>
+                                    <tr>
+                                        <th class="question-col">Q</th>
+                                        <th>Key Answer</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($topicWrittenRows as $row)
+                                        <tr>
+                                            <td class="question-col">Q{{ $row['number'] }}</td>
+                                            <td>{{ $row['answer'] }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
                             </table>
                         </div>
                     @endif
