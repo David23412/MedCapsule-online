@@ -34,11 +34,17 @@ class AdminQuestionPdfExportTest extends TestCase
             'source' => 'Lecture 32',
             'question' => 'Which process describes intercellular epidermal edema?',
             'correct_answer' => 'B',
+            'option_e' => '-',
         ]);
         Question::factory()->multipleChoice()->forTopic($secondTopic)->create([
             'source' => 'Lecture 32',
             'question' => 'Which anemia is microcytic?',
             'correct_answer' => 'A',
+        ]);
+        Question::factory()->essay()->forTopic($secondTopic)->create([
+            'source' => 'Lecture 32',
+            'question' => 'Explain the pathogenesis of osteomyelitis.',
+            'correct_answer' => 'Written answer rubric',
         ]);
         Question::factory()->multipleChoice()->forTopic($firstTopic)->create([
             'source' => 'Other File',
@@ -60,7 +66,7 @@ class AdminQuestionPdfExportTest extends TestCase
             ]))
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonFragment(['name' => 'Lecture 32', 'questions_count' => 2]);
+            ->assertJsonFragment(['name' => 'Lecture 32', 'questions_count' => 3]);
 
         $this->actingAs($admin)
             ->withSession(['_token' => 'test-token'])

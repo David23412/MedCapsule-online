@@ -35,9 +35,10 @@
 
         .top-logo {
             position: absolute;
-            top: 14px;
-            right: 18px;
-            width: 104px;
+            top: 18px;
+            right: 34px;
+            width: 52px;
+            height: 26px;
             z-index: 2;
         }
 
@@ -81,7 +82,7 @@
         }
 
         .question {
-            margin-bottom: 19px;
+            margin-bottom: 22px;
             page-break-inside: avoid;
         }
 
@@ -105,30 +106,37 @@
         .options {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 5px;
+            margin-top: 8px;
         }
 
         .options td {
-            width: 20%;
-            padding: 2px 8px 2px 38px;
+            width: 50%;
+            padding: 3px 20px 5px 26px;
             vertical-align: top;
             font-size: 13px;
+            line-height: 1.35;
         }
 
         .long-options td {
             display: block;
             width: auto;
-            padding-left: 38px;
+            padding-left: 26px;
+            padding-right: 18px;
+            padding-bottom: 5px;
         }
 
-        .answer-key {
-            page-break-before: always;
+        .written-lines {
+            margin: 12px 0 4px 26px;
+            color: #111827;
+            font-size: 15px;
+            letter-spacing: 1px;
+            line-height: 1.55;
         }
 
         .answer-key h2 {
             color: #1e5f9f;
-            font-size: 20px;
-            margin: 0 0 16px;
+            font-size: 14px;
+            margin: 16px 0 8px;
         }
 
         .answer-key-table {
@@ -139,14 +147,20 @@
 
         .answer-key-table th,
         .answer-key-table td {
-            border: 1px solid #cbd5e1;
-            padding: 7px 8px;
-            text-align: left;
+            border: 1px solid #49648e;
+            padding: 6px 8px;
+            text-align: center;
+            font-weight: 800;
         }
 
         .answer-key-table th {
-            background: #1e5f9f;
+            background: #213f6d;
             color: #fff;
+        }
+
+        .answer-key-table td {
+            background: #dbe5f5;
+            color: #1e5f9f;
         }
 
         .footer {
@@ -177,18 +191,23 @@
 </head>
 <body>
     <div class="watermark">MedCapsule</div>
-    <div class="marketing-line">باقي الأسئلة على medcapsule.xyz</div>
     <div class="footer">
         <script type="text/php">
+            if (!function_exists("mc_pdf_reverse_rtl")) {
+                function mc_pdf_reverse_rtl($text) {
+                    return implode("", array_reverse(preg_split("//u", $text, -1, PREG_SPLIT_NO_EMPTY)));
+                }
+            }
+
             if (isset($pdf)) {
                 $pdf->page_text(297, 812, "{PAGE_NUM}", "DejaVu Sans", 10, [0, 0, 0]);
+                $pdf->page_text(202, 796, "medcapsule.xyz " . mc_pdf_reverse_rtl("باقي الأسئلة على"), "DejaVu Sans", 11, [0.117, 0.373, 0.624]);
             }
         </script>
     </div>
 
     @php
         $globalNumber = 1;
-        $answerRows = [];
         $printedTopicCount = 0;
     @endphp
 
@@ -198,6 +217,7 @@
         @endphp
 
         @if ($questions->isNotEmpty())
+            @php $topicAnswerRows = []; @endphp
             <div class="page-shell {{ $printedTopicCount > 0 ? 'topic-break' : '' }}">
                 <img class="top-logo" src="data:image/svg+xml;base64,{{ $logoSvg }}" alt="MedCapsule">
                 <div class="content">
@@ -215,14 +235,20 @@
                                 'C' => $question->option_c,
                                 'D' => $question->option_d,
                                 'E' => $question->option_e,
-                            ])->filter(fn ($value) => filled($value));
+                            ])->filter(function ($value) {
+                                $normalized = trim((string) $value);
+
+                                return $normalized !== '' && !in_array($normalized, ['-', '–', '—'], true);
+                            });
                             $hasLongOption = $options->contains(fn ($value) => mb_strlen((string) $value) > 42);
-                            $answerRows[] = [
-                                'number' => $globalNumber,
-                                'topic' => $topic->name,
-                                'source' => $question->source,
-                                'answer' => $question->correct_answer,
-                            ];
+                            $isWrittenQuestion = $options->isEmpty() || $question->question_type === \App\Models\Question::TYPE_WRITTEN;
+
+                            if (!$isWrittenQuestion) {
+                                $topicAnswerRows[] = [
+                                    'number' => $globalNumber,
+                                    'answer' => $question->correct_answer,
+                                ];
+                            }
                         @endphp
 
                         <div class="question">
@@ -241,48 +267,59 @@
                                             <tr><td>{{ $letter }}. {{ $option }}</td></tr>
                                         @endforeach
                                     @else
-                                        <tr>
-                                            @foreach ($options as $letter => $option)
-                                                <td>{{ $letter }}. {{ $option }}</td>
-                                            @endforeach
-                                        </tr>
+                                        @foreach ($options->chunk(2) as $optionRow)
+                                            <tr>
+                                                @foreach ($optionRow as $letter => $option)
+                                                    <td>{{ $letter }}. {{ $option }}</td>
+                                                @endforeach
+                                                @if ($optionRow->count() === 1)
+                                                    <td></td>
+                                                @endif
+                                            </tr>
+                                        @endforeach
                                     @endif
                                 </table>
+                            @else
+                                <div class="written-lines">
+                                    ---------<br>
+                                    ---------<br>
+                                    ---------
+                                </div>
                             @endif
                         </div>
 
                         @php $globalNumber++; @endphp
                     @endforeach
+
+                    @if ($includeAnswerKey && count($topicAnswerRows) > 0)
+                        <div class="answer-key">
+                            <h2>MCQ Answer Key</h2>
+                            <table class="answer-key-table">
+                                @foreach (collect($topicAnswerRows)->chunk(10) as $answerChunk)
+                                    <tr>
+                                        @foreach ($answerChunk as $row)
+                                            <th>Q{{ $row['number'] }}</th>
+                                        @endforeach
+                                        @for ($i = $answerChunk->count(); $i < 10; $i++)
+                                            <th></th>
+                                        @endfor
+                                    </tr>
+                                    <tr>
+                                        @foreach ($answerChunk as $row)
+                                            <td>{{ $row['answer'] }}</td>
+                                        @endforeach
+                                        @for ($i = $answerChunk->count(); $i < 10; $i++)
+                                            <td></td>
+                                        @endfor
+                                    </tr>
+                                @endforeach
+                            </table>
+                        </div>
+                    @endif
                 </div>
             </div>
             @php $printedTopicCount++; @endphp
         @endif
     @endforeach
-
-    @if ($includeAnswerKey)
-        <div class="answer-key">
-            <h2>Answer Key</h2>
-            <table class="answer-key-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Topic</th>
-                        <th>Source</th>
-                        <th>Answer</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($answerRows as $row)
-                        <tr>
-                            <td>{{ $row['number'] }}</td>
-                            <td>{{ $row['topic'] }}</td>
-                            <td>{{ $row['source'] }}</td>
-                            <td>{{ $row['answer'] }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endif
 </body>
 </html>

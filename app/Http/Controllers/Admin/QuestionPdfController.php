@@ -189,11 +189,31 @@ class QuestionPdfController extends Controller
     private function logoSvg(): string
     {
         return base64_encode(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 48">' .
-            '<rect x="4" y="6" width="86" height="36" rx="18" fill="#0ea5e9"/>' .
-            '<path d="M47 6h25a18 18 0 0 1 0 36H47z" fill="#2563eb"/>' .
-            '<path d="M47 8v32" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".9"/>' .
-            '<text x="98" y="30" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#1e5f9f">MedCapsule</text>' .
+            '<svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">' .
+            '<defs>' .
+            '<linearGradient id="pillBody" x1="0" y1="0" x2="0" y2="1">' .
+            '<stop offset="0%" stop-color="#2563eb"/>' .
+            '<stop offset="45%" stop-color="#3b82f6"/>' .
+            '<stop offset="100%" stop-color="#1d4ed8"/>' .
+            '</linearGradient>' .
+            '<linearGradient id="pillGloss" x1="0.1" y1="0" x2="0.9" y2="0">' .
+            '<stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>' .
+            '<stop offset="30%" stop-color="#ffffff" stop-opacity="0.6"/>' .
+            '<stop offset="70%" stop-color="#ffffff" stop-opacity="0.5"/>' .
+            '<stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>' .
+            '</linearGradient>' .
+            '<linearGradient id="pillShadow" x1="0" y1="0" x2="0" y2="1">' .
+            '<stop offset="0%" stop-color="#000000" stop-opacity="0"/>' .
+            '<stop offset="100%" stop-color="#0a1450" stop-opacity="0.28"/>' .
+            '</linearGradient>' .
+            '<filter id="pillDrop" x="-8%" y="-15%" width="116%" height="150%">' .
+            '<feDropShadow dx="0" dy="2.5" stdDeviation="2" flood-color="#1d4ed8" flood-opacity="0.38"/>' .
+            '</filter>' .
+            '</defs>' .
+            '<rect x="1" y="3" width="50" height="18" rx="9" fill="url(#pillBody)" filter="url(#pillDrop)"/>' .
+            '<rect x="1" y="3" width="50" height="18" rx="9" fill="url(#pillShadow)"/>' .
+            '<rect x="4" y="4" width="44" height="7" rx="5" fill="url(#pillGloss)" opacity="0.88"/>' .
+            '<ellipse cx="10" cy="8" rx="3.5" ry="2" fill="#ffffff" opacity="0.6"/>' .
             '</svg>'
         );
     }
