@@ -17,14 +17,16 @@ class WrittenAnswerGrader
         return $this->evaluateAnswer(
             $submittedAnswer,
             (string) $question->correct_answer,
-            $question->alternative_answers ?? []
+            $question->alternative_answers ?? [],
+            $question
         );
     }
 
     public function evaluateAnswer(
         string $submittedAnswer,
         string $correctAnswer,
-        array|string|null $alternativeAnswers = []
+        array|string|null $alternativeAnswers = [],
+        ?Question $question = null
     ): array {
         $submittedAnswer = trim($submittedAnswer);
         $correctAnswer = trim($correctAnswer);
@@ -57,7 +59,7 @@ class WrittenAnswerGrader
 
         foreach ($candidates as $candidate) {
             $candidateContext = $this->normalizeInput($candidate);
-            $rubric = $this->buildRubric($candidate, $candidateContext['normalized']);
+            $rubric = $this->buildRubric($candidate, $candidateContext['normalized'], $question);
             $result = $this->gradeCandidate($submittedAnswer, $submittedContext, $candidate, $candidateContext, $rubric);
 
             if ($best === null || $result['confidence'] > $best['confidence']) {
@@ -109,6 +111,19 @@ class WrittenAnswerGrader
             return $guard;
         }
 
+        if (!in_array($rubric['mode'], ['numerical', 'comparison'], true)) {
+            $dynamicAcceptance = $this->gradeDynamicAcceptableAnswer(
+                $submittedAnswer,
+                $submittedContext,
+                $candidateAnswer,
+                $candidateContext,
+                $rubric
+            );
+            if ($dynamicAcceptance !== null) {
+                return $dynamicAcceptance;
+            }
+        }
+
         return match ($rubric['mode']) {
             'numerical' => $this->gradeNumericalAnswer($submittedContext, $candidateContext, $rubric),
             'enumeration' => $this->gradeEnumerationAnswer($submittedContext, $rubric),
@@ -117,11 +132,19 @@ class WrittenAnswerGrader
         };
     }
 
-    private function buildRubric(string $rawAnswer, string $normalizedAnswer): array
+    private function buildRubric(string $rawAnswer, string $normalizedAnswer, ?Question $question = null): array
     {
+        $questionText = trim((string) ($question?->question ?? ''));
+        $promptMode = $this->detectPromptMode($questionText);
+        $requiredItemCount = $this->inferRequiredItemCount($questionText);
+        $blankCount = $this->countAnswerBlanks($questionText);
         $mode = $this->detectAnswerMode($this->normalizeForShapeDetection($rawAnswer));
 
-        return match ($mode) {
+        if ($promptMode === 'list') {
+            $mode = 'enumeration';
+        }
+
+        $rubric = match ($mode) {
             'numerical' => [
                 'mode' => 'numerical',
                 'required' => [],
@@ -141,6 +164,14 @@ class WrittenAnswerGrader
             'comparison' => $this->buildComparisonRubric($rawAnswer, $normalizedAnswer),
             default => $this->buildConceptRubric($mode, $normalizedAnswer, $rawAnswer),
         };
+
+        $rubric['prompt_mode'] = $promptMode;
+        $rubric['question_text'] = $questionText;
+        $rubric['required_item_count'] = $requiredItemCount;
+        $rubric['blank_count'] = $blankCount;
+        $rubric['raw_answer'] = $rawAnswer;
+
+        return $rubric;
     }
 
     private function buildComparisonRubric(string $rawAnswer, string $normalizedAnswer): array
@@ -307,6 +338,390 @@ class WrittenAnswerGrader
                 'candidateNormalized' => $candidateContext['normalized'],
             ]
         );
+    }
+
+    private function gradeDynamicAcceptableAnswer(
+        string $submittedAnswer,
+        array $submittedContext,
+        string $candidateAnswer,
+        array $candidateContext,
+        array $rubric
+    ): ?array {
+        $submittedTokens = $this->extractMeaningfulTokens($submittedContext['normalized']);
+        $candidateTokens = $this->extractMeaningfulTokens($candidateContext['normalized']);
+
+        if (empty($submittedTokens) || empty($candidateTokens)) {
+            return null;
+        }
+
+        $coverage = $this->measureBidirectionalTokenCoverage($submittedTokens, $candidateTokens);
+        $promptMode = (string) ($rubric['prompt_mode'] ?? 'general');
+        $requiredItemCount = $rubric['required_item_count'] ?? null;
+        $blankCount = (int) ($rubric['blank_count'] ?? 0);
+        $correctItems = $this->extractAcceptableAnswerItems($candidateAnswer, true);
+        $submittedItems = $this->extractAcceptableAnswerItems($submittedAnswer, false);
+        $itemMatch = $this->matchAnswerItems($submittedItems, $correctItems);
+        $correctLooksLikeList = $this->looksLikeListReference($candidateAnswer, $correctItems);
+        $hasReferenceAlternatives = $this->hasReferenceAlternativeMarkup($candidateAnswer);
+
+        $diagnostics = [
+            'mode' => 'dynamic',
+            'promptMode' => $promptMode,
+            'requiredItemCount' => $requiredItemCount,
+            'blankCount' => $blankCount,
+            'tokenCoverage' => $coverage,
+            'itemMatch' => $itemMatch,
+            'correctItemCount' => count($correctItems),
+            'submittedItemCount' => count($submittedItems),
+        ];
+
+        if (($promptMode === 'list' || ($requiredItemCount !== null && $blankCount > 1)) && !empty($correctItems)) {
+            $required = $requiredItemCount ?? max(1, (int) ceil(count($correctItems) * $this->cfg('enumeration_coverage_threshold', 0.70)));
+            $required = max(1, min((int) $required, count($correctItems)));
+
+            if ($itemMatch['matched'] >= $required) {
+                return $this->buildResult(
+                    true,
+                    max(0.86, min(0.98, $itemMatch['score'])),
+                    $promptMode === 'list' ? 'prompt_required_items_match' : 'prompt_blank_items_match',
+                    'Your answer includes the required item(s).',
+                    $diagnostics
+                );
+            }
+
+            $nearRequired = max(1, $required - 1);
+            if ($required > 1 && $itemMatch['matched'] >= $nearRequired && $coverage['precision'] >= 0.72) {
+                return $this->buildResult(
+                    true,
+                    max(0.74, min(0.88, ($itemMatch['score'] + $coverage['precision']) / 2)),
+                    'prompt_most_required_items_match',
+                    'Your answer covers enough of the required concepts.',
+                    $diagnostics
+                );
+            }
+        }
+
+        if ($promptMode === 'blank' || $blankCount > 0) {
+            $required = $requiredItemCount ?? max(1, $blankCount);
+
+            if ($required <= 1 && $itemMatch['matched'] >= 1) {
+                return $this->buildResult(
+                    true,
+                    max(0.82, min(0.95, $itemMatch['score'])),
+                    'blank_short_answer_match',
+                    'Your answer matches the expected blank.',
+                    $diagnostics
+                );
+            }
+
+            if ($required <= 1 && $this->submittedIsAcceptableShortAnswer($coverage, $submittedTokens, $candidateTokens, $candidateAnswer)) {
+                return $this->buildResult(
+                    true,
+                    max(0.82, min(0.95, ($coverage['precision'] * 0.65) + ($coverage['recall'] * 0.35))),
+                    'blank_short_answer_match',
+                    'Your answer matches the expected blank.',
+                    $diagnostics
+                );
+            }
+        }
+
+        if ($promptMode !== 'list'
+            && $hasReferenceAlternatives
+            && $this->submittedIsAcceptableShortAnswer($coverage, $submittedTokens, $candidateTokens, $candidateAnswer)
+        ) {
+            return $this->buildResult(
+                true,
+                max(0.80, min(0.94, ($coverage['precision'] * 0.70) + ($coverage['recall'] * 0.30))),
+                'reference_alternative_match',
+                'Your answer matches an acceptable form of the reference answer.',
+                $diagnostics
+            );
+        }
+
+        if (!$correctLooksLikeList && count($submittedTokens) >= 2) {
+            if ($coverage['precision'] >= 0.90 && $coverage['recall'] >= 0.50) {
+                return $this->buildResult(
+                    true,
+                    max(0.78, min(0.93, ($coverage['precision'] * 0.55) + ($coverage['recall'] * 0.45))),
+                    'submitted_concepts_covered',
+                    'Your answer covers the central expected concept.',
+                    $diagnostics
+                );
+            }
+
+            if ($coverage['precision'] >= 0.80 && $coverage['recall'] >= 0.70) {
+                return $this->buildResult(
+                    true,
+                    max(0.76, min(0.92, $coverage['f1'])),
+                    'strong_concept_overlap',
+                    'Your answer covers the required concepts.',
+                    $diagnostics
+                );
+            }
+        }
+
+        return null;
+    }
+
+    private function submittedIsAcceptableShortAnswer(array $coverage, array $submittedTokens, array $candidateTokens, string $candidateAnswer): bool
+    {
+        if (empty($submittedTokens)) {
+            return false;
+        }
+
+        if ($coverage['precision'] < 0.88) {
+            return false;
+        }
+
+        if ($coverage['recall'] >= 0.50) {
+            return true;
+        }
+
+        if (count($submittedTokens) >= 2 && $this->hasReferenceAlternativeMarkup($candidateAnswer)) {
+            return true;
+        }
+
+        return count($submittedTokens) === 1
+            && count($candidateTokens) <= 3
+            && ($coverage['bestScore'] ?? 0.0) >= 0.92;
+    }
+
+    private function measureBidirectionalTokenCoverage(array $submittedTokens, array $candidateTokens): array
+    {
+        $submittedToCandidate = $this->matchTokenLists($submittedTokens, $candidateTokens);
+        $candidateToSubmitted = $this->matchTokenLists($candidateTokens, $submittedTokens);
+        $precision = count($submittedTokens) > 0 ? $submittedToCandidate['matched'] / count($submittedTokens) : 0.0;
+        $recall = count($candidateTokens) > 0 ? $candidateToSubmitted['matched'] / count($candidateTokens) : 0.0;
+        $f1 = ($precision + $recall) > 0 ? (2 * $precision * $recall) / ($precision + $recall) : 0.0;
+
+        return [
+            'precision' => $precision,
+            'recall' => $recall,
+            'f1' => $f1,
+            'matchedSubmittedTokens' => $submittedToCandidate['matched'],
+            'matchedCandidateTokens' => $candidateToSubmitted['matched'],
+            'bestScore' => max($submittedToCandidate['bestScore'], $candidateToSubmitted['bestScore']),
+        ];
+    }
+
+    private function matchTokenLists(array $leftTokens, array $rightTokens): array
+    {
+        $used = [];
+        $matched = 0;
+        $bestScore = 0.0;
+
+        foreach ($leftTokens as $left) {
+            $bestIndex = null;
+            $best = 0.0;
+
+            foreach ($rightTokens as $index => $right) {
+                if (isset($used[$index])) {
+                    continue;
+                }
+
+                $score = $this->dynamicTokenSimilarity($left, $right);
+                if ($score > $best) {
+                    $best = $score;
+                    $bestIndex = $index;
+                }
+            }
+
+            $bestScore = max($bestScore, $best);
+            if ($bestIndex !== null && $best >= $this->dynamicTokenMatchThreshold($left, $rightTokens[$bestIndex])) {
+                $used[$bestIndex] = true;
+                $matched++;
+            }
+        }
+
+        return ['matched' => $matched, 'bestScore' => $bestScore];
+    }
+
+    private function dynamicTokenSimilarity(string $left, string $right): float
+    {
+        if ($left === $right) {
+            return 1.0;
+        }
+
+        foreach ($this->safeEquivalentTokenGroups() as $group) {
+            if (in_array($left, $group, true) && in_array($right, $group, true)) {
+                return 0.96;
+            }
+        }
+
+        return $this->textProcessor->getLevenshteinSimilarity($left, $right);
+    }
+
+    private function dynamicTokenMatchThreshold(string $left, string $right): float
+    {
+        if (preg_match('/\d/', $left . $right)) {
+            return 1.0;
+        }
+
+        $shortest = min(mb_strlen($left), mb_strlen($right));
+
+        if ($shortest <= 4) {
+            return 0.90;
+        }
+
+        if ($shortest === 5) {
+            return 0.86;
+        }
+
+        return $this->cfg('typo_similarity_threshold', 0.80);
+    }
+
+    private function extractAcceptableAnswerItems(string $text, bool $reference): array
+    {
+        $clean = $this->stripReferenceNoise($text);
+        $parentheticalItems = [];
+
+        if ($reference && preg_match_all('/\(([^)]{2,120})\)/', $clean, $matches)) {
+            foreach ($matches[1] as $match) {
+                foreach (preg_split('/\s*[,;\/]\s*|\s+\bor\b\s+/i', $match) ?: [] as $part) {
+                    $part = trim($part);
+                    if ($part !== '') {
+                        $parentheticalItems[] = $part;
+                    }
+                }
+            }
+        }
+
+        $clean = preg_replace('/\(([^)]*)\)/', ' ', $clean) ?? $clean;
+        $clean = preg_replace('/\b\d+\s*[\.)]\s*/', '; ', $clean) ?? $clean;
+        if ($reference) {
+            $clean = preg_replace('/\s*\/\s*/', '; ', $clean) ?? $clean;
+        }
+        $clean = str_replace(["\r\n", "\r", "\n"], '; ', $clean);
+
+        if (!$reference) {
+            $clean = preg_replace('/(?<=[A-Za-z])\.\s+(?=[A-Za-z0-9])/', '; ', $clean) ?? $clean;
+        }
+
+        $parts = preg_split('/\s*;\s*|\s*,\s*/', $clean) ?: [];
+
+        if ($reference && count($parts) <= 1 && preg_match('/\s+\band\b\s+/i', $clean) === 1 && count($this->extractMeaningfulTokens($clean)) <= 6) {
+            $parts = preg_split('/\s+\band\b\s+/i', $clean) ?: $parts;
+        }
+
+        $items = [];
+        foreach (array_merge($parts, $parentheticalItems) as $part) {
+            $item = $this->cleanAnswerItem((string) $part, $reference);
+            if ($item !== '') {
+                $items[] = $item;
+            }
+        }
+
+        if (empty($items)) {
+            $fallback = $this->cleanAnswerItem($clean, $reference);
+            if ($fallback !== '') {
+                $items[] = $fallback;
+            }
+        }
+
+        return array_values(array_unique($items));
+    }
+
+    private function cleanAnswerItem(string $item, bool $reference): string
+    {
+        $item = trim($item);
+
+        if ($reference) {
+            $item = preg_replace(
+                '/^.+?\b(?:includes?|contain(?:s)?|consists?\s+of|comprises?|are|is|include)\b\s+/i',
+                '',
+                $item
+            ) ?? $item;
+        }
+
+        $item = preg_replace('/\b(?:other\s+acceptable|acceptable)\b\s*:?\s*/i', '', $item) ?? $item;
+        $item = trim($item, " \t\n\r\0\x0B,.;:-");
+
+        return $item;
+    }
+
+    private function stripReferenceNoise(string $text): string
+    {
+        $text = preg_replace('/\bMNEMONIC\b\s*:.*$/is', '', $text) ?? $text;
+        $text = preg_replace('/\bOther\s+acceptable\s*:/i', '; ', $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function matchAnswerItems(array $submittedItems, array $correctItems): array
+    {
+        $used = [];
+        $matched = 0;
+        $scores = [];
+
+        foreach ($submittedItems as $submittedItem) {
+            $bestIndex = null;
+            $bestScore = 0.0;
+
+            foreach ($correctItems as $index => $correctItem) {
+                if (isset($used[$index])) {
+                    continue;
+                }
+
+                $score = $this->scoreAnswerItemMatch($submittedItem, $correctItem);
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestIndex = $index;
+                }
+            }
+
+            if ($bestIndex !== null && $bestScore >= 0.72) {
+                $used[$bestIndex] = true;
+                $matched++;
+                $scores[] = $bestScore;
+            }
+        }
+
+        return [
+            'matched' => $matched,
+            'score' => !empty($scores) ? array_sum($scores) / count($scores) : 0.0,
+            'scores' => $scores,
+        ];
+    }
+
+    private function scoreAnswerItemMatch(string $submittedItem, string $correctItem): float
+    {
+        $submittedTokens = $this->extractMeaningfulTokens($this->normalizeForComparison($submittedItem));
+        $correctTokens = $this->extractMeaningfulTokens($this->normalizeForComparison($correctItem));
+
+        if (empty($submittedTokens) || empty($correctTokens)) {
+            return 0.0;
+        }
+
+        $coverage = $this->measureBidirectionalTokenCoverage($submittedTokens, $correctTokens);
+        $submittedNormalized = implode(' ', $submittedTokens);
+        $correctNormalized = implode(' ', $correctTokens);
+        $containsPhrase = $submittedNormalized !== ''
+            && $correctNormalized !== ''
+            && (str_contains($submittedNormalized, $correctNormalized) || str_contains($correctNormalized, $submittedNormalized));
+
+        $score = max($coverage['f1'], min(0.96, $coverage['precision']));
+
+        if ($containsPhrase && $coverage['precision'] >= 0.80) {
+            $score = max($score, 0.92);
+        }
+
+        return $score;
+    }
+
+    private function looksLikeListReference(string $answer, array $items): bool
+    {
+        if (count($items) >= 3) {
+            return true;
+        }
+
+        return preg_match('/\b\d+\s*[\.)]|[;\n]|,\s*[^,]+,\s*/', $answer) === 1;
+    }
+
+    private function hasReferenceAlternativeMarkup(string $answer): bool
+    {
+        return str_contains($answer, '(')
+            || str_contains($answer, '/')
+            || preg_match('/\b(?:or|other acceptable)\b/i', $answer) === 1;
     }
 
     private function applyHardGuards(string $submitted, string $correct, array $rubric): ?array
@@ -481,6 +896,76 @@ class WrittenAnswerGrader
         }
 
         return 'exact';
+    }
+
+    private function detectPromptMode(string $questionText): string
+    {
+        $question = mb_strtolower(trim($questionText));
+
+        if ($question === '') {
+            return 'general';
+        }
+
+        if (preg_match('/\b(list|mention|enumerate|name|give|state|write)\b/i', $question) === 1) {
+            return 'list';
+        }
+
+        if ($this->countAnswerBlanks($questionText) > 0
+            || preg_match('/\b(complete|fill\s+in|space|blank)\b/i', $question) === 1
+        ) {
+            return 'blank';
+        }
+
+        if (preg_match('/\b(define|what\s+is|what\s+are)\b/i', $question) === 1) {
+            return 'definition';
+        }
+
+        return 'general';
+    }
+
+    private function inferRequiredItemCount(string $questionText): ?int
+    {
+        $question = mb_strtolower($questionText);
+        $numberWords = [
+            'one' => 1,
+            'two' => 2,
+            'three' => 3,
+            'four' => 4,
+            'five' => 5,
+            'six' => 6,
+            'seven' => 7,
+            'eight' => 8,
+            'nine' => 9,
+            'ten' => 10,
+        ];
+
+        if (preg_match('/\b(?:list|mention|enumerate|name|give|state|write)\s+(?:any\s+)?(\d{1,2})\b/i', $question, $match) === 1) {
+            return max(1, (int) $match[1]);
+        }
+
+        foreach ($numberWords as $word => $value) {
+            if (preg_match('/\b(?:list|mention|enumerate|name|give|state|write)\s+(?:any\s+)?' . preg_quote($word, '/') . '\b/i', $question) === 1) {
+                return $value;
+            }
+        }
+
+        if (preg_match('/\((?:list\s*)?(\d{1,2})\)/i', $question, $match) === 1) {
+            return max(1, (int) $match[1]);
+        }
+
+        $blankCount = $this->countAnswerBlanks($questionText);
+        if ($blankCount > 0) {
+            return $blankCount;
+        }
+
+        return null;
+    }
+
+    private function countAnswerBlanks(string $questionText): int
+    {
+        preg_match_all('/_{2,}|-{3,}|\.{3,}/', $questionText, $matches);
+
+        return count($matches[0]);
     }
 
     private function isComparisonAnswer(string $answer): bool
@@ -876,6 +1361,10 @@ class WrittenAnswerGrader
 
     private function hasDirectionalContradiction(string $submitted, string $correct): bool
     {
+        if ($this->hasTargetDirectionMismatch($submitted, $correct)) {
+            return true;
+        }
+
         $pairs = [
             ['increase', 'decrease'],
             ['increases', 'decreases'],
@@ -904,6 +1393,60 @@ class WrittenAnswerGrader
         }
 
         return false;
+    }
+
+    private function hasTargetDirectionMismatch(string $submitted, string $correct): bool
+    {
+        $targets = [
+            'heart rate' => ['heart rate', 'pulse'],
+            'digestion' => ['digestion', 'peristalsis'],
+            'blood pressure' => ['blood pressure'],
+        ];
+
+        foreach ($targets as $targetPhrases) {
+            $submittedDirection = $this->directionForTarget($submitted, $targetPhrases);
+            $correctDirection = $this->directionForTarget($correct, $targetPhrases);
+
+            if ($submittedDirection !== null
+                && $correctDirection !== null
+                && $submittedDirection !== $correctDirection
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function directionForTarget(string $text, array $targetPhrases): ?string
+    {
+        $increaseTerms = ['increase', 'increases', 'increased', 'raise', 'raises', 'raised', 'elevate', 'elevates', 'elevated', 'promote', 'promotes', 'stimulate', 'stimulates'];
+        $decreaseTerms = ['decrease', 'decreases', 'decreased', 'lower', 'lowers', 'lowered', 'reduce', 'reduces', 'reduced', 'suppress', 'suppresses', 'inhibit', 'inhibits'];
+
+        foreach ($targetPhrases as $targetPhrase) {
+            foreach ($increaseTerms as $term) {
+                if ($this->termAppliesToTarget($text, $term, $targetPhrase)) {
+                    return 'increase';
+                }
+            }
+
+            foreach ($decreaseTerms as $term) {
+                if ($this->termAppliesToTarget($text, $term, $targetPhrase)) {
+                    return 'decrease';
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function termAppliesToTarget(string $text, string $term, string $targetPhrase): bool
+    {
+        $term = preg_quote($term, '/');
+        $target = preg_quote($targetPhrase, '/');
+
+        return preg_match('/\b' . $term . '\b(?:\W+\w+){0,3}?\W+\b' . $target . '\b/i', $text) === 1
+            || preg_match('/\b' . $target . '\b(?:\W+\w+){0,3}?\W+\b' . $term . '\b/i', $text) === 1;
     }
 
     private function wordsAreSimilar(string $left, string $right): bool
@@ -1169,7 +1712,13 @@ class WrittenAnswerGrader
     private function normalizeAlternativeAnswers(array|string|null $alternatives): array
     {
         if (is_string($alternatives)) {
-            $alternatives = preg_split('/\r\n|\r|\n/', $alternatives) ?: [];
+            $decoded = json_decode($alternatives, true);
+
+            if (is_array($decoded)) {
+                $alternatives = $decoded;
+            } else {
+                $alternatives = preg_split('/\r\n|\r|\n|\s*\|\s*/', $alternatives) ?: [];
+            }
         }
 
         if (!is_array($alternatives)) {

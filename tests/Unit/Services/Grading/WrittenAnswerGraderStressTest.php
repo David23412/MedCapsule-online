@@ -426,4 +426,91 @@ class WrittenAnswerGraderStressTest extends TestCase
             'Missing one of two numerical values should be incorrect'
         );
     }
+
+    public function test_prompt_mention_one_accepts_any_valid_item_from_reference_list(): void
+    {
+        $question = new Question([
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'Mention one source of energy during muscle contraction.',
+            'correct_answer' => 'Creatine phosphate (phosphocreatine), ATP, glycogen, oxidative phosphorylation',
+        ]);
+
+        $result = $this->grader->evaluateQuestion($question, 'ATP, Creatine Phosphate, Glycogen');
+
+        $this->assertTrue($result['isCorrect'], 'Mention-one prompts should accept any valid listed item.');
+        $this->assertSame('prompt_required_items_match', $result['reasonCode']);
+    }
+
+    public function test_prompt_list_four_tolerates_one_missing_item_when_answer_is_substantially_correct(): void
+    {
+        $question = new Question([
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'Mention four criteria of good attachment in breast feeding.',
+            'correct_answer' => "Chin of baby touches mother's breast, Mouth widely open (obtuse angle), Lower lip is curled outside, Areola can be seen from above",
+        ]);
+
+        $result = $this->grader->evaluateQuestion(
+            $question,
+            "Baby's chin touches the mother's breast. Angle of the mouth is obtuse. Lower lip is curled outside."
+        );
+
+        $this->assertTrue($result['isCorrect'], 'A list answer should not fail for one missing point when most required items are present.');
+        $this->assertSame('prompt_most_required_items_match', $result['reasonCode']);
+    }
+
+    public function test_blank_short_answer_accepts_parenthetical_synonym(): void
+    {
+        $question = new Question([
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'Actin filaments are inserted into Z lines in striated muscles, while they are inserted into ______ in smooth muscles.',
+            'correct_answer' => 'Dense bodies (dense particles)',
+        ]);
+
+        $result = $this->grader->evaluateQuestion($question, 'Dense particles');
+
+        $this->assertTrue($result['isCorrect']);
+        $this->assertSame('blank_short_answer_match', $result['reasonCode']);
+    }
+
+    public function test_blank_short_answer_accepts_core_term_without_extra_descriptor(): void
+    {
+        $question = new Question([
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'The bulb of a hair follicle contains ______ cells, that contribute to hair growth.',
+            'correct_answer' => 'Matrix/progenitor cells/undifferentiated cells',
+        ]);
+
+        $result = $this->grader->evaluateQuestion($question, 'Matrix');
+
+        $this->assertTrue($result['isCorrect']);
+        $this->assertSame('blank_short_answer_match', $result['reasonCode']);
+    }
+
+    public function test_long_medical_typo_is_accepted_for_blank_answer(): void
+    {
+        $question = new Question([
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'Malignant hyperthermia can occur in genetically susceptible individuals receiving halothane and ______.',
+            'correct_answer' => 'Succinylcholine',
+        ]);
+
+        $result = $this->grader->evaluateQuestion($question, 'succinylcholate');
+
+        $this->assertTrue($result['isCorrect']);
+        $this->assertSame('blank_short_answer_match', $result['reasonCode']);
+    }
+
+    public function test_dynamic_grader_does_not_bypass_numerical_multiple_value_requirement(): void
+    {
+        $question = new Question([
+            'question_type' => Question::TYPE_WRITTEN,
+            'question' => 'Complete: Normal blood pressure is ______.',
+            'correct_answer' => '120/80 mmHg',
+        ]);
+
+        $result = $this->grader->evaluateQuestion($question, '120 mmHg');
+
+        $this->assertFalse($result['isCorrect']);
+        $this->assertSame('numerical_mismatch', $result['reasonCode']);
+    }
 }

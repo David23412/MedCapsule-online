@@ -376,7 +376,28 @@
                     </div>
 
                     <div class="course-completion-body">
-                        <div class="completion-ring" id="courseCompletionRing">
+                        <div class="completion-ring" id="courseCompletionRing" role="img" aria-label="Course coverage 0%">
+                            <svg class="completion-ring-svg" viewBox="0 0 180 180" aria-hidden="true" focusable="false">
+                                <defs>
+                                    <linearGradient id="courseCompletionGradient" x1="30" y1="150" x2="150" y2="30" gradientUnits="userSpaceOnUse">
+                                        <stop offset="0%" stop-color="#1d4ed8" />
+                                        <stop offset="48%" stop-color="#0ea5e9" />
+                                        <stop offset="100%" stop-color="#38bdf8" />
+                                    </linearGradient>
+                                    <filter id="courseCompletionGlow" x="-35%" y="-35%" width="170%" height="170%">
+                                        <feGaussianBlur stdDeviation="4" result="blur" />
+                                        <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.45 0 0 0 0 1 0 0 0 0.55 0" />
+                                        <feMerge>
+                                            <feMergeNode />
+                                            <feMergeNode in="SourceGraphic" />
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+                                <circle class="completion-ring-halo" cx="90" cy="90" r="72" />
+                                <circle class="completion-ring-track" cx="90" cy="90" r="66" />
+                                <circle class="completion-ring-progress" id="courseCompletionRingProgress" cx="90" cy="90" r="66" pathLength="100" />
+                                <circle class="completion-ring-spark" id="courseCompletionRingSpark" cx="90" cy="24" r="4.5" />
+                            </svg>
                             <div class="completion-ring-inner">
                                 <span class="completion-ring-value" id="courseCompletionPercent">0%</span>
                                 <span class="completion-ring-label" id="courseCompletionScope">All sources</span>

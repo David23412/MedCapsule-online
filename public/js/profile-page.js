@@ -297,15 +297,25 @@
         const percentage = Number(sourceData ? sourceData.percentage : course.percentage) || 0;
         const remainingQuestions = Math.max(0, Number(totalQuestions || 0) - Number(completedQuestions || 0));
         const sourceCount = (course.sources || []).length;
+        const clampedPercentage = Math.max(0, Math.min(100, percentage));
 
         const ring = document.getElementById('courseCompletionRing');
+        const ringProgress = document.getElementById('courseCompletionRingProgress');
+        const ringSpark = document.getElementById('courseCompletionRingSpark');
         if (ring) {
-            ring.style.setProperty('--completion-percent', `${Math.max(0, Math.min(100, percentage))}%`);
+            ring.style.setProperty('--completion-spark-angle', `${(clampedPercentage / 100) * 360}deg`);
+            ring.setAttribute('aria-label', `Course coverage ${formatPercent(clampedPercentage)}`);
+        }
+        if (ringProgress) {
+            ringProgress.style.strokeDashoffset = String(100 - clampedPercentage);
+        }
+        if (ringSpark) {
+            ringSpark.style.opacity = clampedPercentage > 0 ? '1' : '0';
         }
 
         const meter = document.getElementById('courseCompletionMeter');
         if (meter) {
-            meter.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+            meter.style.width = `${clampedPercentage}%`;
         }
 
         setText('courseCompletionPercent', formatPercent(percentage));

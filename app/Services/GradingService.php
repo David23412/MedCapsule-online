@@ -359,7 +359,8 @@ class GradingService
         // OPTIMIZED QUERY: Eager load relationships and select only needed fields
         $questions = Question::select([
                 'id', 'question', 'question_type', 'correct_answer', 'explanation',
-                'option_a', 'option_b', 'option_c', 'option_d', 'topic_id', 'source'
+                'option_a', 'option_b', 'option_c', 'option_d', 'option_e',
+                'alternative_answers', 'concept', 'topic_id', 'source'
             ])
             ->with([
                 'topic:id,name,course_id',

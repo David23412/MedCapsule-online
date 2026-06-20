@@ -2,8 +2,8 @@
 
 return [
     'shadow_mode_enabled' => (bool) env('WRITTEN_GRADING_SHADOW_MODE', true),
-    'grader_version' => (string) env('WRITTEN_GRADING_VERSION', 'v2.0'),
-    'grader_primary' => (string) env('WRITTEN_GRADING_PRIMARY', 'old'),
+    'grader_version' => (string) env('WRITTEN_GRADING_VERSION', 'v3.0'),
+    'grader_primary' => (string) env('WRITTEN_GRADING_PRIMARY', 'new'),
     'legacy_correct_disagreement_threshold' => (float) env('WRITTEN_GRADING_LEGACY_CORRECT_DISAGREEMENT_THRESHOLD', 0.03),
     'pass_threshold' => (float) env('WRITTEN_GRADING_PASS_THRESHOLD', 0.72),
     'required_concept_threshold' => (float) env('WRITTEN_GRADING_REQUIRED_CONCEPT_THRESHOLD', 0.74),
