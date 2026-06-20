@@ -354,6 +354,55 @@
             </div>
         </div>
 
+        @if(!empty($courseCompletionWidget['courses']))
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="stats-card course-completion-card animate-fadeInUp" style="animation-delay: 0.45s">
+                    <div class="course-completion-header">
+                        <div>
+                            <h5 class="mb-1"><i class="fas fa-circle-notch me-2"></i>Course Coverage</h5>
+                            <p class="course-completion-subtitle mb-0">Questions solved across your enrolled course bank.</p>
+                        </div>
+                        <div class="course-completion-controls">
+                            <select class="form-select" id="courseCompletionCourseSelect" aria-label="Select course completion course">
+                                @foreach($courseCompletionWidget['courses'] as $courseCompletionCourse)
+                                    <option value="{{ $courseCompletionCourse['id'] }}">{{ $courseCompletionCourse['name'] }}</option>
+                                @endforeach
+                            </select>
+                            <select class="form-select" id="courseCompletionSourceSelect" aria-label="Filter course completion by source">
+                                <option value="all">All sources</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="course-completion-body">
+                        <div class="completion-ring" id="courseCompletionRing">
+                            <div class="completion-ring-inner">
+                                <span class="completion-ring-value" id="courseCompletionPercent">0%</span>
+                                <span class="completion-ring-label" id="courseCompletionScope">All sources</span>
+                            </div>
+                        </div>
+
+                        <div class="course-completion-copy">
+                            <div class="course-completion-kicker" id="courseCompletionCourseName">Course</div>
+                            <div class="course-completion-count">
+                                <span id="courseCompletionSolved">0</span>
+                                <span class="course-completion-total">/ <span id="courseCompletionTotal">0</span> questions</span>
+                            </div>
+                            <div class="course-completion-meter" aria-hidden="true">
+                                <span id="courseCompletionMeter"></span>
+                            </div>
+                            <div class="course-completion-meta">
+                                <span id="courseCompletionRemaining">0 remaining</span>
+                                <span id="courseCompletionSourceCount">0 sources</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Study Goals Widget -->
         <div class="row mb-4">
             <div class="col-md-12">
@@ -623,6 +672,7 @@
             correctCount: {{ $currentUserView['correct_answers_count'] ?? auth()->user()->correct_answers_count }},
             incorrectCount: {{ $totalQuestions - ($currentUserView['correct_answers_count'] ?? auth()->user()->correct_answers_count) }},
             totalCount: {{ $totalQuestions }},
+            courseCompletion: @json($courseCompletionWidget),
             weeklyGoal: {{ $currentUserView['weekly_goal'] ?? (auth()->user()->weekly_goal ?? 50) }},
             examDate: @json($currentUserView['exam_date'] ?? null),
 

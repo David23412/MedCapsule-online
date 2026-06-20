@@ -245,6 +245,98 @@
         });
     }
 
+    const completionCourseSelect = document.getElementById('courseCompletionCourseSelect');
+    const completionSourceSelect = document.getElementById('courseCompletionSourceSelect');
+    const completionWidget = profilePageConfig.courseCompletion || {};
+    const completionCourses = Array.isArray(completionWidget.courses) ? completionWidget.courses : [];
+    const completionCoursesById = new Map(completionCourses.map((course) => [String(course.id), course]));
+
+    const formatNumber = (value) => new Intl.NumberFormat().format(Number(value || 0));
+    const formatPercent = (value) => {
+        const numericValue = Number(value || 0);
+        return `${Number.isInteger(numericValue) ? numericValue : numericValue.toFixed(1)}%`;
+    };
+
+    const setText = (id, value) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    };
+
+    function populateCompletionSources(course) {
+        if (!completionSourceSelect || !course) {
+            return;
+        }
+
+        completionSourceSelect.innerHTML = '<option value="all">All sources</option>';
+        (course.sources || []).forEach((source) => {
+            const option = document.createElement('option');
+            option.value = source.source;
+            option.textContent = source.source;
+            completionSourceSelect.appendChild(option);
+        });
+    }
+
+    function updateCompletionWidget() {
+        if (!completionCourseSelect || !completionSourceSelect) {
+            return;
+        }
+
+        const course = completionCoursesById.get(String(completionCourseSelect.value)) || completionCourses[0];
+        if (!course) {
+            return;
+        }
+
+        const selectedSource = completionSourceSelect.value || 'all';
+        const sourceData = selectedSource === 'all'
+            ? null
+            : (course.sources || []).find((source) => source.source === selectedSource);
+        const totalQuestions = sourceData ? sourceData.total_questions : course.total_questions;
+        const completedQuestions = sourceData ? sourceData.completed_questions : course.completed_questions;
+        const percentage = Number(sourceData ? sourceData.percentage : course.percentage) || 0;
+        const remainingQuestions = Math.max(0, Number(totalQuestions || 0) - Number(completedQuestions || 0));
+        const sourceCount = (course.sources || []).length;
+
+        const ring = document.getElementById('courseCompletionRing');
+        if (ring) {
+            ring.style.setProperty('--completion-percent', `${Math.max(0, Math.min(100, percentage))}%`);
+        }
+
+        const meter = document.getElementById('courseCompletionMeter');
+        if (meter) {
+            meter.style.width = `${Math.max(0, Math.min(100, percentage))}%`;
+        }
+
+        setText('courseCompletionPercent', formatPercent(percentage));
+        setText('courseCompletionScope', sourceData ? sourceData.source : 'All sources');
+        setText('courseCompletionCourseName', course.name);
+        setText('courseCompletionSolved', formatNumber(completedQuestions));
+        setText('courseCompletionTotal', formatNumber(totalQuestions));
+        setText('courseCompletionRemaining', `${formatNumber(remainingQuestions)} remaining`);
+        setText('courseCompletionSourceCount', `${formatNumber(sourceCount)} source${sourceCount === 1 ? '' : 's'}`);
+    }
+
+    if (completionCourseSelect && completionSourceSelect && completionCourses.length > 0) {
+        const selectedCourseId = completionWidget.selected_course_id || completionCourses[0].id;
+        completionCourseSelect.value = String(selectedCourseId);
+        if (!completionCoursesById.has(String(completionCourseSelect.value))) {
+            completionCourseSelect.value = String(completionCourses[0].id);
+        }
+
+        populateCompletionSources(completionCoursesById.get(String(completionCourseSelect.value)) || completionCourses[0]);
+        updateCompletionWidget();
+
+        completionCourseSelect.addEventListener('change', function () {
+            const course = completionCoursesById.get(String(completionCourseSelect.value));
+            populateCompletionSources(course);
+            completionSourceSelect.value = 'all';
+            updateCompletionWidget();
+        });
+
+        completionSourceSelect.addEventListener('change', updateCompletionWidget);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarBackdrop = document.getElementById('profileSidebarBackdrop');

@@ -242,6 +242,7 @@ class ProfileController extends Controller
             });
 
         $weakTopicCoach = $this->performanceTrackingService->getWeakTopicCoach($user, 5);
+        $courseCompletionWidget = $this->getCourseQuestionCompletionWidget($user->id);
         
         // Leaderboard top 10 — includes users with XP or correct answers
         $leaderboard = Cache::remember('profile_leaderboard_top10_v2', 300, function () use ($hasLeaderboardColumn) {
@@ -308,8 +309,186 @@ class ProfileController extends Controller
             'userRank',
             'formattedStudyTimes',
             'currentUserView',
-            'weakTopicCoach'
+            'weakTopicCoach',
+            'courseCompletionWidget'
         ));
+    }
+
+    private function getCourseQuestionCompletionWidget(int $userId): array
+    {
+        $enrolledCourseIds = DB::table('course_user')
+            ->where('user_id', $userId)
+            ->where('is_enrolled', true)
+            ->pluck('course_id')
+            ->map(fn ($courseId) => (int) $courseId)
+            ->all();
+
+        if (empty($enrolledCourseIds)) {
+            return [
+                'courses' => [],
+                'selected_course_id' => null,
+            ];
+        }
+
+        $sourceExpression = "COALESCE(NULLIF(TRIM(questions.source), ''), 'General')";
+
+        $questionTotals = DB::table('questions')
+            ->join('topics', 'questions.topic_id', '=', 'topics.id')
+            ->join('courses', 'topics.course_id', '=', 'courses.id')
+            ->whereIn('topics.course_id', $enrolledCourseIds)
+            ->select(
+                'topics.course_id',
+                'courses.name as course_name',
+                DB::raw($sourceExpression . ' as source'),
+                DB::raw('COUNT(*) as total_questions')
+            )
+            ->groupBy('topics.course_id', 'courses.name', DB::raw($sourceExpression))
+            ->orderBy('courses.name')
+            ->orderBy('source')
+            ->get();
+
+        if ($questionTotals->isEmpty()) {
+            return [
+                'courses' => [],
+                'selected_course_id' => null,
+            ];
+        }
+
+        $questionLookup = DB::table('questions')
+            ->join('topics', 'questions.topic_id', '=', 'topics.id')
+            ->whereIn('topics.course_id', $enrolledCourseIds)
+            ->select(
+                'questions.id',
+                'topics.course_id',
+                DB::raw($sourceExpression . ' as source')
+            )
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                (int) $row->id => [
+                    'course_id' => (int) $row->course_id,
+                    'source' => (string) $row->source,
+                ],
+            ])
+            ->all();
+
+        $completedQuestionIdsByCourseSource = [];
+
+        if (Schema::hasTable('user_topic_source_progress')) {
+            DB::table('user_topic_source_progress')
+                ->join('topics', 'user_topic_source_progress.topic_id', '=', 'topics.id')
+                ->where('user_topic_source_progress.user_id', $userId)
+                ->whereIn('topics.course_id', $enrolledCourseIds)
+                ->select(
+                    'topics.course_id',
+                    'user_topic_source_progress.source',
+                    'user_topic_source_progress.completed_question_ids'
+                )
+                ->get()
+                ->each(function ($row) use (&$completedQuestionIdsByCourseSource) {
+                    $key = (int) $row->course_id . '|' . (string) $row->source;
+                    foreach ($this->decodeQuestionIds($row->completed_question_ids) as $questionId) {
+                        $completedQuestionIdsByCourseSource[$key][$questionId] = true;
+                    }
+                });
+        }
+
+        DB::table('quiz_attempts')
+            ->join('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
+            ->where('quiz_attempts.user_id', $userId)
+            ->whereIn('topics.course_id', $enrolledCourseIds)
+            ->whereNotNull('quiz_attempts.question_data')
+            ->select('quiz_attempts.question_data')
+            ->orderBy('quiz_attempts.id')
+            ->get()
+            ->each(function ($attempt) use (&$completedQuestionIdsByCourseSource, $questionLookup) {
+                $questionData = json_decode((string) $attempt->question_data, true);
+
+                if (!is_array($questionData)) {
+                    return;
+                }
+
+                foreach ($questionData as $item) {
+                    $questionId = (int) ($item['question_id'] ?? 0);
+                    if ($questionId <= 0 || !isset($questionLookup[$questionId])) {
+                        continue;
+                    }
+
+                    $courseId = (int) $questionLookup[$questionId]['course_id'];
+                    $source = (string) $questionLookup[$questionId]['source'];
+                    $key = $courseId . '|' . $source;
+                    $completedQuestionIdsByCourseSource[$key][$questionId] = true;
+                }
+            });
+
+        $courses = [];
+
+        foreach ($questionTotals as $row) {
+            $courseId = (int) $row->course_id;
+            $source = (string) $row->source;
+            $totalQuestions = (int) $row->total_questions;
+            $completedQuestions = min(
+                $totalQuestions,
+                count($completedQuestionIdsByCourseSource[$courseId . '|' . $source] ?? [])
+            );
+
+            if (!isset($courses[$courseId])) {
+                $courses[$courseId] = [
+                    'id' => $courseId,
+                    'name' => (string) $row->course_name,
+                    'total_questions' => 0,
+                    'completed_questions' => 0,
+                    'percentage' => 0,
+                    'sources' => [],
+                ];
+            }
+
+            $courses[$courseId]['total_questions'] += $totalQuestions;
+            $courses[$courseId]['completed_questions'] += $completedQuestions;
+            $courses[$courseId]['sources'][] = [
+                'source' => $source,
+                'total_questions' => $totalQuestions,
+                'completed_questions' => $completedQuestions,
+                'percentage' => $totalQuestions > 0
+                    ? round(($completedQuestions / $totalQuestions) * 100, 1)
+                    : 0,
+            ];
+        }
+
+        foreach ($courses as &$course) {
+            $course['percentage'] = $course['total_questions'] > 0
+                ? round(($course['completed_questions'] / $course['total_questions']) * 100, 1)
+                : 0;
+            $course['sources'] = collect($course['sources'])
+                ->sortBy('source', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values()
+                ->all();
+        }
+        unset($course);
+
+        $courses = array_values($courses);
+
+        return [
+            'courses' => $courses,
+            'selected_course_id' => $courses[0]['id'] ?? null,
+        ];
+    }
+
+    private function decodeQuestionIds(mixed $value): array
+    {
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+        }
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return collect($value)
+            ->map(fn ($questionId) => (int) $questionId)
+            ->filter(fn ($questionId) => $questionId > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
