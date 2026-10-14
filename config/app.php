@@ -54,7 +54,7 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'force_https' => env('FORCE_HTTPS', false),
+    'force_https' => env('FORCE_HTTPS', parse_url(env('APP_URL', 'http://localhost'), PHP_URL_SCHEME) === 'https'),
     'enable_ngrok_compat' => env('ENABLE_NGROK_COMPAT', false),
 
     /*

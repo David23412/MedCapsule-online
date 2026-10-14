@@ -18,6 +18,11 @@ class HttpsRedirectMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // The container health endpoint must remain reachable over loopback HTTP.
+        if ($request->is('up')) {
+            return $next($request);
+        }
+
         $shouldForceHttps = (bool) config('app.force_https', false);
 
         if (
@@ -39,8 +44,12 @@ class HttpsRedirectMiddleware
                 // Preserve the original method and body for non-GET requests.
                 return redirect()->to($secureUrl, 308);
             }
+        }
 
-            // Set security headers for HTTPS
+        if ($request->secure()) {
+            // Match both session and XSRF cookies to the browser's HTTPS origin.
+            config(['session.secure' => true]);
+
             $response = $next($request);
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
             $response->headers->set('X-Content-Type-Options', 'nosniff');

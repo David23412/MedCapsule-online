@@ -33,7 +33,6 @@ use Illuminate\Support\Facades\Schema;
         $cacheKey = UltraConsolidatedCacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
         $formData = Cache::remember($cacheKey, 86400, function () {
             return [
-                'csrf_token' => csrf_token(),
                 'app_name' => config('app.name'),
                 'login_attempts_remaining' => 5
             ];
