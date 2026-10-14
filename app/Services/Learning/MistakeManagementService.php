@@ -135,8 +135,10 @@ class MistakeManagementService
                 ->get();
 
             $topicCounts = (clone $baseQuery)
+                ->withoutEagerLoads()
                 ->join('questions', 'questions.id', '=', 'mistakes.question_id')
-                ->selectRaw('questions.topic_id as topic_id, COUNT(*) as total')
+                ->select('questions.topic_id as topic_id')
+                ->selectRaw('COUNT(*) as total')
                 ->groupBy('questions.topic_id')
                 ->pluck('total', 'topic_id')
                 ->mapWithKeys(fn ($count, $topicId) => [(int) $topicId => (int) $count])

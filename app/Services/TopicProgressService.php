@@ -8,6 +8,7 @@ use App\Models\Topic;
 use App\Models\UserTopicProgress;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class TopicProgressService
 {
@@ -153,7 +154,9 @@ class TopicProgressService
             ->where('extra_topic', '!=', '')
             ->where(function ($query) use ($topicIds) {
                 foreach ($topicIds as $topicId) {
-                    $query->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topicId]);
+                    $query->orWhereRaw(DB::getDriverName() === 'sqlite'
+                        ? "INSTR(',' || REPLACE(extra_topic, ' ', '') || ',', ',' || ? || ',') > 0"
+                        : 'FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topicId]);
                 }
             })
             ->get(['topic_id', 'source', 'extra_topic']);

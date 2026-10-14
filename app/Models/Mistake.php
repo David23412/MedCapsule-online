@@ -14,6 +14,7 @@ use App\Services\Learning\FsrsScheduler;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
+/** @phpstan-consistent-constructor */
 class Mistake extends Model
 {
     use HasFactory;

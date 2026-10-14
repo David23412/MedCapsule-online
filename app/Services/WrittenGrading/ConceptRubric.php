@@ -16,21 +16,21 @@ class ConceptRubric
      *
      * @var string
      */
-    public string $id;
+    public string $id = '';
 
     /**
      * Human-readable question type (definition, mechanism, enumeration, compare, etc.).
      *
      * @var string
      */
-    public string $type;
+    public string $type = 'generic';
 
     /**
      * Maximum score for this question (typically 100).
      *
      * @var int
      */
-    public int $maxScore;
+    public int $maxScore = 100;
 
     /**
      * Ordered list of core / secondary / bonus concepts.

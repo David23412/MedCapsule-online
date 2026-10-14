@@ -2,7 +2,6 @@
 
 namespace App\Events;
 
-// REMOVED: use App\Models\Notification; - Using cache-based notifications instead
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
@@ -21,9 +20,9 @@ class NotificationCreated
     /**
      * Create a new event instance.
      */
-    public function __construct(Notification $notification, int $userId)
+    public function __construct(array|object $notification, int $userId)
     {
-        $this->notification = $notification;
+        $this->notification = (object) $notification;
         $this->userId = $userId;
     }
 

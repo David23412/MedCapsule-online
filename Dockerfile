@@ -53,10 +53,11 @@ COPY docker/php/conf.d/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 COPY docker/php/conf.d/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/docker-entrypoint
+COPY docker/healthcheck.sh /usr/local/bin/docker-healthcheck
 COPY --from=frontend-builder /var/www/html/public/build /var/www/html/public/build
 
 RUN chmod 0644 /etc/cron.d/laravel-scheduler \
-    && chmod +x /usr/local/bin/docker-entrypoint \
+    && chmod +x /usr/local/bin/docker-entrypoint /usr/local/bin/docker-healthcheck \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 ENTRYPOINT ["docker-entrypoint"]
@@ -64,6 +65,6 @@ ENTRYPOINT ["docker-entrypoint"]
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl -f http://localhost/up || exit 1
+  CMD ["docker-healthcheck"]
 
 CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

@@ -181,16 +181,20 @@ class NotificationService
         $allAssignments = \App\Models\Assignment::with(['assignedUsers', 'topic', 'course', 'attempts'])
             ->where('deadline', '<=', now()->addHours(24))
             ->where('deadline', '>', now())
-            ->whereDoesntHave('notifications', function($query) {
-                $query->where('type', 'assignment_reminder')
-                      ->where('created_at', '>=', now()->subHours(12));
-            })
             ->get();
             
         foreach ($allAssignments as $assignment) {
             // Send notification to each assigned user if their status is active
             foreach ($assignment->assignedUsers as $user) {
-                if ($assignment->getStatusForUser($user) !== \App\Models\Assignment::STATUS_ACTIVE) {
+                $deadline = $user->pivot->extended_deadline
+                    ? Carbon::parse($user->pivot->extended_deadline)
+                    : $assignment->deadline;
+                if ($assignment->hasUserAttempted($user->id) || $deadline->isPast() || $deadline->gt(now()->addHours(24))) {
+                    continue;
+                }
+
+                $reminderKey = 'assignment_deadline_reminder:'.$assignment->id.':'.$user->id.':'.$deadline->timestamp;
+                if (!Cache::add($reminderKey, true, now()->addHours(12))) {
                     continue;
                 }
 
@@ -199,16 +203,17 @@ class NotificationService
                         $user->id,
                         self::ASSIGNMENT_REMINDER,
                         'Assignment Due Soon!',
-                        "Reminder: '{$assignment->title}' is due {$assignment->deadline->diffForHumans()}",
+                        "Reminder: '{$assignment->title}' is due {$deadline->diffForHumans()}",
                         [
                             'assignment_id' => $assignment->id,
-                            'deadline' => $assignment->deadline->toISOString(),
-                            'time_remaining' => $assignment->getTimeRemaining(),
+                            'deadline' => $deadline->toISOString(),
+                            'time_remaining' => max(0, (int) now()->diffInSeconds($deadline, false)),
                             'action_url' => route('student.assignments.show', $assignment->id)
                         ]
                     );
                     $sentCount++;
-                } catch (\Exception $e) {
+                } catch (\Throwable $e) {
+                    Cache::forget($reminderKey);
                     Log::error('Failed to send assignment reminder', [
                         'assignment_id' => $assignment->id,
                         'user_id' => $user->id,

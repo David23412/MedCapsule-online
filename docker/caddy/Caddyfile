@@ -1,0 +1,4 @@
+medcapsule.online, www.medcapsule.online {
+    encode zstd gzip
+    reverse_proxy app:80
+}

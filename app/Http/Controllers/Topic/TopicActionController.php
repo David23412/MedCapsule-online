@@ -6,9 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TopicRequest;
 use App\Models\Topic;
 use App\Models\Course;
-use App\Models\Question;
-use App\Models\QuizAttempt;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -91,20 +88,15 @@ class TopicActionController extends Controller
     {
         $topic = Topic::findOrFail($topicId);
 
-        // COMPLEXITY REDUCTION: Extract question counting
-        $totalQuestions = $this->getTotalQuestions($topicId);
-        if ($totalQuestions === 0) {
+        $userId = auth()->id();
+        if ($userId === null) {
             return;
         }
 
-        // COMPLEXITY REDUCTION: Extract grade calculation
-        $percentageGrade = $this->calculateTopicGrade($topicId, $totalQuestions);
-
-        // Update topic details
-        $topic->update([
-            'percentage_grade' => $percentageGrade,
-            'last_attempt_date' => Carbon::now()
-        ]);
+        // Use the same per-student progress calculation as the topic listing.
+        $topic->load(['userProgress' => fn ($query) => $query->where('user_id', $userId)]);
+        app(\App\Services\TopicProgressService::class)
+            ->hydrateTopicsWithFreshQuizProgress(collect([$topic]), $userId);
     }
 
     /**
@@ -127,26 +119,4 @@ class TopicActionController extends Controller
             ->count();
     }
 
-    /**
-     * COMPLEXITY REDUCTION: Get total questions for topic
-     */
-    private function getTotalQuestions($topicId): int
-    {
-        return Question::where('topic_id', $topicId)->count();
-    }
-
-    /**
-     * COMPLEXITY REDUCTION: Calculate topic grade percentage
-     */
-    private function calculateTopicGrade($topicId, $totalQuestions): float
-    {
-        $incorrectAnswers = QuizAttempt::whereHas('question', function ($query) use ($topicId) {
-            $query->where('topic_id', $topicId);
-        })
-        ->whereColumn('submitted_answer', '!=', 'questions.correct_answer')
-        ->count();
-
-        $correctAnswers = $totalQuestions - $incorrectAnswers;
-        return ($correctAnswers / $totalQuestions) * 100;
-    }
 }

@@ -786,8 +786,5 @@ class Course extends Model
         return $this->type === 'custom';
     }
 
-    public function getCategorizations(): array
-    {
-        return app(\App\Services\CourseTypeService::class)->getCategorizations($this);
-    }
+
 }

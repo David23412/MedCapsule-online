@@ -66,7 +66,7 @@
 
                 <!-- Right Column - Form Fields -->
                 <div class="col-lg-7">
-                    <form method="POST" action="{{ secure_url('add-course') }}" enctype="multipart/form-data">
+                    <form method="POST" action="{{ route('add-course') }}" enctype="multipart/form-data">
                         @csrf
 
                         <div class="mb-4">

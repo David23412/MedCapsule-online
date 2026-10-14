@@ -398,9 +398,6 @@ class TopicLockingService
             Cache::forget($key);
         }
 
-        // Invalidate course categorization cache when that optional service exists.
-        if (class_exists(CourseTypeService::class)) {
-            app(CourseTypeService::class)->invalidateCache($topic->course);
-        }
+
     }
 }

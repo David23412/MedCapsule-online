@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Schema;
 use App\Services\Core\UltraConsolidatedCacheService;
 use Illuminate\Support\Facades\Validator;
 
+/** @phpstan-consistent-constructor */
 class QuizAttempt extends Model
 {
     use HasFactory;

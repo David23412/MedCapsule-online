@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Schema;
 
+/** @phpstan-consistent-constructor */
 class UserMistakeMastery extends Model
 {
     use HasFactory;

@@ -43,7 +43,7 @@ class SendStudyReminders extends Command
         $this->info('📊 Checking for weak topics...');
 
         $users = User::where('role', User::ROLE_STUDENT)
-            ->whereHas('topicProgress', function ($query) {
+            ->whereHas('userTopicProgress', function ($query) {
                 $query->whereNotNull('percentage_grade')
                     ->where('percentage_grade', '<', 75);
             })

@@ -49,22 +49,6 @@ class MedicalTerminology extends Model
     }
 
     /**
-     * Get the subdomain that this terminology belongs to.
-     */
-    public function subdomain(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(MedicalSubdomain::class, 'subdomain_id');
-    }
-
-    /**
-     * Get synonyms for this term.
-     */
-    public function synonyms(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(MedicalSynonym::class, 'term', 'term');
-    }
-
-    /**
      * Scope a query to only include critical terms.
      */
     public function scopeCritical($query)

@@ -231,7 +231,11 @@ class UniversalNotificationService
         $unreadKey = "user_unread_count_{$userId}";
 
         // 🔥 HYPER-FAST DUPLICATE PREVENTION USING HASH MAP
-        $duplicateHash = md5("{$type}:{$title}");
+        $duplicateIdentity = "{$type}:{$title}";
+        if (isset($data['assignment_id'])) {
+            $duplicateIdentity .= ':assignment:'.$data['assignment_id'];
+        }
+        $duplicateHash = md5($duplicateIdentity);
         $duplicateKey = "user_notif_dup_{$userId}_{$duplicateHash}";
 
         // Check duplicate in O(1) time using cache
