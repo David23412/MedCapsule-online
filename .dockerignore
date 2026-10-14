@@ -15,3 +15,9 @@ docs/
 .gitattributes
 .gitignore
 .env.production
+
+storage/cache/
+storage/framework/sessions/*
+bootstrap/cache/*.php
+.phpunit*
+artifacts/

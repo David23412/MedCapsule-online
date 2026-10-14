@@ -74,22 +74,14 @@ class QuestionController extends Controller
                 throw new \Exception('Invalid file upload');
             }
 
-            // SECURITY FIX: Check for malicious filename patterns
-            $originalName = $file->getClientOriginalName();
-            if (preg_match('/[<>\"\'\/\\\\]/', $originalName)) {
-                throw new \Exception('Invalid filename. Please use only alphanumeric characters, dots, and underscores.');
+            // Never expose a client-supplied filename or extension in public storage.
+            // UploadedFile::extension() derives the extension from the validated MIME type.
+            $extension = strtolower((string) $file->extension());
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
+                throw new \Exception('Unsupported image type.');
             }
 
-            // SECURITY FIX: Check for double extensions
-            $nameWithoutExt = pathinfo($originalName, PATHINFO_FILENAME);
-            $extension = strtolower($file->getClientOriginalExtension());
-            if (strpos($nameWithoutExt, '.') !== false) {
-                throw new \Exception('Double extensions are not allowed for security reasons.');
-            }
-
-            // SECURITY FIX: Sanitize filename
-            $sanitizedFilename = time() . '_' . preg_replace('/[^a-zA-Z0-9.]/', '_', $originalName);
-            $path = $file->storeAs('questions', $sanitizedFilename, 'public');
+            $path = $file->storeAs('questions', (string) Str::uuid() . '.' . $extension, 'public');
             $imageUrl = 'storage/' . $path;
 
         } elseif ($request->filled('image_url')) {

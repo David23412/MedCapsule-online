@@ -16,7 +16,6 @@ class CoursePreviewController extends Controller
 {
     public function __construct()
     {
-        parent::__construct();
         // Controller initialized log ANNIHILATED
         $this->middleware(['auth']);
     }

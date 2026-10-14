@@ -53,41 +53,50 @@
         }
 
         .navbar {
-            background-color: white;
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.92);
+            padding: 0;
+            height: 64px;
+            box-shadow: none;
+            border-bottom: 1px solid #e2e8f0;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
-            backdrop-filter: blur(10px);
-            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
 
         .navbar .container {
             display: flex;
-            justify-content: space-between;
             align-items: center;
             width: 100%;
             max-width: none;
-            margin: 0 auto;
-            padding: 0 2rem;
+            margin: 0;
+            padding: 0 1.25rem;
+            height: 100%;
+            gap: 1rem;
         }
 
+        /* ── Pill icon brand ── */
         .navbar-brand {
-            color: #007bff;
-            font-weight: 700;
-            font-size: 1.5rem;
-            text-decoration: none;
+            flex-shrink: 0;
             display: flex;
             align-items: center;
-            transition: transform 0.3s ease;
+            justify-content: center;
+            text-decoration: none;
         }
 
-        .navbar-brand:hover {
-            color: #0056b3;
-            transform: translateY(-1px);
+        .navbar-brand svg {
+            width: 34px;
+            height: 34px;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease;
+            filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.15));
+        }
+
+        .navbar-brand:hover svg {
+            transform: scale(1.15) rotate(-6deg);
+            filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.35));
         }
 
         .nav-links {
@@ -121,6 +130,230 @@
 
         .nav-link:hover i {
             transform: scale(1.1);
+        }
+
+        /* ── Tutor Navbar Inline Progress ─────────────────────────────── */
+        .tutor-navbar .container {
+            gap: 1rem;
+        }
+
+        .navbar-progress-wrap {
+            flex: 1 1 0%;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .np-desktop {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .np-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #64748b;
+            margin: 0;
+            padding: 0;
+        }
+
+        .np-crumb {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .np-separator {
+            color: rgba(100, 116, 139, 0.4);
+        }
+
+        .np-count {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .np-mobile {
+            display: none;
+            flex-shrink: 0;
+        }
+
+        .np-mobile-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #007bff;
+            opacity: 0.75;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+        }
+
+        .np-bar-wrap {
+            flex: 1;
+            min-width: 60px;
+        }
+
+        .np-bar-track {
+            height: 8px;
+            background: rgba(0, 123, 255, 0.10);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .np-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #00a6ff);
+            border-radius: 99px;
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ── Navbar right-side controls ── */
+        .navbar-controls {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-left: 0.5rem;
+        }
+
+        .navbar-timer-wrap {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .timer-inline {
+            margin-bottom: 0 !important;
+            padding: 0.4rem 0.75rem !important;
+            font-size: 0.9rem !important;
+            box-shadow: none !important;
+            background: rgba(0, 123, 255, 0.06) !important;
+            border-radius: 10px !important;
+            gap: 0.4rem !important;
+        }
+
+        .timer-inline i {
+            font-size: 0.78rem !important;
+        }
+
+        .timer-inline.warning {
+            background: rgba(255, 193, 7, 0.12) !important;
+            border: 1px solid rgba(255, 193, 7, 0.3) !important;
+        }
+
+        .timer-inline.danger {
+            background: rgba(220, 53, 69, 0.12) !important;
+            border: 1px solid rgba(220, 53, 69, 0.3) !important;
+            animation: none !important;
+        }
+
+        .btn-navbar-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: #475569;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease;
+            padding: 0;
+        }
+
+        .btn-navbar-icon:hover {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        .btn-navbar-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-navbar-exit {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            height: 40px;
+            padding: 0 1rem;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: #ef4444;
+            font-size: 0.88rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-navbar-exit:hover {
+            background: rgba(239, 68, 68, 0.08);
+            color: #dc2626;
+        }
+
+        .btn-navbar-exit svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 900px) {
+            .np-desktop {
+                display: none;
+            }
+            .np-mobile {
+                display: block;
+            }
+            .btn-navbar-icon.fullscreen-btn {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar .container {
+                padding: 0 0.75rem;
+                gap: 0.6rem;
+            }
+            .tutor-navbar .container {
+                gap: 0.6rem;
+            }
+            .navbar-progress-wrap {
+                gap: 0.5rem;
+            }
+            .navbar-timer-wrap .timer-inline {
+                font-size: 0.8rem !important;
+                padding: 0.3rem 0.55rem !important;
+            }
+            .navbar-timer-wrap .timer-inline i {
+                display: none;
+            }
+            .btn-navbar-exit span {
+                display: none;
+            }
+            .btn-navbar-exit {
+                width: 40px;
+                padding: 0;
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-brand {
+                width: 34px;
+                height: 34px;
+            }
+            .navbar-brand svg {
+                width: 18px;
+                height: 18px;
+            }
         }
 
         .profile-circle {
@@ -464,13 +697,29 @@
         }
 
         .option-card.correct {
-            border-color: #28a745;
-            background: #d4edda;
+            border: 2.5px solid #00c853 !important;
+            background-color: #e8f5e9 !important;
+            color: #007a33 !important;
+            font-weight: 600;
+        }
+
+        .option-card.correct .option-letter {
+            background-color: #00c853 !important;
+            color: white !important;
+            border-color: #00c853 !important;
         }
 
         .option-card.incorrect {
-            border-color: #dc3545;
-            background: #f8d7da;
+            border: 2.5px solid #ff3d00 !important;
+            background-color: #ffebee !important;
+            color: #d84315 !important;
+            font-weight: 600;
+        }
+
+        .option-card.incorrect .option-letter {
+            background-color: #ff3d00 !important;
+            color: white !important;
+            border-color: #ff3d00 !important;
         }
 
         .correct-answer-card {
@@ -1752,7 +2001,7 @@
         .question-sidebar {
             position: fixed;
             left: 0;
-            top: 80px;
+            top: 64px;
             bottom: 0;
             width: 80px;
             background: white;
@@ -1760,7 +2009,7 @@
             z-index: 999;
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 1rem 0.5rem;
+            padding: 2.5rem 0.5rem 1rem 0.5rem;
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
@@ -1787,13 +2036,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 600;
+            font-weight: 700;
             font-size: 1.1rem;
             cursor: pointer;
             transition: all 0.3s ease;
-            border: 3px solid #e9ecef;
+            border: 2px solid #e9ecef;
             background: white;
-            color: #495057;
+            color: #111827;
             flex-shrink: 0;
         }
 
@@ -2594,19 +2843,50 @@
     @include('components.lightning-preloader')
 
     <!-- Navigation Bar -->
-    <nav class="navbar">
+    <nav class="navbar tutor-navbar">
         <div class="container">
-            <a class="navbar-brand" href="/">MedCapsule</a>
-            <div class="nav-links">
-                <a href="javascript:history.back()" class="nav-link">← Back</a>
-                @php
-                    $profileImageUrl = $currentUserView['profile_image_url'] ?? Auth::user()->getProfileImageUrl();
-                    $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(Auth::user()->name) . '&size=200&background=007bff&color=ffffff');
-                @endphp
-                <a href="{{ route('profile') }}" class="profile-circle">
-                    <img src="{{ $profileImageUrl }}" alt="Profile Picture" class="profile-image"
-                        onerror="this.src='{{ $profileFallbackUrl }}'">
-                </a>
+            {{-- Pill icon only --}}
+            <a class="navbar-brand" href="/" title="MedCapsule Home">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+                    <defs>
+                        <linearGradient id="nbPillBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#1d4ed8"/></linearGradient>
+                        <linearGradient id="nbPillRed" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#dc2626"/></linearGradient>
+                    </defs>
+                    <path d="M16,12 L9,12 A4,4 0 0,0 9,20 L16,20 Z" fill="url(#nbPillBlue)"/>
+                    <path d="M16,12 L23,12 A4,4 0 0,1 23,20 L16,20 Z" fill="url(#nbPillRed)"/>
+                    <line x1="16" y1="12" x2="16" y2="20" stroke="white" stroke-width="0.8"/>
+                </svg>
+            </a>
+
+            {{-- Inline progress bar — fills available space --}}
+            <div class="navbar-progress-wrap">
+                {{-- Desktop: Question count --}}
+                <div class="np-desktop">
+                    <div class="np-question-count">Question <span class="np-count" id="np-current-q">1</span> / <span class="np-count" id="np-total-q">{{ $questions->count() }}</span></div>
+                </div>
+                {{-- Mobile: compact question count --}}
+                <div class="np-mobile">
+                    <span class="np-mobile-label">Q <span id="np-mobile-current">1</span>/<span id="np-mobile-total">{{ $questions->count() }}</span></span>
+                </div>
+                {{-- Progress bar --}}
+                <div class="np-bar-wrap">
+                    <div class="np-bar-track">
+                        <div class="np-bar-fill" id="navbar-progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Right-side controls --}}
+            <div class="navbar-controls">
+                {{-- Inline timer --}}
+                <div class="navbar-timer-wrap">
+                    <div class="timer timer-inline" id="navbar-timer">
+                        <i class="fas fa-clock"></i>
+                        <span id="timer">00:00</span>
+                    </div>
+                </div>
+
+
             </div>
         </div>
     </nav>
@@ -2622,35 +2902,11 @@
     </div>
 
     <div class="main-content">
+
+
         <div class="container">
-            <div class="topic-header mb-4">
-                @if(isset($is_random_quiz) && $is_random_quiz)
-                    <h1>Random Quiz - Tutor Mode</h1>
-                @else
-                    <h1>{{ $topic->name }} - Tutor Mode</h1>
-                @endif
-            </div>
 
-            <!-- Source information display -->
-            @if(isset($selected_sources) && count($selected_sources) > 0 && !in_array('all', $selected_sources))
-                <div class="sources-info text-center mb-4">
-                    <span class="text-muted">
-                        Source: {{ implode(', ', $selected_sources) }}
-                    </span>
-                </div>
-            @endif
-
-            <!-- Progress bar -->
-            <div class="progress-bar-container">
-                <div class="timer">
-                    <i class="fas fa-clock"></i>
-                    <span id="timer">00:00</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
-                </div>
-                <div class="progress-text" id="progress-text">0 of {{ $questions->count() }} questions completed</div>
-            </div>
+            {{-- Progress bar removed — now lives in the navbar above --}}
 
             <!-- Questions Container -->
             @foreach($questions as $index => $question)
@@ -2663,6 +2919,22 @@
                         <div class="question-main">
                             <div class="d-flex justify-content-between align-items-start mb-3">
                                 <div class="question-text-container">
+                                    <div class="mb-3">
+                                        <p class="np-breadcrumb">
+                                            @if(isset($course) && $course->name)
+                                                <span class="np-crumb"><span>{{ $course->name }}</span></span>
+                                                <span class="np-crumb"><span class="np-separator">›</span><span>{{ isset($topic) && $topic->name ? $topic->name : 'Topic' }}</span></span>
+                                            @else
+                                                <span class="np-crumb"><span>{{ isset($topic) && $topic->name ? $topic->name : 'Random Quiz' }}</span></span>
+                                            @endif
+                                        </p>
+                                        @if(!empty($qObj->source))
+                                            <div class="text-muted mt-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem;">
+                                                {{ $qObj->source }}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer; opacity: 0.6;" title="Copy Source" onclick="navigator.clipboard.writeText('{{ addslashes($qObj->source) }}')"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                                            </div>
+                                        @endif
+                                    </div>
                                     <div class="question-text">{{ is_array($question) ? $question['question']->question : $question->question }}</div>
                                 </div>
                                 <div class="ms-2 d-flex flex-column align-items-end gap-1">

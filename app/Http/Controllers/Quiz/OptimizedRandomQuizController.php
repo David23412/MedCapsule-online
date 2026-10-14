@@ -665,7 +665,9 @@ class OptimizedRandomQuizController extends Controller
                     ->orWhereExists(function ($subquery) use ($courseIds) {
                         $subquery->select(DB::raw(1))
                             ->from('topics')
-                            ->whereRaw('FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
+                            ->whereRaw(DB::getDriverName() === 'sqlite'
+                                ? "INSTR(',' || REPLACE(questions.extra_topic, ' ', '') || ',', ',' || topics.id || ',') > 0"
+                                : 'FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, " ", "")) > 0')
                             ->whereIn('topics.course_id', $courseIds);
                     });
             });

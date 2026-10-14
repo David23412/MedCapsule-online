@@ -28,8 +28,6 @@ parameters:
         - ./storage/*
         - ./public/build/*
     
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
     
     # Laravel-specific settings
     noModelMake: true

@@ -43,7 +43,7 @@ class MedicalTerminology extends Model
     /**
      * Get the domain that this terminology belongs to.
      */
-    public function domain()
+    public function domain(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(MedicalDomain::class, 'domain_id');
     }
@@ -51,7 +51,7 @@ class MedicalTerminology extends Model
     /**
      * Get the subdomain that this terminology belongs to.
      */
-    public function subdomain()
+    public function subdomain(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(MedicalSubdomain::class, 'subdomain_id');
     }
@@ -59,7 +59,7 @@ class MedicalTerminology extends Model
     /**
      * Get synonyms for this term.
      */
-    public function synonyms()
+    public function synonyms(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(MedicalSynonym::class, 'term', 'term');
     }

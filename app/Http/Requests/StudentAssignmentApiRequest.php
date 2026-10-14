@@ -18,12 +18,4 @@ class StudentAssignmentApiRequest extends FormRequest
             'email' => 'required|email',
         ];
     }
-    
-    public function validated()
-    {
-        return [
-            'name' => 'Test',
-            'email' => 'test@example.com'
-        ];
-    }
 }

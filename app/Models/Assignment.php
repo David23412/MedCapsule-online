@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class Assignment extends Model
@@ -158,7 +159,7 @@ class Assignment extends Model
     /**
      * 🚀 GENIUS: Many-to-many relationship with users via pivot table
      */
-    public function assignedUsers()
+    public function assignedUsers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(User::class, 'assignment_user', 'assignment_id', 'user_id')
                    ->withPivot('extended_deadline')

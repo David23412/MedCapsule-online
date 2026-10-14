@@ -24,10 +24,12 @@ return new class extends Migration
                 ->whereNull('number')
                 ->orWhere('number', '')
                 ->update([
-                    'number' => DB::raw("CONCAT('missing-', id)"),
+                    'number' => DB::raw(DB::getDriverName() === 'sqlite' ? "'missing-' || id" : "CONCAT('missing-', id)"),
                 ]);
 
-            DB::statement('ALTER TABLE users MODIFY number VARCHAR(20) NOT NULL');
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('number', 20)->nullable(false)->change();
+            });
         }
     }
 
@@ -44,7 +46,9 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('users', 'number')) {
-            DB::statement('ALTER TABLE users MODIFY number VARCHAR(20) NULL');
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('number', 20)->nullable()->change();
+            });
         }
     }
 };

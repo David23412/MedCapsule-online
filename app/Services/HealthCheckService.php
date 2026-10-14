@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Exception;
 
 class HealthCheckService
@@ -136,7 +137,13 @@ class HealthCheckService
      */
     private static function checkDatabase(): array
     {
-        return DatabaseService::healthCheck();
+        $startedAt = microtime(true);
+        try {
+            DB::select('SELECT 1');
+            return ['status' => 'healthy', 'response_time_ms' => round((microtime(true) - $startedAt) * 1000, 2)];
+        } catch (\Throwable $e) {
+            return ['status' => 'unhealthy', 'error' => $e->getMessage(), 'response_time_ms' => round((microtime(true) - $startedAt) * 1000, 2)];
+        }
     }
 
     /**
@@ -202,7 +209,7 @@ class HealthCheckService
         
         try {
             // Check if questions exist
-            $questionCount = DatabaseService::safeCount('questions', [], 0);
+            $questionCount = DB::table('questions')->count();
             if ($questionCount === 0) {
                 return [
                     'status' => 'degraded',
@@ -212,7 +219,7 @@ class HealthCheckService
             }
             
             // Check if topics exist
-            $topicCount = DatabaseService::safeCount('topics', [], 0);
+            $topicCount = DB::table('topics')->count();
             if ($topicCount === 0) {
                 return [
                     'status' => 'degraded',
@@ -260,7 +267,7 @@ class HealthCheckService
             }
             
             // Check recent payment activity
-            $recentPayments = DatabaseService::safeCount('payments', ['created_at' => '>=', now()->subHours(24)], 0);
+            $recentPayments = DB::table('payments')->where('created_at', '>=', now()->subHours(24))->count();
             
             return [
                 'status' => 'healthy',
@@ -309,9 +316,7 @@ class HealthCheckService
     {
         try {
             // Check database connectivity
-            $dbResult = DatabaseService::safeQuery(function() {
-                return \DB::select('SELECT 1');
-            }, null);
+            $dbResult = DB::select('SELECT 1');
             
             if ($dbResult === null) {
                 return false;
@@ -352,7 +357,7 @@ class HealthCheckService
                 'cache' => ResilientUltraConsolidatedCacheService::getStatistics(),
                 'database' => [
                     'driver' => config('database.default'),
-                    'health' => DatabaseService::healthCheck()
+                    'health' => self::checkDatabase()
                 ],
                 'timestamp' => now()
             ];

@@ -105,6 +105,12 @@ class AdminQuestionPdfExportTest extends TestCase
             'correct_answer' => 'A',
         ]);
 
+        foreach (Schema::getIndexes('topics') as $index) {
+            if (in_array('subject', $index['columns'], true)) {
+                Schema::table('topics', fn ($table) => $table->dropIndex($index['name']));
+            }
+        }
+
         Schema::table('topics', function ($table) {
             $table->dropColumn('subject');
         });

@@ -2,8 +2,6 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import autoprefixer from 'autoprefixer';
-import cssnano from 'cssnano';
 import react from '@vitejs/plugin-react';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,12 +39,6 @@ export default defineConfig({
         // Optimize chunk splitting
         rollupOptions: {
             output: {
-                manualChunks: {
-                    // Vendor chunks for better caching
-                    vendor: ['jquery', 'bootstrap'],
-                    utils: ['lodash', 'moment'],
-                    ui: ['alpinejs', 'sweetalert2']
-                },
                 // Optimize chunk naming
                 chunkFileNames: 'assets/js/[name]-[hash].js',
                 entryFileNames: 'assets/js/[name]-[hash].js',

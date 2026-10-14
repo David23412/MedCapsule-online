@@ -113,8 +113,10 @@ class NotificationService
      */
     public function notifyDeadlineChanged(\App\Models\Assignment $assignment, \Carbon\Carbon $oldDeadline): array
     {
-        return $this->createAssignmentNotification(
-            $assignment->user_id,
+        $notifications = [];
+        foreach ($assignment->getAssignedUserIds() as $userId) {
+            $notifications[$userId] = $this->createAssignmentNotification(
+                $userId,
             'assignment_deadline_changed',
             'Assignment Deadline Updated',
             "The deadline for '{$assignment->title}' has been changed from {$oldDeadline->format('M j, Y g:i A')} to {$assignment->deadline->format('M j, Y g:i A')}",
@@ -124,6 +126,8 @@ class NotificationService
                 'new_deadline' => $assignment->deadline->toISOString()
             ]
         );
+        }
+        return $notifications;
     }
 
     /**

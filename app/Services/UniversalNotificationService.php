@@ -26,11 +26,7 @@ class UniversalNotificationService
         // 🎓 ACADEMIC & LEARNING
         'course_welcome' => 'fas fa-graduation-cap',
         'quiz_completed' => 'fas fa-check-circle',
-        'perfect_score' => 'fas fa-star',
-        'first_attempt' => 'fas fa-rocket',
         'topic_mastery' => 'fas fa-graduation-cap',
-        'level_up' => 'fas fa-bolt',
-        'assignment_due' => 'fas fa-clock',
         'grade_released' => 'fas fa-star',
         'random_quiz_completed' => 'fas fa-dice',
         'random_quiz_perfect' => 'fas fa-dice',
@@ -59,14 +55,10 @@ class UniversalNotificationService
         
         // 📝 ASSIGNMENT SPECIFIC
         'assignment_assigned' => 'fas fa-calendar',
-        'assignment_completed' => 'fas fa-clipboard-check',
         'assignment_exceptional' => 'fas fa-star',
         'assignment_excellent' => 'fas fa-trophy',
         'assignment_good' => 'fas fa-thumbs-up',
-        'assignment_passed' => 'fas fa-check-circle',
         'assignment_needs_review' => 'fas fa-book',
-        'assignment_needs_improvement' => 'fas fa-dumbbell',
-        'assignment_perfect' => 'fas fa-star',
         
         // ⏰ ASSIGNMENT DUE REMINDERS (Simplified)
         'assignment_due_1h' => 'fas fa-exclamation-circle',

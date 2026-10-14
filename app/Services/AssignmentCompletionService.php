@@ -13,7 +13,7 @@ class AssignmentCompletionService
     /**
      * Complete an assignment with score
      */
-    public function completeAssignment(Assignment $assignment, array $answers = [], int $score = null): bool
+    public function completeAssignment(Assignment $assignment, array $answers = [], ?int $score = null): bool
     {
         if (!$assignment->canBeCompleted()) {
             return false;

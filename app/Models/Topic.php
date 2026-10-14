@@ -154,7 +154,7 @@ class Topic extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function userProgress()
+    public function userProgress(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(UserTopicProgress::class);
     }
@@ -164,7 +164,7 @@ class Topic extends Model
         return $this->belongsTo(User::class, 'locked_by_tutor_id');
     }
 
-    public function video()
+    public function video(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Video::class);
     }
@@ -174,12 +174,12 @@ class Topic extends Model
         return $this->video()->exists();
     }
 
-    public function videoProgress()
+    public function videoProgress(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(VideoProgress::class);
     }
 
-    public function userVideoProgress()
+    public function userVideoProgress(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(VideoProgress::class)->where('user_id', auth()->id());
     }

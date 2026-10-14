@@ -1,7 +1,6 @@
 name: Build and Publish Image
 
-# Deploys on every push to main. Tests run in parallel via tests.yml
-# but do not gate deployment for instant updates.
+# Publish and deploy only after the same revision passes validation.
 on:
   push:
     branches: [main]
@@ -10,8 +9,16 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   docker:
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

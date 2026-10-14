@@ -13,7 +13,7 @@ class EnvironmentService
     /**
      * Detect the current environment type
      */
-    public static function detectEnvironment(Request $request = null): string
+    public static function detectEnvironment(?Request $request = null): string
     {
         if (self::$environmentCache) {
             return self::$environmentCache;
@@ -44,7 +44,7 @@ class EnvironmentService
     /**
      * Check if running in ngrok environment
      */
-    public static function isNgrok(Request $request = null): bool
+    public static function isNgrok(?Request $request = null): bool
     {
         return self::detectEnvironment($request) === 'ngrok';
     }
@@ -52,7 +52,7 @@ class EnvironmentService
     /**
      * Check if running in production environment
      */
-    public static function isProduction(Request $request = null): bool
+    public static function isProduction(?Request $request = null): bool
     {
         return self::detectEnvironment($request) === 'production';
     }
@@ -60,7 +60,7 @@ class EnvironmentService
     /**
      * Check if running in local environment
      */
-    public static function isLocal(Request $request = null): bool
+    public static function isLocal(?Request $request = null): bool
     {
         return self::detectEnvironment($request) === 'local';
     }
@@ -68,7 +68,7 @@ class EnvironmentService
     /**
      * Get the appropriate URL scheme
      */
-    public static function getUrlScheme(Request $request = null): string
+    public static function getUrlScheme(?Request $request = null): string
     {
         if (self::isLocal($request)) {
             return 'http';
@@ -80,7 +80,7 @@ class EnvironmentService
     /**
      * Get the appropriate asset URL
      */
-    public static function getAssetUrl(Request $request = null): string
+    public static function getAssetUrl(?Request $request = null): string
     {
         $scheme = self::getUrlScheme($request);
         $host = $request ? $request->getHost() : config('app.url');
@@ -95,7 +95,7 @@ class EnvironmentService
     /**
      * Configure environment-specific settings
      */
-    public static function configureEnvironment(Request $request = null): void
+    public static function configureEnvironment(?Request $request = null): void
     {
         $environment = self::detectEnvironment($request);
         
@@ -115,7 +115,7 @@ class EnvironmentService
     /**
      * Configure settings for ngrok
      */
-    private static function configureNgrokEnvironment(Request $request = null): void
+    private static function configureNgrokEnvironment(?Request $request = null): void
     {
         URL::forceScheme('https');
         
@@ -138,7 +138,7 @@ class EnvironmentService
     /**
      * Configure settings for production
      */
-    private static function configureProductionEnvironment(Request $request = null): void
+    private static function configureProductionEnvironment(?Request $request = null): void
     {
         URL::forceScheme('https');
         
@@ -157,7 +157,7 @@ class EnvironmentService
     /**
      * Configure settings for local development
      */
-    private static function configureLocalEnvironment(Request $request = null): void
+    private static function configureLocalEnvironment(?Request $request = null): void
     {
         URL::forceScheme('http');
         
@@ -173,7 +173,7 @@ class EnvironmentService
     /**
      * Get environment-specific configuration
      */
-    public static function getEnvironmentConfig(Request $request = null): array
+    public static function getEnvironmentConfig(?Request $request = null): array
     {
         $environment = self::detectEnvironment($request);
         

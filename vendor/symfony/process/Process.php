@@ -254,7 +254,6 @@ class Process implements \IteratorAggregate
      * @throws RuntimeException            When process is already running
      * @throws ProcessTimedOutException    When process timed out
      * @throws ProcessSignaledException    When process stopped after receiving signal
-     * @throws LogicException              In case a callback is provided and output has been disabled
      *
      * @final
      */
@@ -281,7 +280,6 @@ class Process implements \IteratorAggregate
      * @throws RuntimeException         When process is already running
      * @throws ProcessTimedOutException When process timed out
      * @throws ProcessSignaledException When process stopped after receiving signal
-     * @throws LogicException           In case a callback is provided and output has been disabled
      *
      * @final
      */
@@ -311,7 +309,6 @@ class Process implements \IteratorAggregate
      *
      * @throws ProcessStartFailedException When process can't be launched
      * @throws RuntimeException            When process is already running
-     * @throws LogicException              In case a callback is provided and output has been disabled
      */
     public function start(?callable $callback = null, array $env = []): void
     {
@@ -354,6 +351,10 @@ class Process implements \IteratorAggregate
 
         $envPairs = [];
         foreach ($env as $k => $v) {
+            if (!\is_scalar($v ?? '') && !$v instanceof \Stringable) {
+                continue;
+            }
+
             if (false !== $v && !\in_array($k = (string) $k, ['', 'argc', 'argv', 'ARGC', 'ARGV'], true) && !str_contains($k, '=') && !str_contains($k, "\0")) {
                 $envPairs[] = $k.'='.$v;
             }
@@ -1611,12 +1612,15 @@ class Process implements \IteratorAggregate
 
         static $comSpec;
 
-        if (!$comSpec && $comSpec = (new ExecutableFinder())->find('cmd.exe')) {
+        if (!$comSpec) {
+            // use an absolute path to prevent CreateProcess() from looking for "cmd" in the current directory
+            $comSpec = (new ExecutableFinder())->find('cmd.exe') ?: (getenv('SystemRoot') ?: 'C:\Windows').'\System32\cmd.exe';
+
             // Escape according to CommandLineToArgvW rules
             $comSpec = '"'.preg_replace('{(\\\\*+)"}', '$1$1\"', $comSpec).'"';
         }
 
-        $cmd = ($comSpec ?? 'cmd').' /V:ON /E:ON /D /C ('.str_replace("\n", ' ', $cmd).')';
+        $cmd = $comSpec.' /V:ON /E:ON /D /C ('.str_replace("\n", ' ', $cmd).')';
         foreach ($this->processPipes->getFiles() as $offset => $filename) {
             $cmd .= ' '.$offset.'>"'.$filename.'"';
         }
@@ -1685,8 +1689,36 @@ class Process implements \IteratorAggregate
     {
         $env = getenv();
         $env = ('\\' === \DIRECTORY_SEPARATOR ? array_intersect_ukey($env, $_SERVER, 'strcasecmp') : array_intersect_key($env, $_SERVER)) ?: $env;
+        $env = $_ENV + ('\\' === \DIRECTORY_SEPARATOR ? array_diff_ukey($env, $_ENV, 'strcasecmp') : $env);
 
-        return $_ENV + ('\\' === \DIRECTORY_SEPARATOR ? array_diff_ukey($env, $_ENV, 'strcasecmp') : $env);
+        if (\in_array(\PHP_SAPI, ['cli', 'phpdbg', 'embed'], true)) {
+            return $env;
+        }
+
+        // On non-CLI SAPIs (notably PHP-FPM and CGI), CGI/FastCGI request-context
+        // vars are exposed through $_SERVER, $_ENV and getenv(), and must not
+        // propagate to subprocesses.
+        foreach ($env as $k => $v) {
+            if (str_starts_with($k, 'HTTP_')
+                || str_starts_with($k, 'ORIG_')
+                || str_starts_with($k, 'REDIRECT_')
+                || \in_array($k, [
+                    'AUTH_TYPE', 'CONTENT_LENGTH', 'CONTENT_TYPE', 'DOCUMENT_ROOT',
+                    'DOCUMENT_URI', 'GATEWAY_INTERFACE', 'HTTPS', 'PATH_INFO',
+                    'PATH_TRANSLATED', 'PHP_AUTH_DIGEST', 'PHP_AUTH_PW', 'PHP_AUTH_USER',
+                    'PHP_SELF', 'QUERY_STRING', 'REMOTE_ADDR', 'REMOTE_HOST',
+                    'REMOTE_IDENT', 'REMOTE_PORT', 'REMOTE_USER', 'REQUEST_METHOD',
+                    'REQUEST_SCHEME', 'REQUEST_TIME', 'REQUEST_TIME_FLOAT', 'REQUEST_URI',
+                    'SCRIPT_FILENAME', 'SCRIPT_NAME', 'SCRIPT_URI', 'SCRIPT_URL',
+                    'SERVER_ADDR', 'SERVER_ADMIN', 'SERVER_NAME', 'SERVER_PORT',
+                    'SERVER_PROTOCOL', 'SERVER_SIGNATURE', 'SERVER_SOFTWARE',
+                ], true)
+            ) {
+                unset($env[$k]);
+            }
+        }
+
+        return $env;
     }
 
     private function validateWindowsEnvBlockSize(array $envPairs): void

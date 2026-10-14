@@ -116,8 +116,8 @@ class AdvancedCacheService
         try {
             // Get active users from recent activity
             $activeUserIds = \App\Models\User::where('last_active_at', '>', now()->subHours(24))
-                ->pluck('id')
-                ->take(100); // Limit to prevent overload
+                ->limit(100)
+                ->pluck('id'); // Limit to prevent overload
 
             foreach ($activeUserIds as $userId) {
                 // Warm user course enrollment cache
@@ -151,8 +151,8 @@ class AdvancedCacheService
                 ->where('is_enrolled', true)
                 ->groupBy('course_id')
                 ->orderByRaw('COUNT(*) DESC')
-                ->pluck('course_id')
-                ->take(50);
+                ->limit(50)
+                ->pluck('course_id');
 
             // Determine which courses actually need cache warming
             $courseIdsNeedingWarm = [];

@@ -1264,6 +1264,12 @@ window.jumpToQuestion = function (questionNumber) {
         currentQuestionIndex = questionNumber;
         updateSidebarActiveState(questionNumber);
 
+        const npCurrentQ = document.getElementById('np-current-q');
+        if (npCurrentQ) npCurrentQ.textContent = questionNumber;
+        
+        const npMobileCurrent = document.getElementById('np-mobile-current');
+        if (npMobileCurrent) npMobileCurrent.textContent = questionNumber;
+
         // Check if all questions are answered and show View Results button if needed
         if (totalAnswers === TUTOR_CONFIG.totalQuestions) {
             console.log('🔥 ALL QUESTIONS ANSWERED: Ensuring View Results button is visible');
@@ -1563,6 +1569,7 @@ function submitQuizRandomTutor() {
 // Update progress bar with timer color integration
 function updateProgress(completed, total) {
     const progressFill = document.getElementById('progress-fill');
+    const navbarProgressFill = document.getElementById('navbar-progress-fill');
     const progressText = document.getElementById('progress-text');
     const timerElement = document.getElementById('timer');
     const percentage = (completed / total) * 100;
@@ -1580,6 +1587,22 @@ function updateProgress(completed, total) {
                 progressFill.classList.remove('danger');
             } else {
                 progressFill.classList.remove('warning', 'danger');
+            }
+        }
+    }
+
+    if (navbarProgressFill) {
+        navbarProgressFill.style.width = `${percentage}%`;
+        
+        if (timerElement) {
+            if (timerElement.classList.contains('danger')) {
+                navbarProgressFill.classList.add('danger');
+                navbarProgressFill.classList.remove('warning');
+            } else if (timerElement.classList.contains('warning')) {
+                navbarProgressFill.classList.add('warning');
+                navbarProgressFill.classList.remove('danger');
+            } else {
+                navbarProgressFill.classList.remove('warning', 'danger');
             }
         }
     }

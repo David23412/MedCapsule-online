@@ -210,7 +210,7 @@ class AssignmentController extends Controller
             'new_deadline' => 'required|date|after:now',
         ]);
 
-        $result = $this->assignmentService->extendDeadline($assignment, $validated['new_deadline']);
+        $result = $this->assignmentService->extendDeadline($assignment, \Carbon\Carbon::parse($validated['new_deadline']));
         return response()->json($result);
     }
 

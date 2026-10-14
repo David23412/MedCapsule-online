@@ -57,7 +57,7 @@ class AssignmentService
     /**
      * Complete an assignment with score
      */
-    public function completeAssignment(Assignment $assignment, array $answers = [], int $score = null): bool
+    public function completeAssignment(Assignment $assignment, array $answers = [], ?int $score = null): bool
     {
         return $this->assignmentCompletionService->completeAssignment($assignment, $answers, $score);
     }

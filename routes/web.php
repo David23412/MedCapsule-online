@@ -255,9 +255,11 @@ Route::group([], function () {
         ->middleware('secure.study')
         ->name('quiz.random.tutor');
     Route::post('/quiz/generate-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'generateRandomQuiz'])
-        ->name('quiz.random.generate');
+        ->name('quiz.random.generate')
+        ->middleware('throttle:random-quiz');
     Route::post('/quiz/grade-random', [App\Http\Controllers\Quiz\OptimizedRandomQuizController::class, 'gradeRandomQuiz'])
-        ->name('quiz.grade-random');
+        ->name('quiz.grade-random')
+        ->middleware('throttle:random-quiz-grading');
 
 
 

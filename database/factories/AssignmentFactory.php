@@ -19,7 +19,7 @@ class AssignmentFactory extends Factory
             'course_id' => fn() => Course::factory()->create()->id,
             'title' => $this->faker->sentence(3),
             'deadline' => $this->faker->dateTimeBetween('+1 day', '+30 days'),
-            'duration_minutes' => $this->faker->optional()->numberBetween(30, 180),
+            'duration_minutes' => $this->faker->numberBetween(30, 180),
             'assignment_mode' => $this->faker->randomElement([
                 Assignment::MODE_SOURCE_SPECIFIC,
                 Assignment::MODE_COMPLETE_TOPIC
@@ -68,7 +68,7 @@ class AssignmentFactory extends Factory
         ]);
     }
     
-    public function withDuration(int $minutes = null): static
+    public function withDuration(?int $minutes = null): static
     {
         return $this->state(fn (array $attributes) => [
             'duration_minutes' => $minutes ?? $this->faker->numberBetween(15, 120)

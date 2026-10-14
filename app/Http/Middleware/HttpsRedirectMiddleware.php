@@ -18,12 +18,12 @@ class HttpsRedirectMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $shouldForceHttps = (bool) (config('app.force_https', false) || env('FORCE_HTTPS', false));
+        $shouldForceHttps = (bool) config('app.force_https', false);
 
         if (
             ! $shouldForceHttps &&
             app()->environment(['local', 'testing']) &&
-            env('ENABLE_NGROK_COMPAT', false) &&
+            config('app.enable_ngrok_compat', false) &&
             $this->isNgrokEnvironment($request)
         ) {
             $shouldForceHttps = true;

@@ -24,7 +24,7 @@ class QuestionRequest extends FormRequest
             'question' => 'required|string|max:2000',
             'question_type' => 'required|in:multiple_choice,written',
             'explanation' => 'nullable|string|max:4000',
-            'question_image' => 'nullable|image|max:2048',
+            'question_image' => 'nullable|image|mimes:jpeg,jpg,png,gif,webp|max:2048',
             'image_url' => 'nullable|url|max:2000',
             'option_a' => 'required_if:question_type,multiple_choice|nullable|string|max:1000',
             'option_b' => 'required_if:question_type,multiple_choice|nullable|string|max:1000',

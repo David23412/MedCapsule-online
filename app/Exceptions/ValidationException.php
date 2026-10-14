@@ -18,9 +18,9 @@ class ValidationException extends Exception
         string $message = "",
         array $errors = [],
         array $validatedData = [],
-        Validator $validator = null,
+        ?Validator $validator = null,
         int $code = 0,
-        \Throwable $previous = null
+        ?\Throwable $previous = null
     ) {
         $this->errors = $errors;
         $this->validatedData = $validatedData;
@@ -112,7 +112,7 @@ class ValidationException extends Exception
     /**
      * Create exception for invalid date format
      */
-    public static function invalidDate(string $field, string $value, string $format = null, array $context = []): self
+    public static function invalidDate(string $field, string $value, ?string $format = null, array $context = []): self
     {
         $message = $format
             ? "Invalid date format for field '{$field}': {$value} (expected format: {$format})"

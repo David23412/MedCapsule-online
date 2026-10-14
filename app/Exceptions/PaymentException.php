@@ -17,7 +17,7 @@ class PaymentException extends Exception
         array $context = [],
         array $paymentData = [],
         int $code = 0,
-        \Throwable $previous = null
+        ?\Throwable $previous = null
     ) {
         $this->context = $context;
         $this->paymentData = $paymentData;

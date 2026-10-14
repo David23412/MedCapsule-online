@@ -112,7 +112,7 @@ class Evaluation extends Model
     /**
      * Get accuracy metrics for learning
      */
-    public static function getAccuracyMetrics(string $subject = null, int $hours = 24): array
+    public static function getAccuracyMetrics(?string $subject = null, int $hours = 24): array
     {
         $query = static::recent($hours);
 
@@ -177,7 +177,7 @@ class Evaluation extends Model
     /**
      * Get performance metrics
      */
-    public static function getPerformanceMetrics(string $subject = null, int $hours = 24): array
+    public static function getPerformanceMetrics(?string $subject = null, int $hours = 24): array
     {
         $query = static::recent($hours);
 

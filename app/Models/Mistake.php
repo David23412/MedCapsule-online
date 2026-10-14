@@ -165,7 +165,7 @@ class Mistake extends Model
     /**
      * Get the question associated with the mistake.
      */
-    public function question()
+    public function question(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Question::class);
     }
@@ -173,7 +173,7 @@ class Mistake extends Model
     /**
      * Get the user who made the mistake.
      */
-    public function user()
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
     }

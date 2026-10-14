@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, sqlite3, pdo_sqlite, gd, zip, bcmath
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer validate --strict
+      - run: composer audit
+      - run: npm ci
+      - run: npm audit --audit-level=moderate
+      - run: npm run typecheck
+      - run: npm run build
+      - run: vendor/bin/phpunit --fail-on-risky --fail-on-warning

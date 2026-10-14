@@ -34,7 +34,7 @@ class MedicalAbbreviation extends Model
     /**
      * Get the domain that this abbreviation belongs to.
      */
-    public function domain()
+    public function domain(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(MedicalDomain::class, 'domain_id');
     }

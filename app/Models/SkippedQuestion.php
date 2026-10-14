@@ -109,7 +109,7 @@ class SkippedQuestion extends Model
                   ->exists();
     }
 
-    public static function getSkippedQuestions(int $userId, string $sessionType = null): \Illuminate\Database\Eloquent\Collection
+    public static function getSkippedQuestions(int $userId, ?string $sessionType = null): \Illuminate\Database\Eloquent\Collection
     {
         $query = self::with(['question', 'question.topic'])
                     ->where('user_id', $userId);
@@ -121,7 +121,7 @@ class SkippedQuestion extends Model
         return $query->orderBy('skipped_at', 'desc')->get();
     }
 
-    public static function getSkippedQuestionsForTopic(int $userId, int $topicId, string $sessionType = null): \Illuminate\Database\Eloquent\Collection
+    public static function getSkippedQuestionsForTopic(int $userId, int $topicId, ?string $sessionType = null): \Illuminate\Database\Eloquent\Collection
     {
         $query = self::with(['question'])
                     ->where('user_id', $userId)
@@ -144,7 +144,7 @@ class SkippedQuestion extends Model
                   ->delete() > 0;
     }
 
-    public static function clearAllSkips(int $userId, string $sessionType = null): int
+    public static function clearAllSkips(int $userId, ?string $sessionType = null): int
     {
         $query = self::where('user_id', $userId);
 
@@ -155,7 +155,7 @@ class SkippedQuestion extends Model
         return $query->delete();
     }
 
-    public static function clearTopicSkips(int $userId, int $topicId, string $sessionType = null): int
+    public static function clearTopicSkips(int $userId, int $topicId, ?string $sessionType = null): int
     {
         $query = self::where('user_id', $userId)
                     ->whereHas('question', function($q) use ($topicId) {

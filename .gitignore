@@ -22,9 +22,11 @@ Thumbs.db
 /storage/*.key
 /storage/logs/*.log
 /storage/framework/cache/data/*
+/storage/cache/grading/
 /storage/framework/sessions/*
 /storage/framework/testing/*
 /storage/framework/views/*
 /bootstrap/cache/*.php
 
 /test_*.php
+/storage/phpstan/

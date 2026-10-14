@@ -119,7 +119,7 @@ class UltraPerformanceOptimizer
 
     public static function asyncDelay(int $milliseconds, ?callable $callback = null): string
     {
-        return AsyncOperationManager::delayAsync($milliseconds, $callback);
+        return app(AsyncOperationManager::class)->delayAsync($milliseconds, $callback);
     }
 
     public static function cacheUserData(int $userId, string $dataType, callable $callback): mixed

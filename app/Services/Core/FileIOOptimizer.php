@@ -17,7 +17,7 @@ class FileIOOptimizer
     /**
      * Stream file reading instead of loading entire file
      */
-    public static function streamRead(string $path, callable $processor = null): mixed
+    public static function streamRead(string $path, ?callable $processor = null): mixed
     {
         $cacheKey = 'file_stream:' . md5($path);
         

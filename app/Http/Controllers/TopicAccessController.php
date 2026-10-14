@@ -13,18 +13,11 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
-// TODO: Inject services in constructor
-    // TODO: Inject services in constructor
-    // TODO: Inject services in constructor
-    class TopicAccessController extends Controller
+class TopicAccessController extends Controller
 {
     public function __construct()
     {
-        // Only call parent constructor if not in unit testing environment
-        if (!app()->runningUnitTests()) {
-            parent::__construct();
-            $this->middleware(['auth']);
-        }
+        $this->middleware(['auth']);
     }
 
     /**

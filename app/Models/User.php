@@ -122,7 +122,7 @@ class User extends Authenticatable
      * Define the relationship with courses (many-to-many).
      * Only returns enrolled courses (enrolled_at is not null).
      */
-    public function courses()
+    public function courses(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         // Simple boolean check for enrollment
         return $this->belongsToMany(Course::class, 'course_user')
@@ -135,7 +135,7 @@ class User extends Authenticatable
      * Define the relationship with all course enrollments regardless of enrollment status.
      * Useful for admin interfaces.
      */
-    public function allCourseEnrollments()
+    public function allCourseEnrollments(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'course_user')
                     ->withPivot($this->courseUserPivotColumns(['enrolled_at', 'access_level', 'is_enrolled']))
@@ -235,7 +235,7 @@ class User extends Authenticatable
     /**
      * Get the user's payments.
      */
-    public function payments()
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Payment::class);
     }
@@ -243,7 +243,7 @@ class User extends Authenticatable
     /**
      * Get the user's activity logs.
      */
-    public function activityLogs()
+    public function activityLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(UserActivityLog::class);
     }
@@ -251,7 +251,7 @@ class User extends Authenticatable
     /**
      * Get the user's quiz attempts.
      */
-    public function quizAttempts()
+    public function quizAttempts(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(QuizAttempt::class);
     }
@@ -259,7 +259,7 @@ class User extends Authenticatable
     /**
      * Get the user's most recent quiz attempt.
      */
-    public function latestQuizAttempt()
+    public function latestQuizAttempt(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(QuizAttempt::class)->latestOfMany();
     }
@@ -267,7 +267,7 @@ class User extends Authenticatable
     /**
      * Get the user's mistakes.
      */
-    public function mistakes()
+    public function mistakes(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Mistake::class);
     }
@@ -283,7 +283,7 @@ class User extends Authenticatable
     /**
      * 🚀 GENIUS: Get assignments assigned to this user via pivot table
      */
-    public function assignments()
+    public function assignments(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Assignment::class, 'assignment_user', 'user_id', 'assignment_id')
                    ->withTimestamps();
@@ -292,17 +292,17 @@ class User extends Authenticatable
     /**
      * Get the user's topic progress.
      */
-    public function userTopicProgress()
+    public function userTopicProgress(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(UserTopicProgress::class);
     }
 
-    public function surveyResponses()
+    public function surveyResponses(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(SurveyResponse::class);
     }
 
-    public function surveyDrafts()
+    public function surveyDrafts(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(SurveyDraft::class);
     }
@@ -881,7 +881,7 @@ class User extends Authenticatable
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
-    public function assignedStudents()
+    public function assignedStudents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'tutor_id', 'user_id')
                     ->where('users.role', self::ROLE_STUDENT)
@@ -894,7 +894,7 @@ class User extends Authenticatable
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
-    public function assignedTutors()
+    public function assignedTutors(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(User::class, 'tutor_student_relationships', 'user_id', 'tutor_id')
                     ->where('users.role', self::ROLE_TUTOR)
@@ -907,7 +907,7 @@ class User extends Authenticatable
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
-    public function tutorCourses()
+    public function tutorCourses(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Course::class, 'tutor_course_assignments', 'tutor_id', 'course_id')
                     ->withPivot('assigned_at')

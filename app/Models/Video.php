@@ -28,7 +28,7 @@ class Video extends Model
         return $this->belongsTo(Topic::class);
     }
 
-    public function userProgress()
+    public function userProgress(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(VideoProgress::class);
     }

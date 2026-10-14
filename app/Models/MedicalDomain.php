@@ -35,7 +35,7 @@ class MedicalDomain extends Model
     /**
      * Get the terminology associated with this domain.
      */
-    public function terminology()
+    public function terminology(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(MedicalTerminology::class, 'domain_id');
     }
@@ -43,7 +43,7 @@ class MedicalDomain extends Model
     /**
      * Get the abbreviations associated with this domain.
      */
-    public function abbreviations()
+    public function abbreviations(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(MedicalAbbreviation::class, 'domain_id');
     }
@@ -51,7 +51,7 @@ class MedicalDomain extends Model
     /**
      * Get the contradictions associated with this domain.
      */
-    public function contradictions()
+    public function contradictions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(MedicalContradiction::class, 'domain_id');
     }

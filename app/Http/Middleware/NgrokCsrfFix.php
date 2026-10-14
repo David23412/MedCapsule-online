@@ -15,7 +15,7 @@ class NgrokCsrfFix
     {
         if (
             app()->environment(['local', 'testing']) &&
-            env('ENABLE_NGROK_COMPAT', false) &&
+            config('app.enable_ngrok_compat', false) &&
             (
                 str_contains($request->getHost(), 'ngrok') ||
                 str_contains($request->getHost(), 'ngrok-free.app') ||

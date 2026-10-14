@@ -786,6 +786,18 @@ html[data-theme='dark'] .sidebar-task-item {
     box-shadow: none !important;
 }
 
+html[data-theme='dark'] .sidebar-logout-btn {
+    background: #10151d;
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #fca5a5;
+}
+
+html[data-theme='dark'] .sidebar-logout-btn:hover {
+    background: rgba(127, 29, 29, 0.3);
+    border-color: rgba(248, 113, 113, 0.6);
+    color: #fecaca;
+}
+
 html[data-theme='dark'] .sidebar-game-plan-title,
 html[data-theme='dark'] .sidebar-insight-head,
 html[data-theme='dark'] .sidebar-stat-card strong,

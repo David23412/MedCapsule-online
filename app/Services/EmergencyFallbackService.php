@@ -134,7 +134,7 @@ class EmergencyFallbackService
     /**
      * Get fallback quiz questions when database is down
      */
-    public static function getFallbackQuizQuestions(int $count = null): array
+    public static function getFallbackQuizQuestions(?int $count = null): array
     {
         $count = $count ?? self::EMERGENCY_QUIZ_QUESTIONS;
         

@@ -1,39 +1,35 @@
 {
-  "_ui-l0sNRNKZ.js": {
-    "file": "assets/js/ui-l0sNRNKZ.js",
-    "name": "ui"
-  },
-  "_utils-l0sNRNKZ.js": {
-    "file": "assets/js/utils-l0sNRNKZ.js",
-    "name": "utils"
-  },
-  "_vendor-l0sNRNKZ.js": {
-    "file": "assets/js/vendor-l0sNRNKZ.js",
-    "name": "vendor"
-  },
   "resources/css/app.css": {
-    "file": "assets/css/app-rs2PJkxF.css",
+    "file": "assets/css/app--Iz37kH4.css",
     "src": "resources/css/app.css",
-    "isEntry": true
+    "isEntry": true,
+    "name": "app",
+    "names": [
+      "app.css"
+    ]
   },
   "resources/css/landing-page.css": {
-    "file": "assets/css/landing-page-DVuEJ9dr.css",
+    "file": "assets/css/landing-page-QEh421dT.css",
     "src": "resources/css/landing-page.css",
-    "isEntry": true
+    "isEntry": true,
+    "name": "landing-page",
+    "names": [
+      "landing-page.css"
+    ]
   },
   "resources/js/app.js": {
-    "file": "assets/js/app-B3yX8yjK.js",
+    "file": "assets/js/app-Ct4yN26P.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true
   },
   "resources/js/landing-entry.tsx": {
-    "file": "assets/js/landing-entry-Dz6cC1Jl.js",
+    "file": "assets/js/landing-entry-tutM9I4y.js",
     "name": "landing-entry",
     "src": "resources/js/landing-entry.tsx",
     "isEntry": true,
     "css": [
-      "assets/css/landing-page-DVuEJ9dr.css"
+      "assets/css/landing-page-QEh421dT.css"
     ]
   }
 }

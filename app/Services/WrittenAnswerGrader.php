@@ -52,7 +52,7 @@ class WrittenAnswerGrader
             );
         }
 
-        $candidates = array_values(array_unique(array_filter([$correctAnswer, ...$alternatives])));
+        $candidates = array_values(array_unique(array_filter([$correctAnswer, ...$alternatives], fn (string $answer): bool => $answer !== '')));
         $submittedContext = $this->normalizeInput($submittedAnswer);
 
         $best = null;
@@ -62,7 +62,10 @@ class WrittenAnswerGrader
             $rubric = $this->buildRubric($candidate, $candidateContext['normalized'], $question);
             $result = $this->gradeCandidate($submittedAnswer, $submittedContext, $candidate, $candidateContext, $rubric);
 
-            if ($best === null || $result['confidence'] > $best['confidence']) {
+            if ($best === null
+                || ($result['isCorrect'] && !$best['isCorrect'])
+                || ($result['isCorrect'] === $best['isCorrect'] && $result['confidence'] > $best['confidence'])
+            ) {
                 $best = $result;
             }
 
@@ -92,15 +95,14 @@ class WrittenAnswerGrader
         array $candidateContext,
         array $rubric
     ): array {
-        if ($submittedContext['normalized'] === $candidateContext['normalized']) {
-            return $this->buildResult(true, 1.0, 'normalized_exact_match', 'Your answer matches the expected answer.', [
-                'mode' => $rubric['mode'],
-                'rubric' => $rubric,
-            ]);
+        if (preg_match('/[\p{L}\p{N}]/u', $submittedContext['normalized']) !== 1
+            || preg_match('/[\p{L}\p{N}]/u', $candidateContext['normalized']) !== 1
+        ) {
+            return $this->buildResult(false, 0.0, 'empty_answer', 'No meaningful answer provided.', ['mode' => $rubric['mode']]);
         }
 
-        if ($submittedContext['sortedTokens'] !== '' && $submittedContext['sortedTokens'] === $candidateContext['sortedTokens']) {
-            return $this->buildResult(true, 0.99, 'order_independent_match', 'Your answer contains the same concepts as the expected answer.', [
+        if ($submittedContext['normalized'] === $candidateContext['normalized']) {
+            return $this->buildResult(true, 1.0, 'normalized_exact_match', 'Your answer matches the expected answer.', [
                 'mode' => $rubric['mode'],
                 'rubric' => $rubric,
             ]);
@@ -109,6 +111,13 @@ class WrittenAnswerGrader
         $guard = $this->applyHardGuards($submittedContext['normalized'], $candidateContext['normalized'], $rubric);
         if ($guard !== null) {
             return $guard;
+        }
+
+        if ($submittedContext['sortedTokens'] !== '' && $submittedContext['sortedTokens'] === $candidateContext['sortedTokens']) {
+            return $this->buildResult(true, 0.99, 'order_independent_match', 'Your answer contains the same concepts as the expected answer.', [
+                'mode' => $rubric['mode'],
+                'rubric' => $rubric,
+            ]);
         }
 
         if (!in_array($rubric['mode'], ['numerical', 'comparison'], true)) {
@@ -347,8 +356,8 @@ class WrittenAnswerGrader
         array $candidateContext,
         array $rubric
     ): ?array {
-        $submittedTokens = $this->extractMeaningfulTokens($submittedContext['normalized']);
-        $candidateTokens = $this->extractMeaningfulTokens($candidateContext['normalized']);
+        $submittedTokens = $submittedContext['tokens'];
+        $candidateTokens = $candidateContext['tokens'];
 
         if (empty($submittedTokens) || empty($candidateTokens)) {
             return null;
@@ -488,52 +497,57 @@ class WrittenAnswerGrader
 
     private function measureBidirectionalTokenCoverage(array $submittedTokens, array $candidateTokens): array
     {
-        $submittedToCandidate = $this->matchTokenLists($submittedTokens, $candidateTokens);
-        $candidateToSubmitted = $this->matchTokenLists($candidateTokens, $submittedTokens);
-        $precision = count($submittedTokens) > 0 ? $submittedToCandidate['matched'] / count($submittedTokens) : 0.0;
-        $recall = count($candidateTokens) > 0 ? $candidateToSubmitted['matched'] / count($candidateTokens) : 0.0;
+        $matches = $this->matchTokenLists($submittedTokens, $candidateTokens);
+        $precision = count($submittedTokens) > 0 ? $matches['matched'] / count($submittedTokens) : 0.0;
+        $recall = count($candidateTokens) > 0 ? $matches['matched'] / count($candidateTokens) : 0.0;
         $f1 = ($precision + $recall) > 0 ? (2 * $precision * $recall) / ($precision + $recall) : 0.0;
 
         return [
             'precision' => $precision,
             'recall' => $recall,
             'f1' => $f1,
-            'matchedSubmittedTokens' => $submittedToCandidate['matched'],
-            'matchedCandidateTokens' => $candidateToSubmitted['matched'],
-            'bestScore' => max($submittedToCandidate['bestScore'], $candidateToSubmitted['bestScore']),
+            'matchedSubmittedTokens' => $matches['matched'],
+            'matchedCandidateTokens' => $matches['matched'],
+            'bestScore' => $matches['bestScore'],
         ];
     }
 
     private function matchTokenLists(array $leftTokens, array $rightTokens): array
     {
-        $used = [];
-        $matched = 0;
+        $edges = [];
         $bestScore = 0.0;
-
-        foreach ($leftTokens as $left) {
-            $bestIndex = null;
-            $best = 0.0;
-
-            foreach ($rightTokens as $index => $right) {
-                if (isset($used[$index])) {
-                    continue;
-                }
-
+        foreach ($leftTokens as $leftIndex => $left) {
+            foreach ($rightTokens as $rightIndex => $right) {
                 $score = $this->dynamicTokenSimilarity($left, $right);
-                if ($score > $best) {
-                    $best = $score;
-                    $bestIndex = $index;
+                $bestScore = max($bestScore, $score);
+                if ($score >= $this->dynamicTokenMatchThreshold($left, $right)) {
+                    $edges[$leftIndex][] = $rightIndex;
                 }
-            }
-
-            $bestScore = max($bestScore, $best);
-            if ($bestIndex !== null && $best >= $this->dynamicTokenMatchThreshold($left, $rightTokens[$bestIndex])) {
-                $used[$bestIndex] = true;
-                $matched++;
             }
         }
 
-        return ['matched' => $matched, 'bestScore' => $bestScore];
+        // Find a one-to-one assignment. A greedy match can consume the only
+        // option for a later token and make the grade depend on word order.
+        $owners = [];
+        $assign = function (int $leftIndex, array &$visited) use (&$assign, &$owners, $edges): bool {
+            foreach ($edges[$leftIndex] ?? [] as $rightIndex) {
+                if (isset($visited[$rightIndex])) {
+                    continue;
+                }
+                $visited[$rightIndex] = true;
+                if (!isset($owners[$rightIndex]) || $assign($owners[$rightIndex], $visited)) {
+                    $owners[$rightIndex] = $leftIndex;
+                    return true;
+                }
+            }
+            return false;
+        };
+        foreach (array_keys($leftTokens) as $leftIndex) {
+            $visited = [];
+            $assign($leftIndex, $visited);
+        }
+
+        return ['matched' => count($owners), 'bestScore' => $bestScore];
     }
 
     private function dynamicTokenSimilarity(string $left, string $right): float
@@ -548,7 +562,29 @@ class WrittenAnswerGrader
             }
         }
 
-        return $this->textProcessor->getLevenshteinSimilarity($left, $right);
+        // Tokens are already normalized. Avoid running the full medical dictionary
+        // for every pair, and count a single adjacent letter swap as one typo.
+        $length = max(strlen($left), strlen($right));
+        $distance = levenshtein($left, $right);
+        if ($distance === 1 && strlen($left) !== strlen($right) && min(strlen($left), strlen($right)) >= 4) {
+            return 0.90;
+        }
+        if (strlen($left) === strlen($right) && $distance === 2) {
+            $different = [];
+            for ($i = 0; $i < $length; $i++) {
+                if ($left[$i] !== $right[$i]) {
+                    $different[] = $i;
+                }
+            }
+            if (count($different) === 2 && $different[1] === $different[0] + 1
+                && $left[$different[0]] === $right[$different[1]]
+                && $left[$different[1]] === $right[$different[0]]
+            ) {
+                return 0.95;
+            }
+        }
+
+        return $length > 0 ? 1.0 - ($distance / $length) : 0.0;
     }
 
     private function dynamicTokenMatchThreshold(string $left, string $right): float
@@ -573,20 +609,11 @@ class WrittenAnswerGrader
     private function extractAcceptableAnswerItems(string $text, bool $reference): array
     {
         $clean = $this->stripReferenceNoise($text);
-        $parentheticalItems = [];
 
-        if ($reference && preg_match_all('/\(([^)]{2,120})\)/', $clean, $matches)) {
-            foreach ($matches[1] as $match) {
-                foreach (preg_split('/\s*[,;\/]\s*|\s+\bor\b\s+/i', $match) ?: [] as $part) {
-                    $part = trim($part);
-                    if ($part !== '') {
-                        $parentheticalItems[] = $part;
-                    }
-                }
-            }
-        }
-
-        $clean = preg_replace('/\(([^)]*)\)/', ' ', $clean) ?? $clean;
+        // Parenthetical wording qualifies the surrounding list item; treating it
+        // as a separate item can incorrectly increase the number of required
+        // concepts (for example, "mouth widely open (obtuse angle)").
+        $clean = str_replace(['(', ')'], ' ', $clean);
         $clean = preg_replace('/\b\d+\s*[\.)]\s*/', '; ', $clean) ?? $clean;
         if ($reference) {
             $clean = preg_replace('/\s*\/\s*/', '; ', $clean) ?? $clean;
@@ -604,7 +631,7 @@ class WrittenAnswerGrader
         }
 
         $items = [];
-        foreach (array_merge($parts, $parentheticalItems) as $part) {
+        foreach ($parts as $part) {
             $item = $this->cleanAnswerItem((string) $part, $reference);
             if ($item !== '') {
                 $items[] = $item;
@@ -701,7 +728,10 @@ class WrittenAnswerGrader
 
         $score = max($coverage['f1'], min(0.96, $coverage['precision']));
 
-        if ($containsPhrase && $coverage['precision'] >= 0.80) {
+        // A student may provide the required phrase with useful extra context
+        // (for example, "lower lip is curled outside"). In that direction,
+        // recall—not precision—shows that the required item is fully covered.
+        if ($containsPhrase && max($coverage['precision'], $coverage['recall']) >= 0.80) {
             $score = max($score, 0.92);
         }
 
@@ -726,6 +756,10 @@ class WrittenAnswerGrader
 
     private function applyHardGuards(string $submitted, string $correct, array $rubric): ?array
     {
+        if ($this->hasNegationMismatch($submitted, $correct) || $this->hasCriticalTermMismatch($submitted, $correct)) {
+            return $this->buildResult(false, 0.20, 'contradiction_detected', 'Your answer changes an essential part of the expected meaning.', ['mode' => $rubric['mode']]);
+        }
+
         foreach ($this->medicalKnowledge->getHardGuards() as $guardDefinition) {
             $guard = $this->applyConfiguredHardGuard($submitted, $correct, $guardDefinition);
             if ($guard !== null) {
@@ -1359,6 +1393,43 @@ class WrittenAnswerGrader
         return false;
     }
 
+    private function hasNegationMismatch(string $submitted, string $correct): bool
+    {
+        // Keep negation out of the filler-word shortcuts. "Not only" is emphasis.
+        $pattern = "/\b(?:no|not|never|without|cannot|absence|absent|[a-z]+n't)\b/u";
+        $submitted = preg_replace('/\bnot only\b/', '', $submitted) ?? $submitted;
+        $correct = preg_replace('/\bnot only\b/', '', $correct) ?? $correct;
+
+        return (preg_match($pattern, $submitted) === 1) !== (preg_match($pattern, $correct) === 1);
+    }
+
+    private function hasCriticalTermMismatch(string $submitted, string $correct): bool
+    {
+        $pairs = [
+            ['ileum', 'ilium'], ['ureter', 'urethra'],
+            ['afferent', 'efferent'], ['abduction', 'adduction'],
+            ['positive', 'negative'], ['systole', 'diastole'],
+        ];
+        foreach ($pairs as [$left, $right]) {
+            if (($this->containsWholeTerm($submitted, $left) && $this->containsWholeTerm($correct, $right)
+                    && !$this->containsWholeTerm($correct, $left))
+                || ($this->containsWholeTerm($submitted, $right) && $this->containsWholeTerm($correct, $left)
+                    && !$this->containsWholeTerm($correct, $right))
+            ) {
+                return true;
+            }
+        }
+        preg_match_all('/\b(hyper|hypo)([a-z]+)\b/', $submitted, $terms, PREG_SET_ORDER);
+        foreach ($terms as $term) {
+            $opposite = ($term[1] === 'hyper' ? 'hypo' : 'hyper') . $term[2];
+            if ($this->containsWholeTerm($correct, $opposite) && !$this->containsWholeTerm($correct, $term[0])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function hasDirectionalContradiction(string $submitted, string $correct): bool
     {
         if ($this->hasTargetDirectionMismatch($submitted, $correct)) {
@@ -1375,10 +1446,10 @@ class WrittenAnswerGrader
         ];
 
         foreach ($pairs as [$left, $right]) {
-            $submittedHasLeft = str_contains($submitted, $left);
-            $submittedHasRight = str_contains($submitted, $right);
-            $correctHasLeft = str_contains($correct, $left);
-            $correctHasRight = str_contains($correct, $right);
+            $submittedHasLeft = $this->containsWholeTerm($submitted, $left);
+            $submittedHasRight = $this->containsWholeTerm($submitted, $right);
+            $correctHasLeft = $this->containsWholeTerm($correct, $left);
+            $correctHasRight = $this->containsWholeTerm($correct, $right);
 
             $submittedMixed = $submittedHasLeft && $submittedHasRight;
             $correctMixed = $correctHasLeft && $correctHasRight;
@@ -1445,8 +1516,8 @@ class WrittenAnswerGrader
         $term = preg_quote($term, '/');
         $target = preg_quote($targetPhrase, '/');
 
-        return preg_match('/\b' . $term . '\b(?:\W+\w+){0,3}?\W+\b' . $target . '\b/i', $text) === 1
-            || preg_match('/\b' . $target . '\b(?:\W+\w+){0,3}?\W+\b' . $term . '\b/i', $text) === 1;
+        return preg_match('/\b' . $term . '\b(?:\s+(?!(?:and|but|while|whereas)\b)\w+){0,3}?\s+\b' . $target . '\b/i', $text) === 1
+            || preg_match('/\b' . $target . '\b(?:\s+(?!(?:and|but|while|whereas)\b)\w+){0,3}?\s+\b' . $term . '\b/i', $text) === 1;
     }
 
     private function wordsAreSimilar(string $left, string $right): bool
@@ -1455,14 +1526,8 @@ class WrittenAnswerGrader
             return true;
         }
 
-        foreach ($this->safeEquivalentTokenGroups() as $group) {
-            if (in_array($left, $group, true) && in_array($right, $group, true)) {
-                return true;
-            }
-        }
-
-        return $this->textProcessor->getLevenshteinSimilarity($left, $right)
-            >= $this->cfg('typo_similarity_threshold', 0.80);
+        return $this->dynamicTokenSimilarity($left, $right)
+            >= $this->dynamicTokenMatchThreshold($left, $right);
     }
 
     private function normalizeSemanticPhrases(string $text): string
@@ -1574,19 +1639,19 @@ class WrittenAnswerGrader
     {
         $values = [];
 
-        if (preg_match_all('/(\d+[\.,]\d+)\s*[\-\–]\s*(\d+[\.,]\d+)/', $text, $matches)) {
+        if (preg_match_all('/(\d+(?:[\.,]\d+)?)\s*[\-–]\s*(\d+(?:[\.,]\d+)?)(?:\s*([a-zA-Zµ°]+(?:\/[a-zA-Z]+)?))?/u', $text, $matches)) {
             foreach ($matches[0] as $index => $match) {
                 $values[] = [
                     'type' => 'range',
                     'min' => (float) str_replace(',', '.', $matches[1][$index]),
                     'max' => (float) str_replace(',', '.', $matches[2][$index]),
                     'text' => $match,
-                    'unit' => $this->extractUnit($match),
+                    'unit' => $this->normalizeUnit($matches[3][$index] ?? ''),
                 ];
             }
         }
 
-        if (preg_match_all('/(\d+(?:[\.,]\d+)?)\s*([a-zA-Zµ°\/]+)?/', $text, $matches)) {
+        if (preg_match_all('/(\d+(?:[\.,]\d+)?)\s*([a-zA-Zµ°]+(?:\/[a-zA-Z]+)?)?/', $text, $matches)) {
             foreach ($matches[0] as $index => $match) {
                 $alreadyCaptured = false;
                 foreach ($values as $value) {
@@ -1650,6 +1715,10 @@ class WrittenAnswerGrader
 
     private function calculateNumericalSimilarity(array $reference, array $candidate): float
     {
+        if ($reference['unit'] !== '' && $candidate['unit'] !== '' && $reference['unit'] !== $candidate['unit']) {
+            return 0.0;
+        }
+
         $unitBonus = ($reference['unit'] !== '' && $reference['unit'] === $candidate['unit']) ? 0.05 : 0.0;
 
         if ($reference['type'] === 'single' && $candidate['type'] === 'single') {
@@ -1728,7 +1797,7 @@ class WrittenAnswerGrader
         return array_values(array_filter(array_map(
             fn (mixed $answer): string => trim((string) $answer),
             $alternatives
-        )));
+        ), fn (string $answer): bool => $answer !== ''));
     }
 
     private function buildResult(bool $isCorrect, float $confidence, string $reasonCode, string $feedback, array $diagnostics): array

@@ -48,7 +48,7 @@ class Question extends Model
     // The database already has the correct field names, so we don't need accessors
 
     // Define the relationship: A Question belongs to a Topic
-    public function topic()
+    public function topic(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Topic::class);
     }
@@ -299,7 +299,7 @@ class Question extends Model
     /**
      * Get all mistakes associated with this question.
      */
-    public function mistakes()
+    public function mistakes(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Mistake::class);
     }
@@ -380,7 +380,7 @@ class Question extends Model
     /**
      * Get the detailed explanation for this question.
      */
-    public function detailedExplanation()
+    public function detailedExplanation(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(QuestionExplanation::class);
     }
@@ -407,12 +407,8 @@ class Question extends Model
         } elseif ($this->question_type === self::TYPE_WRITTEN) {
             try {
                 $safeSubmittedAnswer = trim((string)$submittedAnswer);
-                if (empty($safeSubmittedAnswer)) {
+                if ($safeSubmittedAnswer === '') {
                     return false;
-                }
-
-                if (app()->environment('testing')) {
-                    app(\App\Services\WrittenAnswerEvaluationService::class)->setCacheConfig(false);
                 }
 
                 return (bool) app(\App\Services\WrittenAnswerEvaluationService::class)

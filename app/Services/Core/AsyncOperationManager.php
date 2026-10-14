@@ -18,7 +18,7 @@ class AsyncOperationManager
     /**
      * Replace usleep() with async operation
      */
-    public function delayAsync(int $milliseconds, callable $callback = null, string $operationId = null): string
+    public function delayAsync(int $milliseconds, ?callable $callback = null, ?string $operationId = null): string
     {
         $operationId = $operationId ?? uniqid('async_', true);
         

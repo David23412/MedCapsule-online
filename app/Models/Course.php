@@ -68,17 +68,17 @@ class Course extends Model
      * RELATIONSHIPS
      * ------------------- */
 
-    public function topics()
+    public function topics(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Topic::class);
     }
 
-    public function questions()
+    public function questions(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
     {
         return $this->hasManyThrough(Question::class, Topic::class);
     }
 
-    public function users()
+    public function users(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_user')
                     ->withPivot($this->courseUserPivotColumns(['is_enrolled']))
@@ -88,7 +88,7 @@ class Course extends Model
     /**
      * Relationship for users who are marked as enrolled in the pivot table.
      */
-    public function enrolledUsers()
+    public function enrolledUsers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(User::class, 'course_user')
             ->withPivot($this->courseUserPivotColumns())
@@ -128,12 +128,12 @@ class Course extends Model
         return self::$availableCourseUserPlannerPivotColumns;
     }
 
-    public function payments()
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Payment::class);
     }
 
-    public function accessRequests()
+    public function accessRequests(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(CourseAccessRequest::class);
     }

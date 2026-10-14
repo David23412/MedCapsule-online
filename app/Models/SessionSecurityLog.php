@@ -28,7 +28,7 @@ class SessionSecurityLog extends Model
     /**
      * Get the user that owns the security log
      */
-    public function user()
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
     }

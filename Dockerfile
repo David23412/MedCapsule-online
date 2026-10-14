@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     && pecl install igbinary redis \
     && docker-php-ext-enable igbinary redis \
     && cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
-    && a2enmod rewrite \
+    && a2enmod rewrite deflate expires headers \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
@@ -36,7 +36,7 @@ RUN COMPOSER_PROCESS_TIMEOUT=1200 composer install --no-dev --optimize-autoloade
         /var/www/html/bootstrap/cache \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-FROM node:20-bookworm-slim AS frontend-builder
+FROM node:22-bookworm-slim AS frontend-builder
 
 WORKDIR /var/www/html
 COPY . /var/www/html

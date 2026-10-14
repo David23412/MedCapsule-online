@@ -22,7 +22,7 @@
         html, body {
             margin: 0;
             padding: 0;
-            background: #f8fafc;
+            background: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             overflow-x: hidden;
         }
@@ -39,8 +39,8 @@
             left: 0;
             width: 280px;
             height: 100vh;
-            background: linear-gradient(180deg, #6366f1 10%, #4f46e5 100%);
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(99, 102, 241, 0.15);
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
             z-index: 1;
             transition: all 0.3s ease;
             overflow-y: auto;
@@ -58,16 +58,16 @@
         }
 
         .sidebar-brand span {
-            color: #fff;
+            color: #1f2937;
         }
 
         .sidebar-divider {
             margin: 0 1rem 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-top: 1px solid #e5e7eb;
         }
 
         .sidebar-heading {
-            color: rgba(255, 255, 255, 0.4);
+            color: #9ca3af;
             font-weight: 800;
             font-size: 0.65rem;
             text-transform: uppercase;
@@ -79,29 +79,31 @@
             position: relative;
         }
 
-        .nav-link {
+        .tutor-sidebar .nav-link {
             display: block;
-            color: rgba(255, 255, 255, 0.8);
+            color: #4b5563;
             padding: 0.75rem 1rem;
             font-weight: 500;
             font-size: 0.85rem;
             transition: all 0.15s;
+            border-radius: 8px;
+            margin: 0.15rem 0.5rem;
         }
 
-        .nav-link:hover {
-            color: #fff;
-            background-color: rgba(255, 255, 255, 0.1);
+        .tutor-sidebar .nav-link:hover {
+            color: #1f2937;
+            background-color: #f3f4f6;
         }
 
-        .nav-link.active {
-            color: #fff;
+        .tutor-sidebar .nav-link.active {
+            color: #6366f1;
             font-weight: 700;
-            background-color: rgba(255, 255, 255, 0.2);
+            background-color: #eef2ff;
         }
 
-        .nav-link i {
+        .tutor-sidebar .nav-link i {
             margin-right: 0.5rem;
-            opacity: 0.8;
+            opacity: 0.7;
             font-size: 0.85rem;
             width: 1rem;
             text-align: center;
@@ -111,6 +113,20 @@
             margin-left: 280px;
             padding: 1.5rem;
             min-height: calc(100vh - 0px);
+            background: #ffffff;
+        }
+
+        /* Wide submit button for accessibility */
+        .tutor-content .btn-primary,
+        .tutor-content button[type="submit"],
+        .tutor-content input[type="submit"] {
+            width: 100%;
+            max-width: 100%;
+            padding: 0.9rem 2rem;
+            font-size: 1.05rem;
+            font-weight: 600;
+            border-radius: 10px;
+            margin-top: 0.5rem;
         }
 
         .profile-circle {
@@ -131,11 +147,11 @@
 
         /* Content Cards */
         .content-card {
-            background: white;
+            background: #ffffff;
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             transition: all 0.3s ease;
             border: 1px solid #e5e7eb;
         }
@@ -185,6 +201,19 @@
                 font-size: 1.2rem;
                 margin-right: 0;
             }
+        }
+        /* Force seamless white navbar on tutor pages */
+        .navbar {
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        /* Remove parent layout padding for seamless look */
+        main.py-4 {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
         }
     </style>
 

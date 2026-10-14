@@ -28,13 +28,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // FIXED: Register all military-grade services
-        $this->app->singleton(PaymentService::class, function ($app) {
-            return new PaymentService(
-                $app->make(\App\Services\SecurePaymentService::class),
-                $app->make(\App\Services\PerformanceMonitorService::class),
-                $app->make(PaymentSecurityService::class)
-            );
-        });
+        $this->app->singleton(PaymentService::class);
 
         $this->app->singleton(PaymentSecurityService::class, function ($app) {
             return new PaymentSecurityService();

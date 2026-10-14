@@ -3,10 +3,7 @@
 namespace App\Services;
 
 use App\Models\Assignment;
-use App\Models\User;
-use App\Events\AssignmentDeadlineChanged;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 
 class AssignmentLifecycleService
@@ -26,8 +23,7 @@ class AssignmentLifecycleService
         // Since status column was removed, allow deletion
         $result = $assignment->delete();
         
-        if ($result) {
-        } else {
+        if (!$result) {
             Log::error("Failed to delete assignment {$assignment->id}.");
         }
 
@@ -43,12 +39,12 @@ class AssignmentLifecycleService
             throw new \InvalidArgumentException('New deadline must be in the future.');
         }
 
+        $oldDeadline = $assignment->deadline->copy();
         $assignment->deadline = $newDeadline;
-        $assignment->status = Assignment::STATUS_ACTIVE; // Reset status on deadline change
         $saved = $assignment->save();
 
         if ($saved) {
-            event(new AssignmentDeadlineChanged($assignment));
+            $this->notificationService->notifyDeadlineChanged($assignment, $oldDeadline);
         }
 
         return $saved;
@@ -59,12 +55,8 @@ class AssignmentLifecycleService
      */
     public function expireOverdueAssignments()
     {
-        $assignmentsToExpire = $this->getOverdueAssignments(72); // 3-day grace period
-
-        foreach ($assignmentsToExpire as $assignment) {
-            $assignment->status = Assignment::STATUS_EXPIRED;
-            $assignment->save();
-        }
+        // Assignment status is derived from deadlines; there is no status column.
+        // Keep this compatibility entry point without writing obsolete state.
     }
 
     /**
@@ -72,30 +64,6 @@ class AssignmentLifecycleService
      */
     public function sendDeadlineReminders()
     {
-        $assignments = $this->getAssignmentsNearingDeadline(24);
-        foreach ($assignments as $assignment) {
-            $this->notificationService->sendDeadlineReminder($assignment->student, $assignment);
-        }
-    }
-
-    /**
-     * Get assignments that are overdue by a certain number of hours.
-     */
-    private function getOverdueAssignments(int $hours = 0): Collection
-    {
-        return Assignment::where('deadline', '<', now()->subHours($hours))
-                         ->where('status', '!=', Assignment::STATUS_COMPLETED)
-                         ->get();
-    }
-
-    /**
-     * Get assignments nearing their deadline.
-     */
-    private function getAssignmentsNearingDeadline(int $hours = 24): Collection
-    {
-        return Assignment::where('deadline', '>', now())
-                         ->where('deadline', '<=', now()->addHours($hours))
-                         ->where('status', Assignment::STATUS_ACTIVE)
-                         ->get();
+        $this->notificationService->sendDeadlineReminders();
     }
 }
