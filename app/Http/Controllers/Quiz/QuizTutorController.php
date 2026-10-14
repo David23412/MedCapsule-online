@@ -353,7 +353,8 @@ class QuizTutorController extends Controller
             $rules['option_b']       = 'nullable|string|max:1000';
             $rules['option_c']       = 'nullable|string|max:1000';
             $rules['option_d']       = 'nullable|string|max:1000';
-            $rules['correct_answer'] = 'required|string|in:A,B,C,D';
+            $rules['option_e']       = 'nullable|string|max:1000';
+            $rules['correct_answer'] = 'required|string|in:A,B,C,D,E';
         }
 
         $request->validate($rules);
@@ -361,7 +362,7 @@ class QuizTutorController extends Controller
         try {
             $before = $question->only([
                 'question', 'question_type', 'option_a', 'option_b', 'option_c',
-                'option_d', 'correct_answer', 'alternative_answers', 'explanation',
+                'option_d', 'option_e', 'correct_answer', 'alternative_answers', 'explanation',
             ]);
 
             $updateData = [
@@ -378,11 +379,13 @@ class QuizTutorController extends Controller
                 $updateData['option_b'] = null;
                 $updateData['option_c'] = null;
                 $updateData['option_d'] = null;
+                $updateData['option_e'] = null;
             } else {
                 $updateData['option_a'] = $request->input('option_a');
                 $updateData['option_b'] = $request->input('option_b');
                 $updateData['option_c'] = $request->input('option_c');
                 $updateData['option_d'] = $request->input('option_d');
+                $updateData['option_e'] = $request->input('option_e', $question->option_e);
                 $updateData['alternative_answers'] = null;
             }
 
@@ -392,6 +395,9 @@ class QuizTutorController extends Controller
             Cache::forget("question_{$question->id}");
             if ($question->topic_id) {
                 Cache::forget("topic_{$question->topic_id}_questions");
+                if ($courseId = $question->topic?->course_id) {
+                    Cache::forget("course_{$courseId}_questions_search_payload_v10");
+                }
             }
 
             // Audit log for admin question edits
@@ -402,7 +408,7 @@ class QuizTutorController extends Controller
                 'before'      => $before,
                 'after'       => $question->only([
                     'question', 'question_type', 'option_a', 'option_b', 'option_c',
-                    'option_d', 'correct_answer', 'alternative_answers', 'explanation',
+                    'option_d', 'option_e', 'correct_answer', 'alternative_answers', 'explanation',
                 ]),
             ]);
 
@@ -417,6 +423,7 @@ class QuizTutorController extends Controller
                     'option_b'            => $question->option_b,
                     'option_c'            => $question->option_c,
                     'option_d'            => $question->option_d,
+                    'option_e'            => $question->option_e,
                     'correct_answer'      => $question->correct_answer,
                     'alternative_answers' => $question->alternative_answers,
                     'explanation'         => $question->explanation,

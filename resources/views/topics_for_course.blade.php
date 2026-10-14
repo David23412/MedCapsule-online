@@ -477,6 +477,10 @@
                             <label><i class="fas fa-d" style="color:#ef4444"></i> Option D</label>
                             <input id="sq-od" class="sq-input" type="text" placeholder="Option D">
                         </div>
+                        <div class="sq-field">
+                            <label><i class="fas fa-e" style="color:#8b5cf6"></i> Option E <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
+                            <input id="sq-oe" class="sq-input" type="text" placeholder="Option E">
+                        </div>
 
                         <div class="sq-field">
                             <label><i class="fas fa-check" style="color:#16a34a"></i> Correct Answer</label>
@@ -485,6 +489,7 @@
                                 <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-cb" value="B"> B</label>
                                 <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-cc" value="C"> C</label>
                                 <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-cd" value="D"> D</label>
+                                <label class="sq-correct-option"><input type="radio" name="sq-correct" id="sq-ce" value="E"> E</label>
                             </div>
                         </div>
                     </div>
@@ -1410,6 +1415,7 @@
                     document.getElementById('sq-ob').value = data.option_b || '';
                     document.getElementById('sq-oc').value = data.option_c || '';
                     document.getElementById('sq-od').value = data.option_d || '';
+                    document.getElementById('sq-oe').value = data.option_e || '';
                     const radio = document.getElementById('sq-c' + String(data.raw_correct_answer || '').toLowerCase());
                     if (radio) {
                         radio.checked = true;
@@ -1473,6 +1479,7 @@
                     payload.option_b = document.getElementById('sq-ob').value.trim();
                     payload.option_c = document.getElementById('sq-oc').value.trim();
                     payload.option_d = document.getElementById('sq-od').value.trim();
+                    payload.option_e = document.getElementById('sq-oe').value.trim();
                 }
 
                 saveBtn.disabled = true;
@@ -1508,7 +1515,8 @@
                         option_a: payload.option_a || '',
                         option_b: payload.option_b || '',
                         option_c: payload.option_c || '',
-                        option_d: payload.option_d || ''
+                        option_d: payload.option_d || '',
+                        option_e: payload.option_e || ''
                     };
 
                     if (payload.question_type === 'written') {
@@ -1518,7 +1526,8 @@
                             A: payload.option_a || '',
                             B: payload.option_b || '',
                             C: payload.option_c || '',
-                            D: payload.option_d || ''
+                            D: payload.option_d || '',
+                            E: payload.option_e || ''
                         };
                         updatedQuestion.correct_answer = `${payload.correct_answer}: ${optionMap[payload.correct_answer] || ''}`.trim();
                     }

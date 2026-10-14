@@ -881,10 +881,10 @@ class TopicController extends Controller
             }
 
             // 🚀 SMART CACHE LAYER: Load only this course's question data with cross-field blobs
-            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v9", 86400, function() use ($courseTopicIds, $topicNames) {
+            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v10", 86400, function() use ($courseTopicIds, $topicNames) {
                 return Question::query()
                     ->whereIn('topic_id', $courseTopicIds)
-                    ->select('id', 'question', 'correct_answer', 'explanation', 'topic_id', 'extra_topic', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d')
+                    ->select('id', 'question', 'correct_answer', 'explanation', 'topic_id', 'extra_topic', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d', 'option_e', 'alternative_answers')
                     ->get()
                     ->map(function($q) use ($topicNames, $courseTopicIds) {
                         $courseTopicIdLookup = array_flip($courseTopicIds);
@@ -932,6 +932,7 @@ class TopicController extends Controller
                             'option_b' => $q->option_b,
                             'option_c' => $q->option_c,
                             'option_d' => $q->option_d,
+                            'option_e' => $q->option_e,
                             'topic_titles' => $topicTitles,
                             'search_blob' => $searchBlob,
                             'normalized_question' => strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ))
