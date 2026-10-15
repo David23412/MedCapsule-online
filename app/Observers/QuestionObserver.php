@@ -59,6 +59,8 @@ class QuestionObserver
                 'option_b',
                 'option_c',
                 'option_d',
+                'option_e',
+                'alternative_answers',
                 'correct_answer',
                 'explanation',
                 'image_url',

@@ -17,15 +17,14 @@
         body {
             margin: 0;
             font-family: 'Poppins', sans-serif;
-            background: #f8fafc;
+            background: #ffffff;
             color: #0f172a;
         }
 
         .read-shell {
-            max-width: 1600px;
-            width: 95%;
-            margin: 0 auto;
-            padding: 24px 10px 80px;
+            width: 100%;
+            min-height: 100vh;
+            padding: 0 0 64px;
         }
 
         .back-link-wrap {
@@ -53,10 +52,9 @@
             gap: 8px;
             font-size: 0.85rem;
             font-weight: 600;
-            color: #1d4ed8;
-            background: #dbeafe;
-            border-radius: 999px;
-            padding: 8px 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             margin-bottom: 14px;
         }
 
@@ -82,11 +80,11 @@
         }
 
         .source-chip {
-            background: #eff6ff;
-            color: #1e40af;
-            border: 1px solid #bfdbfe;
-            border-radius: 999px;
-            padding: 7px 12px;
+            background: #f8fafc;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 4px 8px;
             font-size: 0.85rem;
             font-weight: 500;
         }
@@ -105,15 +103,12 @@
 
         .question-card:last-of-type {
             border-bottom: none;
-            border-radius: 0 0 24px 24px;
+            border-radius: 0;
         }
 
         .read-content-sheet {
             background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
+            min-height: 100vh;
         }
 
         .question-top {
@@ -167,7 +162,20 @@
 
         .badge-stack .badge {
             font-size: 0.75rem;
+            border-radius: 4px;
         }
+
+        .read-edit-btn {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            background: #fff;
+            color: #475569;
+            padding: 6px 10px;
+            font: inherit;
+            font-size: 0.8rem;
+        }
+
+        .read-edit-btn:hover { background: #f8fafc; color: #0f172a; }
 
         .mistake-btn {
             display: flex;
@@ -353,11 +361,7 @@
             text-decoration: none;
             color: #0f172a;
             font-weight: 600;
-            background: rgba(255, 255, 255, 0.92);
-            border: 1px solid rgba(191, 219, 254, 0.95);
-            border-radius: 999px;
-            padding: 10px 14px;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            padding: 4px 0;
         }
 
         .back-link:hover {
@@ -495,13 +499,18 @@
                     'E' => $question->option_e,
                 ];
             @endphp
-            <article class="question-card {{ $question->image_url ? 'has-image' : '' }}">
+            <article data-question-id="{{ $question->id }}" class="question-card {{ $question->image_url ? 'has-image' : '' }}">
                 <div class="question-top">
                     <div class="question-header-main">
                         <div class="question-number">Question {{ $index + 1 }}</div>
                         <div class="question-text">{{ $question->question }}</div>
                     </div>
                     <div class="badge-stack">
+                        @if(auth()->user()->isAdmin())
+                            <button type="button" class="read-edit-btn" onclick="openEditModal({{ $question->id }})" aria-label="Edit question {{ $index + 1 }}">
+                                <i class="fas fa-pen" aria-hidden="true"></i> Edit
+                            </button>
+                        @endif
                         @php $isMistakeSaved = isset($mistakeLookup[$question->id]); @endphp
                         <button
                             type="button"
@@ -586,6 +595,30 @@
         @endforeach
         </div>
     </div>
+    @if(auth()->user()->isAdmin())
+        @php
+            $adminQuestionData = $questions->mapWithKeys(fn ($question) => [$question->id => [
+                'question_text' => $question->question,
+                'question_type' => $question->question_type,
+                'correct_answer' => $question->correct_answer,
+                'alternative_answers' => $question->alternative_answers,
+                'explanation' => $question->explanation,
+                'option_a' => $question->option_a,
+                'option_b' => $question->option_b,
+                'option_c' => $question->option_c,
+                'option_d' => $question->option_d,
+                'option_e' => $question->option_e,
+            ]]);
+        @endphp
+        <script>
+            window.TUTOR_CONFIG = {
+                isAdmin: true,
+                refreshAfterEdit: true,
+                questionData: {{ Illuminate\Support\Js::from($adminQuestionData) }}
+            };
+        </script>
+        @include('partials.admin-question-editor')
+    @endif
     <script>
         (function() {
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';

@@ -21,3 +21,7 @@ storage/framework/sessions/*
 bootstrap/cache/*.php
 .phpunit*
 artifacts/
+
+public/storage
+
+output/playwright/

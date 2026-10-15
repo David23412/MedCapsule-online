@@ -197,6 +197,7 @@ class QuizService
 
         $cacheKey = "topic:{$topic->id}:questions:" . md5(serialize([
             'sources' => $sources,
+            'payload_version' => 2,
             'mode' => $mode,
             'tutor_scope' => $options['tutor_scope'] ?? null,
             'user_id' => $mode === 'tutor' ? $user->id : null,
@@ -222,7 +223,7 @@ class QuizService
     {
         $query = Question::select([
             'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
-            'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d',
+            'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d', 'questions.option_e',
             'questions.correct_answer', 'questions.explanation', 'questions.image_url', 'questions.source',
             'questions.alternative_answers', 'questions.exam_appearances_count', 'questions.extra_topic'
         ])
@@ -723,7 +724,7 @@ class QuizService
                 ->where('question', '!=', '') // Ensure question is not empty
                 ->select([
                     'id', 'topic_id', 'question', 'question_type',
-                    'option_a', 'option_b', 'option_c', 'option_d',
+                    'option_a', 'option_b', 'option_c', 'option_d', 'option_e',
                     'correct_answer', 'explanation', 'image_url', 'source',
                     'alternative_answers'
                 ]);
@@ -765,7 +766,7 @@ class QuizService
             $validQuestions = Question::query()
                 ->select([
                     'id', 'topic_id', 'question', 'question_type',
-                    'option_a', 'option_b', 'option_c', 'option_d',
+                    'option_a', 'option_b', 'option_c', 'option_d', 'option_e',
                     'correct_answer', 'explanation', 'image_url', 'source',
                     'alternative_answers'
                 ])

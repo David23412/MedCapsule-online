@@ -38,6 +38,8 @@
             document.getElementById('edit-option-b').value = data.option_b || '';
             document.getElementById('edit-option-c').value = data.option_c || '';
             document.getElementById('edit-option-d').value = data.option_d || '';
+            document.getElementById('edit-option-e').value = data.option_e || '';
+            document.querySelectorAll('input[name="edit-correct"]').forEach((radio) => { radio.checked = false; });
             const radio = document.getElementById(`edit-correct-${(data.correct_answer || '').toUpperCase()}`);
             if (radio) {
                 radio.checked = true;
@@ -107,6 +109,10 @@
             document.getElementById('edit-status').className = 'edit-status';
             document.getElementById('delete-confirm-box').classList.remove('show');
             document.getElementById('edit-save-btn').disabled = false;
+            document.getElementById('edit-delete-btn').style.display = '';
+            const confirmButton = document.getElementById('confirm-delete-btn');
+            confirmButton.disabled = false;
+            confirmButton.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
             document.getElementById('edit-question-overlay').classList.add('show');
             document.body.style.overflow = 'hidden';
         };
@@ -151,6 +157,7 @@
                 payload.option_b = document.getElementById('edit-option-b').value.trim();
                 payload.option_c = document.getElementById('edit-option-c').value.trim();
                 payload.option_d = document.getElementById('edit-option-d').value.trim();
+                payload.option_e = document.getElementById('edit-option-e').value.trim();
             }
 
             saveButton.disabled = true;
@@ -186,9 +193,15 @@
                         option_b: payload.option_b || '',
                         option_c: payload.option_c || '',
                         option_d: payload.option_d || '',
+                        option_e: payload.option_e || '',
                     });
                 }
-                window.setTimeout(closeEditModal, 900);
+                window.setTimeout(() => {
+                    closeEditModal();
+                    if (window.TUTOR_CONFIG?.refreshAfterEdit) {
+                        window.location.reload();
+                    }
+                }, 900);
             } catch (error) {
                 setEditStatus(`Network error: ${error.message}`, 'error');
                 saveButton.disabled = false;
@@ -243,7 +256,12 @@
                         card.remove();
                     }
                 });
-                window.setTimeout(closeEditModal, 800);
+                window.setTimeout(() => {
+                    closeEditModal();
+                    if (window.TUTOR_CONFIG?.refreshAfterEdit) {
+                        window.location.reload();
+                    }
+                }, 800);
             } catch (error) {
                 setEditStatus(`Network error: ${error.message}`, 'error');
                 confirmButton.disabled = false;

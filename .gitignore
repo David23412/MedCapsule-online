@@ -30,3 +30,7 @@ Thumbs.db
 
 /test_*.php
 /storage/phpstan/
+
+/public/storage
+
+/output/playwright/
