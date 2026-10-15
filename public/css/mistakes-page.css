@@ -660,6 +660,14 @@
             transform: translateY(-1px);
         }
 
+        /* Percentages cover the full viewport even with the desktop body zoom. */
+        .modal-backdrop {
+            width: 100%;
+            height: 100%;
+            background-color: #0f172a;
+            --bs-backdrop-opacity: 0.32;
+        }
+
         .delete-mistakes-modal {
             border: 0;
             border-radius: 18px;

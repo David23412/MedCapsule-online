@@ -77,6 +77,7 @@ class QuizMistakeController extends Controller
                         'questions.option_b',
                         'questions.option_c',
                         'questions.option_d',
+                        'questions.option_e',
                         'topics.id as topic_id',
                         'topics.name as topic_name',
                         'courses.id as course_id',
@@ -114,6 +115,7 @@ class QuizMistakeController extends Controller
                         'option_b' => $mistake->option_b,
                         'option_c' => $mistake->option_c,
                         'option_d' => $mistake->option_d,
+                        'option_e' => $mistake->option_e,
                         'topic' => (object) [
                             'id' => $mistake->topic_id,
                             'name' => $mistake->topic_name,
