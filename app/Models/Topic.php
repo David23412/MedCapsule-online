@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Log;
@@ -88,6 +89,27 @@ class Topic extends Model
                 ->with(['topic'])
                 ->orderBy('id')
                 ->get();
+        });
+    }
+
+    /** Keep video topics and topics with questions available to their quiz. */
+    public function scopeWithVisibleContent(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $linkedQuestion = DB::getDriverName() === 'sqlite'
+            ? "INSTR(',' || REPLACE(COALESCE(questions.extra_topic, ''), ' ', '') || ',', ',' || topics.id || ',') > 0"
+            : "FIND_IN_SET(topics.id, REPLACE(questions.extra_topic, ' ', '')) > 0";
+
+        $query->where(function ($visible) use ($linkedQuestion) {
+            $visible->where('topics.case_type', 'video')
+                ->orWhereExists(function ($questions) use ($linkedQuestion) {
+                    $questions->selectRaw('1')->from('questions')
+                        ->where(function ($assigned) use ($linkedQuestion) {
+                            $assigned->whereColumn('questions.topic_id', 'topics.id')
+                                ->orWhere(function ($linked) use ($linkedQuestion) {
+                                    $linked->where('topics.is_exam', false)->whereRaw($linkedQuestion);
+                                });
+                        });
+                });
         });
     }
 

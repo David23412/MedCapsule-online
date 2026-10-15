@@ -1923,6 +1923,24 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             });
         }
         
+        $('#hideEmptyTopicsToggle').on('change', async function () {
+            const toggle = this;
+            const enabled = toggle.checked;
+            const status = document.getElementById('emptyTopicVisibilityStatus');
+            toggle.disabled = true;
+            status.textContent = 'Saving…';
+            try {
+                const response = await saveSetting('hide_empty_topics', enabled ? '1' : '0', 'boolean');
+                if (!response.success) throw new Error('Setting could not be saved.');
+                status.textContent = enabled ? 'Saved. Empty topics are hidden.' : 'Saved. All topics are visible.';
+            } catch (_error) {
+                toggle.checked = !enabled;
+                status.textContent = 'Could not save. Please try again.';
+            } finally {
+                toggle.disabled = false;
+            }
+        });
+
         function saveSetting(key, value, type) {
             return $.ajax({
                 url: '/admin/settings/update',

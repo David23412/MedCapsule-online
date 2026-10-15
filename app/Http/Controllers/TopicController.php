@@ -152,6 +152,7 @@ class TopicController extends Controller
         // Load the course with its topics, user progress, and videos
         $topics = Topic::query()
             ->where('topics.course_id', $course->id)
+            ->when(\App\Models\AdminSetting::get('hide_empty_topics', false), fn ($query) => $query->withVisibleContent())
             ->select([
                 'topics.id',
                 'topics.name',

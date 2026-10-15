@@ -2729,6 +2729,18 @@
             
             <!-- Settings Tab -->
             <div class="tab-pane fade {{ $activeTab === 'settings' ? 'show active' : '' }}" id="settings" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header"><i class="fas fa-eye-slash me-2"></i>Topic Visibility</div>
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="hideEmptyTopicsToggle"
+                                @checked(\App\Models\AdminSetting::get('hide_empty_topics', false))>
+                            <label class="form-check-label" for="hideEmptyTopicsToggle">Hide topics with no questions</label>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0">Hide empty topics from the topics page for everyone. Directly assigned and linked questions count; video topics stay visible. Topics reappear when questions are added. Nothing is deleted.</p>
+                        <div id="emptyTopicVisibilityStatus" class="small mt-2" role="status" aria-live="polite"></div>
+                    </div>
+                </div>
                 <div class="row g-4">
                     <div class="col-lg-8">
                         <div class="card">
