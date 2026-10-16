@@ -84,12 +84,13 @@ class GradingService
 
             // Get questions and validate they belong to the topic
             $questions = $this->getAndValidateQuestions($answers);
+            $this->validateSubmissionAccess($user, $questions, $topic, $course, $mode);
+
+            // Validate assignments before answers can update mistakes or rewards.
+            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
             // Process quiz based on mode and get grading results
             $gradingResult = $this->processQuizByMode($user, $questions, $answers, $topic, $mode);
-
-            // Check if this is an assignment quiz
-            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
 
             // Create quiz attempts based on mode
             $this->createQuizAttemptsByMode($user, $gradingResult, $duration, $mode, $topic, $isAssignment, $assignmentId);
@@ -114,6 +115,9 @@ class GradingService
             // Prepare response
             return $this->prepareGradingResponse($gradingResult, $questions, $answers, $xpResult, $overallTopicProgress);
 
+        } catch (\InvalidArgumentException|\Illuminate\Auth\Access\AuthorizationException $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('❌ Error in GradingService::gradeQuiz:', [
@@ -346,12 +350,36 @@ class GradingService
         }
     }
 
-    /**
-     * Get and validate questions with optimized queries
-     *
-     * @param array $answers
-     * @return \Illuminate\Database\Eloquent\Collection
-     */
+    /** Validate permissions and question ownership before recording any results. */
+    private function validateSubmissionAccess(User $user, \Illuminate\Database\Eloquent\Collection $questions, Topic $topic, Course $course, string $mode): void
+    {
+        if ((int) $topic->course_id !== (int) $course->id) {
+            throw new \InvalidArgumentException('Invalid topic for this course.');
+        }
+        if (!$user->isAdmin() && (!$user->hasAccessToCourse($course->id) || $user->isTopicPreviewLocked($topic))) {
+            throw new \Illuminate\Auth\Access\AuthorizationException('You do not have access to this topic.');
+        }
+        if ($mode === 'random') {
+            if (!$user->isAdmin()) {
+                $courseIds = $questions->pluck('topic.course_id')->unique()->all();
+                $access = $user->getCourseAccessLevels($courseIds);
+                foreach ($courseIds as $courseId) {
+                    if (($access[$courseId] ?? null) !== User::COURSE_ACCESS_FULL) {
+                        throw new \Illuminate\Auth\Access\AuthorizationException('Full course access is required for random quizzes.');
+                    }
+                }
+            }
+            return;
+        }
+        foreach ($questions as $question) {
+            $linkedIds = array_map('trim', explode(',', (string) $question->extra_topic));
+            if ((int) $question->topic_id !== (int) $topic->id
+                && ($topic->is_exam || !in_array((string) $topic->id, $linkedIds, true))) {
+                throw new \InvalidArgumentException('One or more questions do not belong to this topic.');
+            }
+        }
+    }
+
     private function getAndValidateQuestions(array $answers): \Illuminate\Database\Eloquent\Collection
     {
         $questionIds = array_keys($answers);
@@ -360,7 +388,7 @@ class GradingService
         $questions = Question::select([
                 'id', 'question', 'question_type', 'correct_answer', 'explanation',
                 'option_a', 'option_b', 'option_c', 'option_d', 'option_e',
-                'alternative_answers', 'concept', 'topic_id', 'source'
+                'alternative_answers', 'concept', 'topic_id', 'source', 'extra_topic'
             ])
             ->with([
                 'topic:id,name,course_id',
@@ -682,13 +710,19 @@ class GradingService
             ->first();
             
         if (!$assignment) {
-            return false;
+            throw new \InvalidArgumentException('Assignment does not belong to this topic and course.');
         }
-        
+        if (!$user->isAdmin() && !$assignment->assignedUsers()->where('users.id', $user->id)->exists()) {
+            throw new \Illuminate\Auth\Access\AuthorizationException('This assignment is not assigned to you.');
+        }
+
         // Check if the assignment is currently active for this specific user.
         // The status is computed dynamically, so we don't need to check for overdue/expired here.
         $status = $assignment->getStatusForUser($user);
-        return $status === \App\Models\Assignment::STATUS_ACTIVE;
+        if ($status !== \App\Models\Assignment::STATUS_ACTIVE) {
+            throw new \InvalidArgumentException('This assignment is no longer available for submission.');
+        }
+        return true;
     }
 
 

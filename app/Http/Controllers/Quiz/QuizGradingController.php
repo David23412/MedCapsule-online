@@ -50,7 +50,7 @@ class QuizGradingController extends Controller
 
             // Validate topic belongs to course
             if ($topicModel->course_id !== $courseId) {
-                throw new \Exception("Topic $topicId does not belong to course $courseId");
+                throw new \InvalidArgumentException('Topic does not belong to this course.');
             }
 
             // Grade the quiz with proper parameters
@@ -75,6 +75,8 @@ class QuizGradingController extends Controller
                 'data' => $gradingResult
             ]);
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 403);
         } catch (\InvalidArgumentException $e) {
             $status = Str::contains(Str::lower($e->getMessage()), ['payload', 'too large', 'exceeds maximum']) ? 413 : 422;
 

@@ -332,7 +332,7 @@
                                                 @else
                                                     <input class="form-check-input" type="radio" disabled checked>
                                                     <label class="form-check-label incorrect">
-                                                        @if(in_array(strtolower($submittedOption), ['a', 'b', 'c', 'd']))
+                                                        @if(in_array(strtolower($submittedOption), ['a', 'b', 'c', 'd', 'e']))
                                                             {{ $mistake->question->{'option_'.strtolower($submittedOption)} }}
                                                         @else
                                                             {{ $submittedOption }}
