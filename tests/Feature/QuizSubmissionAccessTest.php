@@ -175,6 +175,76 @@ class QuizSubmissionAccessTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_student_cannot_submit_to_a_locked_topic(): void
+    {
+        $student = User::factory()->student()->create(['xp' => 0]);
+        [$course, $topic, $question] = $this->quiz();
+        $this->enroll($student, $course);
+        $topic->update(['is_locked' => true]);
+
+        $this->actingAs($student)->postJson(route('quiz.grade', [$course, $topic]), $this->answers($question))
+            ->assertForbidden();
+        $this->assertNoChanges($student);
+    }
+
+    public function test_topic_lock_preserves_existing_random_practice_access(): void
+    {
+        $student = User::factory()->student()->create();
+        [$course, $topic, $question] = $this->quiz();
+        $this->enroll($student, $course);
+        $topic->update(['is_locked' => true]);
+
+        $this->actingAs($student)->postJson(route('quiz.grade-random'), [
+            ...$this->answers($question), 'mode' => 'quiz',
+        ])->assertOk();
+    }
+
+    public function test_admin_can_still_submit_to_a_locked_topic(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [$course, $topic, $question] = $this->quiz();
+        $topic->update(['is_locked' => true]);
+
+        $this->actingAs($admin)->postJson(route('quiz.grade', [$course, $topic]), $this->answers($question))
+            ->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_source_specific_assignment_rejects_questions_from_another_source(): void
+    {
+        $student = User::factory()->student()->create(['xp' => 0]);
+        [$course, $topic, $question] = $this->quiz();
+        $this->enroll($student, $course);
+        $question->update(['source' => 'UWorld']);
+        $assignment = Assignment::factory()->active()->sourceSpecific()->create([
+            'topic_id' => $topic->id, 'course_id' => $course->id, 'assigned_source' => 'Kaplan',
+        ]);
+        $assignment->assignedUsers()->attach($student);
+
+        $this->actingAs($student)->postJson(route('quiz.grade', [$course, $topic]), [
+            ...$this->answers($question), 'assignment_id' => $assignment->id,
+        ])->assertUnprocessable();
+        $this->assertNoChanges($student);
+    }
+
+    public function test_source_specific_assignment_still_accepts_its_assigned_source(): void
+    {
+        $student = User::factory()->student()->create();
+        [$course, $topic, $question] = $this->quiz();
+        $this->enroll($student, $course);
+        $question->update(['source' => 'Kaplan']);
+        $assignment = Assignment::factory()->active()->sourceSpecific()->create([
+            'topic_id' => $topic->id, 'course_id' => $course->id, 'assigned_source' => 'Kaplan',
+        ]);
+        $assignment->assignedUsers()->attach($student);
+
+        $this->actingAs($student)->postJson(route('quiz.grade', [$course, $topic]), [
+            ...$this->answers($question), 'assignment_id' => $assignment->id,
+        ])->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseHas('quiz_attempts', [
+            'user_id' => $student->id, 'assignment_id' => $assignment->id, 'source' => 'Kaplan',
+        ]);
+    }
+
     private function quiz(): array
     {
         $course = Course::factory()->premium()->create();

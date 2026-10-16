@@ -87,7 +87,7 @@ class GradingService
             $this->validateSubmissionAccess($user, $questions, $topic, $course, $mode, $allowMixedTopics);
 
             // Validate assignments before answers can update mistakes or rewards.
-            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
+            $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId, $questions);
 
             // Process quiz based on mode and get grading results
             $gradingResult = $this->processQuizByMode($user, $questions, $answers, $topic, $mode);
@@ -356,10 +356,11 @@ class GradingService
         if ((int) $topic->course_id !== (int) $course->id) {
             throw new \InvalidArgumentException('Invalid topic for this course.');
         }
-        if (!$user->isAdmin() && (!$user->hasAccessToCourse($course->id) || $user->isTopicPreviewLocked($topic))) {
+        $isMixedQuiz = $mode === 'random' || $allowMixedTopics;
+        if (!$user->isAdmin() && ((!$isMixedQuiz && $topic->is_locked) || !$user->hasAccessToCourse($course->id) || $user->isTopicPreviewLocked($topic))) {
             throw new \Illuminate\Auth\Access\AuthorizationException('You do not have access to this topic.');
         }
-        if ($mode === 'random' || $allowMixedTopics) {
+        if ($isMixedQuiz) {
             if (!$user->isAdmin()) {
                 $courseIds = $questions->pluck('topic.course_id')->unique()->all();
                 $access = $user->getCourseAccessLevels($courseIds);
@@ -692,7 +693,7 @@ class GradingService
      * @param int|null $assignmentId
      * @return bool
      */
-    private function isAssignmentQuiz(User $user, Topic $topic, Course $course, ?int $assignmentId = null): bool
+    private function isAssignmentQuiz(User $user, Topic $topic, Course $course, ?int $assignmentId, \Illuminate\Database\Eloquent\Collection $questions): bool
     {
         // CRITICAL FIX: Only return true if assignment_id is explicitly provided
         // Don't assume it's an assignment just because assignments exist for the topic
@@ -721,6 +722,13 @@ class GradingService
         $status = $assignment->getStatusForUser($user);
         if ($status !== \App\Models\Assignment::STATUS_ACTIVE) {
             throw new \InvalidArgumentException('This assignment is no longer available for submission.');
+        }
+        if ($assignment->isSourceSpecific()) {
+            foreach ($questions as $question) {
+                if ((string) $question->source !== (string) $assignment->assigned_source) {
+                    throw new \InvalidArgumentException('One or more questions do not belong to the assigned source.');
+                }
+            }
         }
         return true;
     }
