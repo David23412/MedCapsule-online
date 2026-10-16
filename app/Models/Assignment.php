@@ -308,7 +308,7 @@ class Assignment extends Model
      * 
      * @return bool
      */
-    public function isLocked(): bool
+    public function isLocked(?Carbon $deadline = null): bool
     {
         // If submitted, it's locked
         if ($this->submitted_at !== null) {
@@ -323,8 +323,9 @@ class Assignment extends Model
             }
         }
         
-        // If past deadline, it's locked
-        if ($this->deadline && now()->gt($this->deadline)) {
+        // Use a personal deadline when checking access for an assigned student.
+        $deadline ??= $this->deadline;
+        if ($deadline && now()->gt($deadline)) {
             return true;
         }
         
@@ -842,7 +843,7 @@ class Assignment extends Model
         }
 
         // 2. Check if the assignment is locked (time limit expired, past deadline, or already attempted)
-        if ($this->isLocked() || $this->hasUserAttempted($user->id)) {
+        if ($this->isLocked($this->getDeadlineForUser($user->id)) || $this->hasUserAttempted($user->id)) {
             return self::STATUS_LOCKED;
         }
 
@@ -901,7 +902,7 @@ class Assignment extends Model
         }
         
         // Check if past deadline
-        if ($this->deadline && now()->gt($this->deadline)) {
+        if (now()->gt($this->getDeadlineForUser($user->id))) {
             return 'This assignment is past the deadline.';
         }
 
@@ -910,13 +911,11 @@ class Assignment extends Model
 
     /**
      * 🔥 CRITICAL: Get user progress with lock status
-     * Optimized: computes status once and reuses across all derived fields.
      */
     public function getUserProgressWithStatus(User $user): array
     {
         $progress = $this->getUserProgress($user->id);
 
-        // Compute status once — getStatusForUser may query DB if attempts not loaded
         $status = $this->getStatusForUser($user);
 
         // Derive all status-dependent values from the already-resolved status
@@ -929,24 +928,7 @@ class Assignment extends Model
 
         $isLocked = $status === self::STATUS_LOCKED;
 
-        // Inline lock reason using already-known status to avoid redundant queries
-        $lockReason = null;
-        if ($isLocked) {
-            // Use progress data (already fetched above) to check if user attempted
-            if ($progress['attempts_count'] > 0) {
-                $lockReason = 'You have already attempted this assignment.';
-            } elseif ($this->submitted_at !== null) {
-                $lockReason = 'This assignment has already been submitted.';
-            } elseif ($this->duration_minutes && $this->created_at) {
-                $timeLimit = (float) $this->duration_minutes * 60;
-                if (now()->diffInSeconds($this->created_at) > $timeLimit) {
-                    $lockReason = 'The time limit for this assignment has expired.';
-                }
-            } elseif ($this->deadline && now()->gt($this->deadline)) {
-                $lockReason = 'This assignment is past the deadline.';
-            }
-            $lockReason ??= 'This assignment is currently locked.';
-        }
+        $lockReason = $isLocked ? $this->getLockReasonForUser($user) : null;
 
         return array_merge($progress, [
             'status' => $status,
@@ -979,7 +961,9 @@ class Assignment extends Model
     public function getDeadlineForUser($userId): Carbon
     {
         // Find the user in the assignedUsers relationship
-        $user = $this->assignedUsers()->where('user_id', $userId)->first();
+        $user = $this->relationLoaded('assignedUsers')
+            ? $this->assignedUsers->firstWhere('id', $userId)
+            : $this->assignedUsers()->where('user_id', $userId)->first();
         
         // Check if user has an extension in pivot table
         if ($user && $user->pivot->extended_deadline) {
@@ -995,7 +979,9 @@ class Assignment extends Model
      */
     public function hasExtensionForUser($userId): bool
     {
-        $user = $this->assignedUsers()->where('user_id', $userId)->first();
+        $user = $this->relationLoaded('assignedUsers')
+            ? $this->assignedUsers->firstWhere('id', $userId)
+            : $this->assignedUsers()->where('user_id', $userId)->first();
         return $user && $user->pivot->extended_deadline;
     }
 

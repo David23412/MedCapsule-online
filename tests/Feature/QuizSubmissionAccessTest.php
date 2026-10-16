@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\Question;
 use App\Models\Topic;
 use App\Models\User;
+use App\Services\AssignmentRetrievalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -67,6 +68,61 @@ class QuizSubmissionAccessTest extends TestCase
             ...$this->answers($question), 'assignment_id' => $assignment->id,
         ])->assertUnprocessable();
         $this->assertNoChanges($student);
+    }
+
+    public function test_student_can_submit_with_a_valid_personal_deadline_extension(): void
+    {
+        $student = User::factory()->student()->create();
+        [$course, $topic, $question] = $this->quiz();
+        $this->enroll($student, $course);
+        $assignment = Assignment::factory()->overdue()->completeTopic()->create([
+            'topic_id' => $topic->id, 'course_id' => $course->id,
+        ]);
+        $assignment->assignedUsers()->attach($student, ['extended_deadline' => now()->addDay()]);
+
+        $this->assertTrue($assignment->isLocked());
+        $this->assertTrue($assignment->canUserStart($student));
+        $this->assertNull($assignment->getLockReasonForUser($student));
+        $this->actingAs($student)->postJson(route('quiz.grade', [$course, $topic]), [
+            ...$this->answers($question), 'assignment_id' => $assignment->id,
+        ])->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseHas('quiz_attempts', [
+            'user_id' => $student->id, 'assignment_id' => $assignment->id, 'quiz_type' => 'assignment',
+        ]);
+    }
+
+    public function test_expired_personal_extension_still_rejects_submission(): void
+    {
+        $student = User::factory()->student()->create(['xp' => 0]);
+        [$course, $topic, $question] = $this->quiz();
+        $this->enroll($student, $course);
+        $assignment = Assignment::factory()->overdue()->completeTopic()->create([
+            'topic_id' => $topic->id, 'course_id' => $course->id,
+        ]);
+        $assignment->assignedUsers()->attach($student, ['extended_deadline' => now()->subMinute()]);
+
+        $this->assertFalse($assignment->canUserStart($student));
+        $this->assertSame('This assignment is past the deadline.', $assignment->getLockReasonForUser($student));
+        $this->assertSame('This assignment is past the deadline.', $assignment->getUserProgressWithStatus($student)['lock_reason']);
+        $this->actingAs($student)->postJson(route('quiz.grade', [$course, $topic]), [
+            ...$this->answers($question), 'assignment_id' => $assignment->id,
+        ])->assertUnprocessable();
+        $this->assertNoChanges($student);
+    }
+
+    public function test_dashboard_counts_use_each_students_personal_deadline(): void
+    {
+        $student = User::factory()->student()->create();
+        $otherStudent = User::factory()->student()->create();
+        $assignment = Assignment::factory()->overdue()->completeTopic()->create();
+        $assignment->assignedUsers()->attach($student, ['extended_deadline' => now()->addDay()]);
+        $assignment->assignedUsers()->attach($otherStudent);
+        $service = app(AssignmentRetrievalService::class);
+
+        $this->assertSame(['active' => 1, 'completed' => 0, 'locked' => 0, 'overdue' => 0],
+            $service->getAssignmentStatusCounts($student->id, null));
+        $this->assertSame(['active' => 0, 'completed' => 0, 'locked' => 0, 'overdue' => 1],
+            $service->getAssignmentStatusCounts($otherStudent->id, null));
     }
 
     public function test_legitimate_linked_question_can_still_be_graded(): void

@@ -247,6 +247,11 @@ class AssignmentRetrievalService
 
         $query = Assignment::query()
             ->select('assignments.*')
+            ->leftJoin('assignment_user as personal_assignment', function ($join) use ($user) {
+                $join->on('personal_assignment.assignment_id', '=', 'assignments.id')
+                    ->where('personal_assignment.user_id', $user->id);
+            })
+            ->addSelect(DB::raw('COALESCE(personal_assignment.extended_deadline, assignments.deadline) as effective_deadline'))
             ->leftJoinSub($attemptAggregate, 'user_attempt_aggregate', function ($join) {
                 $join->on('user_attempt_aggregate.assignment_id', '=', 'assignments.id');
             })
@@ -287,7 +292,7 @@ class AssignmentRetrievalService
         }
 
         $completionSql = 'COALESCE(user_attempt_aggregate.total_questions_sum, 0) > 0 AND (COALESCE(user_attempt_aggregate.score_sum, 0) * 100.0 / NULLIF(user_attempt_aggregate.total_questions_sum, 0)) >= 50';
-        $deadlineExpiredSql = 'assignments.deadline < NOW()';
+        $deadlineExpiredSql = 'COALESCE(personal_assignment.extended_deadline, assignments.deadline) < ?';
 
         if ($statusFilter === self::DASHBOARD_STATUS_COMPLETED) {
             $query->whereRaw($completionSql);
@@ -296,13 +301,13 @@ class AssignmentRetrievalService
 
         if ($statusFilter === self::DASHBOARD_STATUS_OVERDUE) {
             $query->whereRaw("NOT ({$completionSql})")
-                ->whereRaw($deadlineExpiredSql);
+                ->whereRaw($deadlineExpiredSql, [now()]);
             return;
         }
 
         if ($statusFilter === self::DASHBOARD_STATUS_ACTIVE) {
             $query->whereRaw("NOT ({$completionSql})")
-                ->whereRaw("NOT ({$deadlineExpiredSql})")
+                ->whereRaw("NOT ({$deadlineExpiredSql})", [now()])
                 ->whereRaw('COALESCE(user_attempt_aggregate.attempt_count, 0) = 0');
         }
     }
@@ -317,7 +322,7 @@ class AssignmentRetrievalService
             return self::DASHBOARD_STATUS_COMPLETED;
         }
 
-        if ($assignment->deadline && now()->gt($assignment->deadline)) {
+        if ($assignment->effective_deadline && now()->gt($assignment->effective_deadline)) {
             return self::DASHBOARD_STATUS_OVERDUE;
         }
 
