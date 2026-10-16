@@ -109,6 +109,16 @@ class QuizSubmissionAccessTest extends TestCase
         $this->assertNoChanges($admin);
     }
 
+    public function test_random_quiz_still_accepts_mixed_topics_with_the_legacy_quiz_mode(): void
+    {
+        $admin = User::factory()->admin()->create();
+        [, , $first] = $this->quiz();
+        [, , $second] = $this->quiz();
+        $this->actingAs($admin)->postJson(route('quiz.grade-random'), [
+            'answers' => [$first->id => 'A', $second->id => 'A'], 'time_taken' => 30, 'mode' => 'quiz',
+        ])->assertOk();
+    }
+
     private function quiz(): array
     {
         $course = Course::factory()->premium()->create();

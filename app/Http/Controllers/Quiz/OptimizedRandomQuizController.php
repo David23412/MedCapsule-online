@@ -351,7 +351,9 @@ class OptimizedRandomQuizController extends Controller
                 $timeTaken,
                 $mode,
                 $topic,
-                $course
+                $course,
+                null,
+                true
             );
 
             // Ensure the response has the correct field names for the frontend
@@ -382,6 +384,12 @@ class OptimizedRandomQuizController extends Controller
 
             return response()->json($gradingResult);
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
             Log::error('Random quiz grading failed', [
                 'user_id' => auth()->id(),

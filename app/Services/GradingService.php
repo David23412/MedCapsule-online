@@ -72,7 +72,7 @@ class GradingService
      * @return array
      * @throws \Exception
      */
-    public function gradeQuiz(User $user, array $answers, int $duration, string $mode, Topic $topic, Course $course, ?int $assignmentId = null): array
+    public function gradeQuiz(User $user, array $answers, int $duration, string $mode, Topic $topic, Course $course, ?int $assignmentId = null, bool $allowMixedTopics = false): array
     {
         // Enforce canonical modes to ensure attempts match planner task visibility gates.
         $mode = in_array((string) $mode, ['quiz', 'tutor', 'random'], true) ? (string) $mode : 'quiz';
@@ -84,7 +84,7 @@ class GradingService
 
             // Get questions and validate they belong to the topic
             $questions = $this->getAndValidateQuestions($answers);
-            $this->validateSubmissionAccess($user, $questions, $topic, $course, $mode);
+            $this->validateSubmissionAccess($user, $questions, $topic, $course, $mode, $allowMixedTopics);
 
             // Validate assignments before answers can update mistakes or rewards.
             $isAssignment = $this->isAssignmentQuiz($user, $topic, $course, $assignmentId);
@@ -351,7 +351,7 @@ class GradingService
     }
 
     /** Validate permissions and question ownership before recording any results. */
-    private function validateSubmissionAccess(User $user, \Illuminate\Database\Eloquent\Collection $questions, Topic $topic, Course $course, string $mode): void
+    private function validateSubmissionAccess(User $user, \Illuminate\Database\Eloquent\Collection $questions, Topic $topic, Course $course, string $mode, bool $allowMixedTopics): void
     {
         if ((int) $topic->course_id !== (int) $course->id) {
             throw new \InvalidArgumentException('Invalid topic for this course.');
@@ -359,7 +359,7 @@ class GradingService
         if (!$user->isAdmin() && (!$user->hasAccessToCourse($course->id) || $user->isTopicPreviewLocked($topic))) {
             throw new \Illuminate\Auth\Access\AuthorizationException('You do not have access to this topic.');
         }
-        if ($mode === 'random') {
+        if ($mode === 'random' || $allowMixedTopics) {
             if (!$user->isAdmin()) {
                 $courseIds = $questions->pluck('topic.course_id')->unique()->all();
                 $access = $user->getCourseAccessLevels($courseIds);
