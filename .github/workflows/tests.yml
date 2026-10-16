@@ -31,6 +31,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: composer install --no-interaction --prefer-dist
+      - run: sh -n docker/deploy.sh docker/entrypoint.sh docker/healthcheck.sh
       - run: composer validate --strict
       - run: composer audit
       - run: npm ci

@@ -339,6 +339,7 @@ class QuizMistakeController extends Controller
                 'questions.option_b',
                 'questions.option_c',
                 'questions.option_d',
+                'questions.option_e',
                 'topics.name as topic_name',
                 'courses.id as course_id',
                 'courses.name as course_name',
@@ -390,7 +391,7 @@ class QuizMistakeController extends Controller
 
         $optionKey = strtolower(trim((string) $answer));
 
-        if (in_array($optionKey, ['a', 'b', 'c', 'd'], true)) {
+        if (in_array($optionKey, ['a', 'b', 'c', 'd', 'e'], true)) {
             $optionField = 'option_' . $optionKey;
             $optionText = $mistake->{$optionField} ?? null;
 

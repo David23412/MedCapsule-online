@@ -25,5 +25,11 @@ class MistakesOptionERegressionTest extends TestCase
         Mistake::create(['user_id' => $admin->id, 'question_id' => $question->id, 'submitted_answer' => 'A']);
         $this->actingAs($admin)->get(route('review.index'))->assertOk()
             ->assertSee('Fifth answer in saved mistakes');
+        $pdfAnswer = null;
+        \Illuminate\Support\Facades\View::composer('mistakes.pdf', function ($view) use (&$pdfAnswer) {
+            $pdfAnswer = $view->getData()['mistakes']->first()->correct_answer_display;
+        });
+        $this->get(route('review.download-pdf'))->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertSame('E. Fifth answer in saved mistakes', $pdfAnswer);
     }
 }

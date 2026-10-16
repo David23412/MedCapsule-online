@@ -79,7 +79,7 @@
                                         <div class="options">
                                             @php
                                                 $allOptions = ['A', 'B', 'C', 'D', 'E'];
-                                                $visibleLetters = array_values(array_filter($allOptions, fn($opt) => {
+                                                $visibleLetters = array_values(array_filter($allOptions, function ($opt) use ($question) {
                                                     $val = trim($question->{'option_' . strtolower($opt)} ?? '');
                                                     return $val !== '' && $val !== '-';
                                                 }));

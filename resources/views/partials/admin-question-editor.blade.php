@@ -482,5 +482,5 @@
             </div>
         </div>
 
-        <script src="{{ asset('js/tutor-admin-edit.js') }}" defer></script>
+        <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/tutor-admin-edit.js') }}" defer></script>
     @endif

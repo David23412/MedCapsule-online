@@ -3307,7 +3307,7 @@
         }
         };
     </script>
-    <script src="{{ asset('js/tutor-mode.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/tutor-mode.js') }}"></script>
 
     <!-- Annotation Canvas (iPad Pencil / Pen drawing overlay) -->
     <script src="{{ asset('js/annotation-canvas.js') }}"></script>

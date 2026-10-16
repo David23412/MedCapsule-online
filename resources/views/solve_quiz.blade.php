@@ -2993,6 +2993,7 @@
             option_b:             @json($question->option_b ?? ''),
             option_c:             @json($question->option_c ?? ''),
             option_d:             @json($question->option_d ?? ''),
+            option_e:             @json($question->option_e ?? ''),
             alternative_answers:  @json($question->alternative_answers ?? ''),
         },
         @endforeach
@@ -3188,6 +3189,10 @@
                             <div class="sq-opt-radio"><input type="radio" name="sq-correct" id="sq-cd" value="D"><label for="sq-cd" class="sq-radio-lbl">D</label></div>
                             <input type="text" id="sq-od" class="sq-input" placeholder="Option D">
                         </div>
+                        <div class="sq-opt-row">
+                            <div class="sq-opt-radio"><input type="radio" name="sq-correct" id="sq-ce" value="E"><label for="sq-ce" class="sq-radio-lbl">E</label></div>
+                            <input type="text" id="sq-oe" class="sq-input" placeholder="Option E">
+                        </div>
                     </div>
                 </div>
 
@@ -3234,7 +3239,7 @@
         </div>
     </div>
 
-    <script src="{{ asset('js/solve-quiz-admin.js') }}" defer></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/solve-quiz-admin.js') }}" defer></script>
     @endif
     @include('partials.secure-study-protection', ['surfaceLabel' => 'quiz mode', 'hideOnBackground' => false])
 </body>

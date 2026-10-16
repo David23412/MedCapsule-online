@@ -37,6 +37,8 @@
             document.getElementById('sq-ob').value = data.option_b || '';
             document.getElementById('sq-oc').value = data.option_c || '';
             document.getElementById('sq-od').value = data.option_d || '';
+            document.getElementById('sq-oe').value = data.option_e || '';
+            document.querySelectorAll('input[name="sq-correct"]').forEach(radio => { radio.checked = false; });
             const radio = document.getElementById(`sq-c${(data.correct_answer || '').toLowerCase()}`);
             if (radio) {
                 radio.checked = true;
@@ -131,6 +133,7 @@
                 payload.option_b = document.getElementById('sq-ob').value.trim();
                 payload.option_c = document.getElementById('sq-oc').value.trim();
                 payload.option_d = document.getElementById('sq-od').value.trim();
+                payload.option_e = document.getElementById('sq-oe').value.trim();
             }
 
             saveButton.disabled = true;

@@ -504,7 +504,7 @@ class OptimizedRandomQuizController extends Controller
         return Question::query()
             ->select([
                 'id', 'topic_id', 'question', 'question_type',
-                'option_a', 'option_b', 'option_c', 'option_d',
+                'option_a', 'option_b', 'option_c', 'option_d', 'option_e',
                 'correct_answer', 'explanation', 'image_url', 'source',
                 'alternative_answers'
             ])

@@ -1,4 +1,11 @@
 (function () {
+    let originalFields = '';
+
+    function snapshotFields() {
+        return JSON.stringify(Array.from(document.querySelectorAll('#edit-question-modal input, #edit-question-modal textarea'))
+            .map(el => [el.id, el.type === 'radio' ? el.checked : el.value]));
+    }
+
     function setEditStatus(message, statusClass) {
         const element = document.getElementById('edit-status');
         if (!element) {
@@ -47,7 +54,9 @@
         }
     }
 
-    function closeEditModal() {
+    function closeEditModal(checkChanges = true) {
+        if (checkChanges && originalFields !== snapshotFields()
+            && !window.confirm('You have unsaved changes. Discard them?')) return;
         document.getElementById('edit-question-overlay')?.classList.remove('show');
         document.body.style.overflow = '';
     }
@@ -63,6 +72,11 @@
             if (textElement) {
                 textElement.textContent = payload.question;
             }
+            card.querySelectorAll('.option-card[data-option]').forEach(option => {
+                const content = option.querySelector('.option-content');
+                const value = payload[`option_${option.dataset.option.toLowerCase()}`];
+                if (content && value !== undefined) content.textContent = value;
+            });
         });
 
         document.querySelectorAll('[id^="question-"]').forEach((card) => {
@@ -79,6 +93,11 @@
             if (textElement) {
                 textElement.textContent = payload.question;
             }
+            card.querySelectorAll('.option-card[data-option]').forEach(option => {
+                const content = option.querySelector('.option-content');
+                const value = payload[`option_${option.dataset.option.toLowerCase()}`];
+                if (content && value !== undefined) content.textContent = value;
+            });
         });
     }
 
@@ -115,6 +134,7 @@
             confirmButton.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
             document.getElementById('edit-question-overlay').classList.add('show');
             document.body.style.overflow = 'hidden';
+            originalFields = snapshotFields();
         };
 
         window.switchEditType = switchEditType;
@@ -197,7 +217,7 @@
                     });
                 }
                 window.setTimeout(() => {
-                    closeEditModal();
+                    closeEditModal(false);
                     if (window.TUTOR_CONFIG?.refreshAfterEdit) {
                         window.location.reload();
                     }
@@ -257,7 +277,7 @@
                     }
                 });
                 window.setTimeout(() => {
-                    closeEditModal();
+                    closeEditModal(false);
                     if (window.TUTOR_CONFIG?.refreshAfterEdit) {
                         window.location.reload();
                     }
@@ -268,6 +288,13 @@
                 confirmButton.innerHTML = '<i class="fas fa-trash"></i> Yes, Delete';
             }
         };
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && document.getElementById('edit-question-overlay')?.classList.contains('show')) {
+                event.preventDefault();
+                closeEditModal();
+            }
+        });
 
         document.getElementById('edit-question-overlay')?.addEventListener('click', function (event) {
             if (event.target === this) {
