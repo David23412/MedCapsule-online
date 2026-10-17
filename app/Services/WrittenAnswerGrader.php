@@ -95,6 +95,12 @@ class WrittenAnswerGrader
         array $candidateContext,
         array $rubric
     ): array {
+        $assertedAnswer = $this->extractAssertedContrast($submittedAnswer, $candidateContext);
+        if ($assertedAnswer !== null) {
+            $submittedAnswer = $assertedAnswer;
+            $submittedContext = $this->normalizeInput($assertedAnswer);
+        }
+
         if (preg_match('/[\p{L}\p{N}]/u', $submittedContext['normalized']) !== 1
             || preg_match('/[\p{L}\p{N}]/u', $candidateContext['normalized']) !== 1
         ) {
@@ -369,6 +375,14 @@ class WrittenAnswerGrader
         $blankCount = (int) ($rubric['blank_count'] ?? 0);
         $correctItems = $this->extractAcceptableAnswerItems($candidateAnswer, true);
         $submittedItems = $this->extractAcceptableAnswerItems($submittedAnswer, false);
+        if ($promptMode === 'list' && count($correctItems) > 1
+            && !array_filter($correctItems, fn (string $item): bool => preg_match('/\band\b/i', $item) === 1)
+            && max(array_map(fn (string $item): int => count($this->extractMeaningfulTokens($item)), $correctItems)) <= 2
+        ) {
+            $submittedItems = $this->extractAcceptableAnswerItems(
+                preg_replace('/\s+and\s+/i', '; ', $submittedAnswer) ?? $submittedAnswer, false
+            );
+        }
         $itemMatch = $this->matchAnswerItems($submittedItems, $correctItems);
         $correctLooksLikeList = $this->looksLikeListReference($candidateAnswer, $correctItems);
         $hasReferenceAlternatives = $this->hasReferenceAlternativeMarkup($candidateAnswer);
@@ -399,7 +413,9 @@ class WrittenAnswerGrader
             }
 
             $nearRequired = max(1, $required - 1);
-            if ($required > 1 && $itemMatch['matched'] >= $nearRequired && $coverage['precision'] >= 0.72) {
+            if ($required > 1 && $itemMatch['matched'] >= $nearRequired
+                && $itemMatch['matched'] / $required >= $this->cfg('minimum_requested_item_coverage', 0.75)
+                && $coverage['precision'] >= 0.72) {
                 return $this->buildResult(
                     true,
                     max(0.74, min(0.88, ($itemMatch['score'] + $coverage['precision']) / 2)),
@@ -407,6 +423,13 @@ class WrittenAnswerGrader
                     'Your answer covers enough of the required concepts.',
                     $diagnostics
                 );
+            }
+
+            if ($requiredItemCount !== null) {
+                return $this->buildResult(false, min(0.69, $itemMatch['matched'] / $required),
+                    'required_items_missing',
+                    "This question asks for {$required} distinct items; your answer matches {$itemMatch['matched']}.",
+                    $diagnostics);
             }
         }
 
@@ -862,6 +885,7 @@ class WrittenAnswerGrader
 
     private function normalizeForComparison(string $text): string
     {
+        $text = $this->normalizeNegationWording($text);
         $text = $this->preprocessSymbols($text);
         $text = $this->expandKnownAbbreviations($text);
         $text = $this->textProcessor->normalizeText($text);
@@ -1400,7 +1424,74 @@ class WrittenAnswerGrader
         $submitted = preg_replace('/\bnot only\b/', '', $submitted) ?? $submitted;
         $correct = preg_replace('/\bnot only\b/', '', $correct) ?? $correct;
 
-        return (preg_match($pattern, $submitted) === 1) !== (preg_match($pattern, $correct) === 1);
+        $submittedNegative = preg_match($pattern, $submitted) === 1;
+        $correctNegative = preg_match($pattern, $correct) === 1;
+        if ($submittedNegative !== $correctNegative) {
+            return true;
+        }
+        if (!$submittedNegative) {
+            return false;
+        }
+
+        // Compare the concepts in each negative clause, not just the presence of "not".
+        $submittedNegated = $this->negatedTokens($submitted);
+        $correctNegated = $this->negatedTokens($correct);
+        $submittedTokens = $this->extractMeaningfulTokens($submitted);
+        $correctTokens = $this->extractMeaningfulTokens($correct);
+        foreach ($submittedTokens as $submittedToken) {
+            foreach ($correctTokens as $correctToken) {
+                if ($this->wordsAreSimilar($submittedToken, $correctToken)
+                    && (in_array($submittedToken, $submittedNegated, true) !== in_array($correctToken, $correctNegated, true))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private function normalizeNegationWording(string $text): string
+    {
+        $text = str_replace(["’", "‘"], "'", $text);
+        $text = preg_replace("/\bcan't\b/i", 'cannot', $text) ?? $text;
+        $text = preg_replace("/\bwon't\b/i", 'will not', $text) ?? $text;
+        $text = preg_replace("/\b([a-z]+)n't\b/i", '$1 not', $text) ?? $text;
+        // Normalize absence phrasing within a clause without erasing its subject.
+        $text = preg_replace('/\bnot present\b/i', 'absent', $text) ?? $text;
+        $text = preg_replace('/\babsence of\b/i', 'no', $text) ?? $text;
+        $text = preg_replace('/(^|[.;,]|\band\b|\bbut\b)\s*([\p{L} -]+?)\s+(?:is|are|was|were)\s+absent\b/iu', '$1 no $2', $text) ?? $text;
+        return $text;
+    }
+
+    private function negatedTokens(string $text): array
+    {
+        $tokens = [];
+        foreach (preg_split('/[.;]|\b(?:and|but|whereas|while)\b/u', $text) ?: [] as $clause) {
+            if (preg_match('/\b(?:no|not|never|without|cannot|absence|absent)\b\s*(.*)/u', $clause, $match)) {
+                $tokens = array_merge($tokens, $this->extractMeaningfulTokens($match[1]));
+            }
+        }
+        return array_values(array_unique($tokens));
+    }
+
+    private function extractAssertedContrast(string $answer, array $candidateContext): ?string
+    {
+        if (preg_match('/^(.+?),\s*(?:not|rather than)\s+(.+?)[.!]?$/iu', trim($answer), $match)) {
+            [$asserted, $excluded] = [$match[1], $match[2]];
+        } elseif (preg_match('/^not\s+(.+?)\s+but\s+(.+?)[.!]?$/iu', trim($answer), $match)) {
+            [$asserted, $excluded] = [$match[2], $match[1]];
+        } else {
+            return null;
+        }
+
+        $assertedContext = $this->normalizeInput($asserted);
+        $excludedContext = $this->normalizeInput($excluded);
+        $coverage = $this->measureBidirectionalTokenCoverage($assertedContext['tokens'], $candidateContext['tokens']);
+        $excludedCoverage = $this->measureBidirectionalTokenCoverage($excludedContext['tokens'], $candidateContext['tokens']);
+        // Only discard an explicitly rejected alternative when the asserted answer
+        // covers the whole reference and the rejected alternative shares no concepts.
+        return $coverage['precision'] >= 1.0 && $coverage['recall'] >= 1.0
+            && $excludedCoverage['matchedCandidateTokens'] === 0
+            ? $asserted : null;
     }
 
     private function hasCriticalTermMismatch(string $submitted, string $correct): bool
