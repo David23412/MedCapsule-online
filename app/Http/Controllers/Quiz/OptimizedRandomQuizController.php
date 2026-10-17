@@ -499,7 +499,9 @@ class OptimizedRandomQuizController extends Controller
         }
 
         try {
-            return now()->diffInSeconds(\Carbon\Carbon::parse($savedAt)) >= self::RANDOM_SESSION_TTL_SECONDS;
+            $ageSeconds = \Carbon\Carbon::parse($savedAt)->diffInSeconds(now(), false);
+
+            return $ageSeconds < 0 || $ageSeconds >= self::RANDOM_SESSION_TTL_SECONDS;
         } catch (\Throwable $exception) {
             return true;
         }

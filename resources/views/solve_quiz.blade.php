@@ -1660,7 +1660,7 @@
         <source src="/sounds/quiz-wrong.mp3" type="audio/mpeg">
     </audio>
 
-    <script src="{{ asset('js/quiz-session-draft.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/quiz-session-draft.js') }}"></script>
     <script>
         window.SolveQuizPageConfig = {
             draftKey: @json('solve-quiz:' . request()->fullUrl()),

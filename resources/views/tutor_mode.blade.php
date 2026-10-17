@@ -3260,7 +3260,7 @@
 
     <!-- UNIFIED GRADING AUDIO CONTROLLER -->
     <script src="{{ asset('js/grading-audio-controller.js') }}"></script>
-    <script src="{{ asset('js/quiz-session-draft.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/quiz-session-draft.js') }}"></script>
 
     <script>
         window.TUTOR_CONFIG = {

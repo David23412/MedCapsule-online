@@ -14,10 +14,11 @@
 
     function isExpiredTimestamp(timestamp, maxAgeMs = MAX_DRAFT_AGE_MS) {
         const normalizedTimestamp = Number(timestamp || 0);
-        return !normalizedTimestamp || (Date.now() - normalizedTimestamp) > maxAgeMs;
+        const age = Date.now() - normalizedTimestamp;
+        return !Number.isFinite(normalizedTimestamp) || normalizedTimestamp <= 0 || age < 0 || age >= maxAgeMs;
     }
 
-    function readDraft(storageKey, version, maxAgeMs = MAX_DRAFT_AGE_MS) {
+    function readDraft(storageKey, version, maxAgeMs = MAX_DRAFT_AGE_MS, onExpired = noop) {
         try {
             const raw = localStorage.getItem(storageKey);
             if (!raw) {
@@ -33,6 +34,7 @@
             const lastActivityAt = Number(parsed.lastActivityAt || parsed.savedAt || 0);
             if (isExpiredTimestamp(lastActivityAt, maxAgeMs)) {
                 localStorage.removeItem(storageKey);
+                onExpired();
                 return null;
             }
 
@@ -109,8 +111,18 @@
             onExpire();
         }
 
-        function loadRecord() {
-            return readDraft(storageKey, version, maxAgeMs);
+        function loadRecord(notifyExpiry = true) {
+            const record = readDraft(storageKey, version, maxAgeMs, notifyExpiry ? expireDraft : noop);
+            if (!record) {
+                return null;
+            }
+            const savedIds = normalizeQuestionIds(record.questionIds).sort();
+            const currentIds = [...questionIds].sort();
+            if (savedIds.length !== currentIds.length || savedIds.some((id, index) => id !== currentIds[index])) {
+                clear();
+                return null;
+            }
+            return record;
         }
 
         function save(state) {
@@ -120,11 +132,14 @@
                     return true;
                 }
 
+                const existingDraft = loadRecord();
+                if (isExpired) {
+                    return false;
+                }
                 if ((now - lastPrunedAt) >= PRUNE_THROTTLE_MS) {
                     pruneExpiredDrafts();
                     lastPrunedAt = now;
                 }
-                const existingDraft = loadRecord();
                 const startedAt = Number(
                     (state && state.startedAt) ||
                     existingDraft?.state?.startedAt ||
@@ -200,20 +215,13 @@
             }
 
             expireTimerId = window.setInterval(() => {
-                const draft = loadRecord();
-                if (!draft) {
-                    return;
-                }
-
-                const lastActivityAt = Number(draft.lastActivityAt || draft.savedAt || 0);
-                if (isExpiredTimestamp(lastActivityAt, maxAgeMs)) {
-                    expireDraft();
-                }
+                // readDraft invokes expireDraft before discarding an expired record.
+                loadRecord();
             }, 1000 * 30);
         }
 
         function ensureSeedDraft() {
-            if (loadRecord()) {
+            if (loadRecord(false)) {
                 return;
             }
 

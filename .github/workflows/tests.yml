@@ -36,6 +36,7 @@ jobs:
       - run: composer audit
       - run: npm ci
       - run: npm audit --audit-level=moderate
+      - run: node --test tests/JavaScript/*.test.mjs
       - run: npm run typecheck
       - run: npm run build
       - run: vendor/bin/phpunit --fail-on-risky --fail-on-warning

@@ -158,7 +158,7 @@
             questionIds: @json(($questions ?? collect())->pluck('id')->values()->all())
         };
     </script>
-    <script src="{{ asset('js/quiz-session-draft.js') }}" defer></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/quiz-session-draft.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="{{ asset('js/random-quiz-page.js?v=1.0.1') }}" defer></script>
     @include('partials.secure-study-protection', ['surfaceLabel' => 'random quiz mode', 'hideOnBackground' => false])
