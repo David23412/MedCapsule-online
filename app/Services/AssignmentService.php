@@ -122,4 +122,23 @@ class AssignmentService
     }
 
 
+    public function getCounterData(int $userId): array
+    {
+        return [
+            'success' => true,
+            'status_counts' => $this->assignmentRetrievalService->getAssignmentStatusCounts($userId, null),
+        ];
+    }
+
+    public function refreshStatuses(int $userId): array
+    {
+        // Status is derived from deadlines and attempts. Refresh cached views,
+        // rather than writing the obsolete status column or creating attempts.
+        if (Cache::getStore() instanceof \Illuminate\Cache\TaggableStore) {
+            Cache::tags(['assignments'])->flush();
+        }
+
+        return $this->getCounterData($userId);
+    }
+
 }

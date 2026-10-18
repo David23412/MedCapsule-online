@@ -227,13 +227,13 @@ class AssignmentController extends Controller
 
     public function updateOverdue()
     {
-        $result = $this->assignmentService->updateOverdue();
+        $result = $this->assignmentService->refreshStatuses(auth()->id());
         return response()->json($result);
     }
 
     public function enforceRealTimeStatus()
     {
-        $result = $this->assignmentService->enforceRealTimeStatus();
+        $result = $this->assignmentService->refreshStatuses(auth()->id());
         return response()->json($result);
     }
 
