@@ -98,7 +98,7 @@ class TopicAccessController extends Controller
                         'has_assignment' => true,
                         'assignment_id' => $activeAssignment->id,
                         'assignment_mode' => $activeAssignment->assignment_mode,
-                        'assignment_deadline' => $activeAssignment->deadline->format('Y-m-d H:i:s'),
+                        'assignment_deadline' => $activeAssignment->getDeadlineForUser($user->id)->format('Y-m-d H:i:s'),
                         'time_limit' => $activeAssignment->time_limit ?? $activeAssignment->duration_minutes,
                         'sources' => $this->getAssignmentSources($activeAssignment, $topic),
                         'status_code' => Response::HTTP_OK

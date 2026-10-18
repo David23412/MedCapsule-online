@@ -94,21 +94,49 @@ class AssignmentCreationService
      */
     public function updateAssignment(Assignment $assignment, array $data): Assignment
     {
-        // Only validate deadline if it's being changed and not empty
-        if (isset($data['deadline']) && !empty($data['deadline'])) {
-            $newDeadline = Carbon::parse($data['deadline']);
-            if ($newDeadline->isPast()) {
-                throw new \InvalidArgumentException('Assignment deadline must be in the future');
-            }
-        }
-        
-        // Remove empty deadline from update data to keep existing deadline
-        if (isset($data['deadline']) && empty($data['deadline'])) {
+        // An empty optional deadline means keep the existing value.
+        if (array_key_exists('deadline', $data) && empty($data['deadline'])) {
             unset($data['deadline']);
         }
+        if (isset($data['deadline']) && Carbon::parse($data['deadline'])->isPast()) {
+            throw new \InvalidArgumentException('Assignment deadline must be in the future');
+        }
 
-        $assignment->update($data);
-        return $assignment->fresh();
+        $extensions = $data['user_extensions'] ?? [];
+        unset($data['user_extensions']);
+
+        $result = DB::transaction(function () use ($assignment, $data, $extensions) {
+            $recipientIds = array_keys($extensions);
+            foreach ($recipientIds as $id) {
+                if (!ctype_digit((string) $id) || (int) $id <= 0) {
+                    throw new \InvalidArgumentException('Invalid extension recipient.');
+                }
+            }
+            if ($recipientIds !== [] && $assignment->assignedUsers()->whereIn('users.id', $recipientIds)->count() !== count($recipientIds)) {
+                throw new \InvalidArgumentException('Deadline extensions can only be given to assigned students.');
+            }
+
+            $assignment->update($data);
+            foreach ($extensions as $userId => $deadline) {
+                $assignment->assignedUsers()->updateExistingPivot($userId, [
+                    'extended_deadline' => Carbon::parse($deadline)->toDateTimeString(),
+                ]);
+            }
+            return $assignment->fresh();
+        });
+
+        if (Cache::getStore() instanceof \Illuminate\Cache\TaggableStore) {
+            Cache::tags(['assignments'])->flush();
+        }
+        foreach ($assignment->assignedUsers()->pluck('users.id') as $userId) {
+            Cache::forget(QuizUltraConsolidatedCacheService::generateCacheKey('topic_access', [
+                'topic_id' => $assignment->topic_id,
+                'user_id' => $userId,
+                'timestamp' => now()->format('Y-m-d-H'),
+            ]));
+        }
+
+        return $result;
     }
 
     /**

@@ -96,11 +96,6 @@ class AssignmentController extends Controller
         try {
             $result = $this->assignmentService->updateAssignment($assignment, $validated);
 
-            // Handle user-specific deadline extensions
-            if (isset($validated['user_extensions']) && !empty($validated['user_extensions'])) {
-                $this->assignmentService->updateUserExtensions($assignment, $validated['user_extensions']);
-            }
-
             return response()->json([
                 'success' => true,
                 'message' => 'Assignment updated successfully!',
