@@ -311,11 +311,26 @@ class QuizService
 
         // Initialize tutor progress if in tutor mode
         if ($mode === 'tutor') {
-            $tutorSessionKey = (string) Str::uuid();
             $questionsBySource = $questions
                 ->groupBy(fn ($question) => (string) ($question->source ?: 'General'))
                 ->map(fn ($group) => $group->pluck('id')->map(fn ($id) => (int) $id)->values()->all())
                 ->toArray();
+
+            $scope = $options['tutor_scope'] ?? 'full';
+            $fingerprint = hash('sha256', json_encode([
+                $course->id, $topic->id, $scope, $questionsBySource,
+                $this->currentTopicQuestionVersion($topic),
+            ]));
+            $existingSession = session('tutor_session_questions', []);
+            if (($existingSession['fingerprint'] ?? null) === $fingerprint
+                && empty($existingSession['completed'])
+                && !empty($existingSession['session_key'])
+            ) {
+                // A page reload must keep the server progress and browser draft paired.
+                session(['tutor_session_key' => $existingSession['session_key'], 'tutor_scope' => $scope]);
+                return;
+            }
+            $tutorSessionKey = (string) Str::uuid();
 
             session([
                 'tutor_progress' => ['sources' => []],
@@ -323,6 +338,7 @@ class QuizService
                 'tutor_session_key' => $tutorSessionKey,
                 'tutor_session_questions' => [
                     'session_key' => $tutorSessionKey,
+                    'fingerprint' => $fingerprint,
                     'topic_id' => $topic->id,
                     'course_id' => $course->id,
                     'sources' => $questionsBySource,

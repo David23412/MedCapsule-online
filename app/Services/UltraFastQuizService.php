@@ -141,7 +141,7 @@ class UltraFastQuizService
 
         $query = Question::select([
                 'questions.id', 'questions.topic_id', 'questions.question', 'questions.question_type',
-                'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d',
+                'questions.option_a', 'questions.option_b', 'questions.option_c', 'questions.option_d', 'questions.option_e',
                 'questions.correct_answer', 'questions.explanation', 'questions.image_url', 'questions.source',
                 'questions.alternative_answers', 'questions.exam_appearances_count', 'questions.extra_topic'
             ])
@@ -250,7 +250,7 @@ class UltraFastQuizService
         $topicVersion = (int) (Cache::get($versionKey, 1));
 
         return sprintf(
-            'ultra_fast:%s:topic_%d:v_%d:sources_%s',
+            'ultra_fast:%s:topic_%d:format_2:v_%d:sources_%s',
             $type,
             $topicId,
             $topicVersion,
@@ -664,8 +664,12 @@ class UltraFastQuizService
     private function applyTopicFilter(\Illuminate\Database\Eloquent\Builder $query, Topic $topic)
     {
         return $query->where(function($q) use ($topic) {
-            $q->where('questions.topic_id', $topic->id)
-              ->orWhereRaw('FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+            $q->where('questions.topic_id', $topic->id);
+            if (!$topic->is_exam) {
+                $q->orWhereRaw(DB::getDriverName() === 'sqlite'
+                    ? "INSTR(',' || REPLACE(questions.extra_topic, ' ', '') || ',', ',' || ? || ',') > 0"
+                    : 'FIND_IN_SET(?, REPLACE(questions.extra_topic, " ", "")) > 0', [$topic->id]);
+            }
         });
     }
 }

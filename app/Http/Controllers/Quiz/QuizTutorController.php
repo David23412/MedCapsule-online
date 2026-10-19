@@ -305,6 +305,11 @@ class QuizTutorController extends Controller
             ]);
 
 
+            if ((int) session('tutor_session_questions.topic_id') === (int) $topicId
+                && (int) session('tutor_session_questions.course_id') === (int) $courseId) {
+                session(['tutor_session_questions.completed' => true]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Tutor session completed and progress saved successfully',

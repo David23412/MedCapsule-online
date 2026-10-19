@@ -7,6 +7,8 @@
         const quizForm = document.getElementById('quiz-form');
         const timeTakenField = document.getElementById('time-taken');
         const timerDisplay = document.getElementById('timer');
+        let isSubmitting = false;
+        let quizCompleted = false;
 
         if (!progressBarContainer || !submitBtn) {
             setTimeout(() => {
@@ -79,7 +81,7 @@
         }
 
         function saveDraft() {
-            if (!quizDraft) {
+            if (!quizDraft || quizCompleted) {
                 return;
             }
 
@@ -106,7 +108,7 @@
             }
 
             if (submitBtn) {
-                submitBtn.disabled = answeredQuestions !== totalQuestions;
+                submitBtn.disabled = isSubmitting || quizCompleted || answeredQuestions !== totalQuestions;
             }
         }
 
@@ -175,8 +177,7 @@
             }
         }
 
-        updateTimer();
-        timerInterval = setInterval(updateTimer, 1000);
+
         updateProgress();
         if (savedDraft && Number.isFinite(Number(savedDraft.scrollY))) {
             requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY), behavior: 'auto' }));
@@ -268,6 +269,9 @@
         }
 
         function submitQuiz() {
+                if (isSubmitting || quizCompleted) return;
+                isSubmitting = true;
+                clearInterval(timerInterval);
             document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => {
                 input.disabled = true;
             });
@@ -321,6 +325,7 @@
                         throw new Error(data.error || 'An error occurred while grading the quiz');
                     }
 
+                    quizCompleted = true;
                     quizDraft?.clear();
                     window.lastQuizResults = data;
                     setPopupActionsDisabled(false);
@@ -404,6 +409,12 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    isSubmitting = false;
+                    if (timeLimit > 0 && Date.now() - startTime < timeLimit * 1000) {
+                        clearInterval(timerInterval);
+                        timerInterval = setInterval(updateTimer, 1000);
+                    }
+
                     setPopupActionsDisabled(false);
                     popupTitle.textContent = 'Error';
                     popupScore.textContent = '';
@@ -453,6 +464,10 @@
         });
         window.addEventListener('scroll', saveDraft, { passive: true });
         saveDraft();
+
+        // Initialize submission controls and audio before an expired draft can auto-submit.
+        updateTimer();
+        if (!isSubmitting && !quizCompleted && timeLimit > 0) timerInterval = setInterval(updateTimer, 1000);
 
         function showReviewMode() {
             if (typeof lastQuizResults === 'undefined') {

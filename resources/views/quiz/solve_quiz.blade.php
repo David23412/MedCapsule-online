@@ -168,6 +168,6 @@
     </script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/quiz-session-draft.js') }}" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="{{ asset('js/quiz-solve-page.js') }}" defer></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/quiz-solve-page.js') }}" defer></script>
 </body>
 </html>

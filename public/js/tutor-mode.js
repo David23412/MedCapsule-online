@@ -38,6 +38,7 @@ const tutorDraft = window.QuizSessionDraft?.create({
     onExpire: () => window.location.reload()
 }) || null;
 let isRestoringTutorDraft = false;
+let tutorSessionFinished = false;
 
 // Highlighting system
 let highlights = {};
@@ -91,7 +92,7 @@ function collectTutorInputDraft() {
 }
 
 function saveTutorDraft() {
-    if (!tutorDraft || isRestoringTutorDraft) {
+    if (!tutorDraft || isRestoringTutorDraft || tutorSessionFinished) {
         return;
     }
 
@@ -111,6 +112,7 @@ function saveTutorDraft() {
 }
 
 function clearTutorDraft() {
+    tutorSessionFinished = true;
     tutorDraft?.clear();
 }
 
@@ -250,6 +252,10 @@ function restoreTutorDraftState() {
         activeQuestion.style.display = 'block';
     }
 
+    const restoredCounter = document.getElementById('np-current-q');
+    if (restoredCounter) restoredCounter.textContent = currentQuestionIndex;
+    const restoredMobileCounter = document.getElementById('np-mobile-current');
+    if (restoredMobileCounter) restoredMobileCounter.textContent = currentQuestionIndex;
     updateSidebarActiveState(currentQuestionIndex);
     updateProgress(totalAnswers, totalQuestions);
 
@@ -1303,8 +1309,8 @@ window.navigateNext = function (currentNumber) {
 window.handleDontKnow = function (questionNumber, questionId) {
     console.log(`❓ I Don't Know clicked for Q${questionNumber}`);
 
-    if (questionStates[questionNumber]) {
-        console.log(`⚠️ Question ${questionNumber} already answered, ignoring`);
+    if (questionStates[questionNumber] || window.checkAnswer?.[`processing_${questionNumber}`]) {
+        console.log(`Question ${questionNumber} is already answered or being checked`);
         return;
     }
 
@@ -1409,22 +1415,6 @@ function submitQuizRandomTutor() {
         topic: TUTOR_CONFIG.gradeMeta.topic,
         isRandomQuiz: TUTOR_CONFIG.gradeMeta.isRandomQuiz
     });
-
-    // 🔥 DIRECT DATABASE CHECK BEFORE SUBMISSION - TELL US THE TRUTH!
-    if (typeof window.checkDatabaseBeforeSubmit === 'undefined') {
-        window.checkDatabaseBeforeSubmit = true;
-        console.log('🔍 PRE-SUBMIT: Checking database state...');
-
-        // Try to check if we can connect to the endpoint
-        fetch(gradeUrl, {
-            method: 'HEAD',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
-        }).then(response => {
-            console.log('🌐 PRE-SUBMIT: Endpoint reachable, status:', response.status);
-        }).catch(error => {
-            console.error('❌ PRE-SUBMIT: Cannot reach grade endpoint!', error);
-        });
-    }
 
     const formDataObj = {};
     formDataObj.answers = {};
@@ -1713,7 +1703,8 @@ function processAnswerResult(questionNumber, questionId, data, checkBtn) {
             showViewResultsButton: true // Show "View Results" button instead
         });
 
-        return; // DON'T show grading popup yet, let user read explanation and click View Results
+        saveTutorDraft();
+        return; // Let the student read the explanation before viewing results.
     }
 
     // 🎯 FOR NON-LAST QUESTIONS - SHOW EXPLANATION THEN NEXT BUTTON AS NORMAL
@@ -1761,265 +1752,94 @@ function updateSourceProgressDisplay(sourceProgress) {
     }
 }
 
-window.checkAnswer = function checkAnswer(questionNumber, questionId) {
-    const startTime = performance.now();
-    console.log(`🚀 CHECKING ANSWER: Question ${questionNumber}, ID ${questionId}`);
-
-    // 💀 BULLETPROOF DUPLICATE PREVENTION - NO MULTIPLE PROCESSING 💀
+window.checkAnswer = async function checkAnswer(questionNumber, questionId) {
     const processingKey = `processing_${questionNumber}`;
-    if (checkAnswer[processingKey]) {
-        console.log(`🔇 BULLETPROOF: Question ${questionNumber} already being processed, skipping duplicate`);
-        return;
-    }
-    checkAnswer[processingKey] = true;
-
-    // FIX: Set question state immediately to prevent "I Don't Know" button from being usable
-    questionStates[questionNumber] = true;
-
-    // INSTANT DOM ACCESS
     const questionCard = document.getElementById(`question-${questionNumber}`);
-    if (!questionCard) {
-        console.error(`❌ Question card not found: question-${questionNumber}`);
-        return;
-    }
+    if (!questionCard || questionStates[questionNumber] || checkAnswer[processingKey]) return;
 
     const writtenAnswer = questionCard.querySelector('.written-answer');
     const selectedOption = questionCard.querySelector('.option-card.selected');
     const checkBtn = questionCard.querySelector('.check-answer');
+    const answer = writtenAnswer ? writtenAnswer.value.trim() : (selectedOption?.getAttribute('data-option') || '');
 
-    // INSTANT ANSWER EXTRACTION
-    let answer = '';
-    if (writtenAnswer) {
-        answer = writtenAnswer.value.trim();
-    } else if (selectedOption) {
-        answer = selectedOption.getAttribute('data-option');
+    function showCheckMessage(message) {
+        const feedback = questionCard.querySelector('.answer-feedback');
+        if (!feedback) return;
+        feedback.style.display = 'block';
+        feedback.querySelector('.alert').className = 'alert alert-warning';
+        feedback.querySelector('.result-text').textContent = message;
+        feedback.querySelector('.explanation-content').textContent = message;
+    }
+    if (!answer) {
+        showCheckMessage('Choose an answer or write a response before checking.');
+        return;
     }
 
-    if (!answer) {
-        console.warn('⚠️ No answer selected');
-
-        // Show user-friendly warning message
-        const questionCard = document.getElementById(`question-${questionNumber}`);
-        if (questionCard) {
-            const feedbackDiv = questionCard.querySelector('.answer-feedback');
-
-            // Hide any existing feedback first
-            feedbackDiv.style.display = 'none';
-
-            // Clear processing flag to allow retry
-            delete checkAnswer[processingKey];
-
-            // Show warning after a brief delay
-            setTimeout(() => {
-                feedbackDiv.style.display = 'block';
-                const alertDiv = feedbackDiv.querySelector('.alert');
-                alertDiv.className = 'alert alert-warning';
-                feedbackDiv.querySelector('.result-text').textContent = 'Please select an answer first!';
-                feedbackDiv.querySelector('.explanation-content').innerHTML = `
-                            <div class="explanation-with-icon warning-inline">
-                                <img class="doctor-icon" alt="Doctor character" src="/images/doctor.png">
-                                <div class="explanation-text">You need to choose an answer before checking. Select one of the options above and try again.</div>
-                            </div>
-                        `;
-            }, 300);
+    checkAnswer[processingKey] = true;
+    const startedAt = performance.now();
+    const qData = questionData[questionId];
+    const cacheKey = JSON.stringify([questionId, qData?.correct_answer, answer]);
+    let timeoutId;
+    const inputWasDisabled = writtenAnswer?.disabled;
+    try {
+        let data;
+        if (qData && qData.question_type !== 'written') {
+            data = {success:true, is_correct:answer.toLowerCase() === String(qData.correct_answer).trim().toLowerCase(),
+                correct_answer:qData.correct_answer, explanation:qData.explanation};
+            window.performanceStats.instantChecks++;
+        } else if (answerCache[cacheKey]) {
+            data = answerCache[cacheKey];
+            window.performanceStats.cacheHits++;
+        } else {
+            if (checkBtn) {
+                checkBtn.disabled = true;
+                checkBtn.textContent = 'Checking...';
+            }
+            if (writtenAnswer) writtenAnswer.disabled = true;
+            const controller = new AbortController();
+            // Slow connections must remain retryable and must never count as a wrong answer.
+            timeoutId = setTimeout(() => controller.abort(), 12000);
+            const response = await fetch(`/quiz/tutor/check/${questionId}`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json', 'Accept':'application/json',
+                    'X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]').content},
+                body:JSON.stringify({answer}), signal:controller.signal
+            });
+            if (!response.ok) throw new Error('Answer check unavailable');
+            data = await response.json();
+            if (!data.success || typeof data.is_correct !== 'boolean') throw new Error('Invalid answer check response');
+            answerCache[cacheKey] = data;
         }
 
-        return;
-    }
-
-    console.log(`📝 Answer selected: "${answer}"`);
-
-    // 💀 INSTANT CLIENT-SIDE CHECKING - NO NETWORK DELAY 💀
-    // Written questions MUST go to the server for intelligent fuzzy grading
-    if (questionData[questionId] && questionData[questionId].question_type !== 'written') {
-        console.log(`⚡ INSTANT CLIENT-SIDE CHECK for Q${questionId}`);
-
-        const qData = questionData[questionId];
-        const isCorrect = answer.toLowerCase().trim() === qData.correct_answer.toLowerCase().trim();
-
-        const instantData = {
-            success: true,
-            is_correct: isCorrect,
-            correct_answer: qData.correct_answer,
-            explanation: qData.explanation
-        };
-
-        console.log(`✅ INSTANT RESULT: ${isCorrect ? 'CORRECT' : 'WRONG'} (0ms)`);
-
-        // TRACK PERFORMANCE
-        window.performanceStats.instantChecks++;
-        window.performanceStats.totalTime += (performance.now() - startTime);
-
-        // INSTANT PROCESSING
+        window.performanceStats.totalTime += performance.now() - startedAt;
+        questionStates[questionNumber] = true;
         userAnswers[questionId] = answer;
         totalAnswers++;
-        if (isCorrect) correctAnswers++;
-
-        // INSTANT UI UPDATE
-        processAnswerResult(questionNumber, questionId, instantData, checkBtn);
-        // Clear processing flag
+        if (data.is_correct) correctAnswers++;
+        processAnswerResult(questionNumber, questionId, data, checkBtn);
+    } catch (error) {
+        showCheckMessage('We could not check your answer. Your response is kept — try again.');
+        saveTutorDraft();
+    } finally {
+        clearTimeout(timeoutId);
         delete checkAnswer[processingKey];
-        return;
-    }
-
-    // FALLBACK: CHECK CACHE
-    const cacheKey = `${questionId}_${answer}`;
-    if (answerCache[cacheKey]) {
-        console.log(`⚡ CACHE HIT! Instant response for Q${questionId}`);
-        const cachedData = answerCache[cacheKey];
-
-        // TRACK PERFORMANCE
-        window.performanceStats.cacheHits++;
-        window.performanceStats.totalTime += (performance.now() - startTime);
-
-        // INSTANT PROCESSING FROM CACHE
-        userAnswers[questionId] = answer;
-        totalAnswers++;
-        if (cachedData.is_correct) correctAnswers++;
-
-        // INSTANT UI UPDATE FROM CACHE
-        processAnswerResult(questionNumber, questionId, cachedData, checkBtn);
-        // Clear processing flag
-        delete checkAnswer[processingKey];
-        return;
-    }
-
-    // LAST RESORT: NETWORK REQUEST
-    console.warn(`⚠️ FALLBACK TO NETWORK for Q${questionId}`);
-
-    // INSTANT UI FEEDBACK
-    if (checkBtn) {
-        checkBtn.disabled = true;
-        checkBtn.textContent = 'Checking...';
-        checkBtn.style.background = '#6c757d';
-    }
-
-    // 💀 F16 RAPTOR SPEED FETCH 💀
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
-
-    // CACHE CSRF TOKEN FOR SPEED
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-    fetch(`/quiz/tutor/check/${questionId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-        },
-        body: JSON.stringify({ answer }),
-        signal: controller.signal,
-        keepalive: true
-    })
-        .then(response => {
-            clearTimeout(timeoutId);
-            const responseTime = performance.now() - startTime;
-            console.log(`⚡ Server response in ${Math.round(responseTime)}ms (Status: ${response.status})`);
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        if (!questionStates[questionNumber]) {
+            if (writtenAnswer) writtenAnswer.disabled = inputWasDisabled;
+            if (checkBtn) {
+                checkBtn.disabled = false;
+                checkBtn.textContent = 'Check Answer';
             }
-
-            return response.json();
-        })
-        .then(data => {
-            const totalTime = performance.now() - startTime;
-            console.log(`✅ Answer processed in ${Math.round(totalTime)}ms`);
-            console.log('📊 Server performance:', data.performance_metrics);
-
-            if (!data.success) {
-                throw new Error(data.message || 'Answer check failed');
-            }
-
-            // CACHE THE RESULT FOR FUTURE INSTANT ACCESS
-            answerCache[cacheKey] = data;
-            console.log(`💾 Cached result for Q${questionId}_${answer}`);
-
-            // INSTANT ANSWER STORAGE
-            userAnswers[questionId] = answer;
-            console.log(`💾 Stored answer: Q${questionId} = "${answer}"`);
-
-            // INSTANT COUNTERS
-            totalAnswers++;
-            if (data.is_correct) correctAnswers++;
-
-            // PROCESS RESULT
-            processAnswerResult(questionNumber, questionId, data, checkBtn);
-            // Clear processing flag
-            delete checkAnswer[processingKey];
-        })
-        .catch(error => {
-            // LETHAL FIX: Silent error handling - don't spam console or alert user
-            console.log('ℹ️ Answer check encountered an issue, providing fallback response');
-
-            // Provide fallback response instead of failing
-            const fallbackData = {
-                success: false,
-                is_correct: false,
-                error: 'Connection issue',
-                correct_answer: 'Unable to determine',
-                explanation: 'Please check your connection and try again'
-            };
-
-            // Process the fallback data as if it was a normal response
-            totalAnswers++;
-            resetCorrectAnswerStreak();
-            // Don't increment correctAnswers since we don't know if it's correct
-
-            // Update UI with fallback data
-            updateQuestionUI(questionNumber, {
-                correct: fallbackData.is_correct,
-                explanation: fallbackData.explanation,
-                correctAnswer: fallbackData.correct_answer
-            });
-
-            // Re-enable inputs
-            questionCard.querySelectorAll('input, textarea, button').forEach(el => el.disabled = false);
-
-            // Continue with quiz if all questions are answered
-            if (totalAnswers === totalQuestions) {
-                const percentage = (correctAnswers / totalAnswers) * 100;
-
-                // Show results immediately (sound will be played in showQuizResults)
-                showQuizResults({
-                    correct: correctAnswers,
-                    total: totalAnswers,
-                    percentage: percentage
-                });
-            }
-
-            // Clear processing flag
-            delete checkAnswer[processingKey];
-        });
-}
+        }
+    }
+};
 
 // Function to show next question
 function showNextQuestion(currentNumber) {
-    const currentQuestion = document.getElementById(`question-${currentNumber}`);
-    const nextQuestion = document.getElementById(`question-${currentNumber + 1}`);
-
-    if (currentQuestion) {
-        currentQuestion.style.display = 'none';
-    }
-
-    if (nextQuestion) {
-        nextQuestion.style.display = 'block';
-        currentQuestionIndex = currentNumber + 1;
-        updateProgress(currentNumber + 1, totalQuestions);
-        saveTutorDraft();
+    if (document.getElementById(`question-${currentNumber + 1}`)) {
+        // Keep header, sidebar, saved position, and navigation in sync.
+        window.jumpToQuestion(currentNumber + 1);
     } else {
-        // No more questions, show final results
-        const percentage = (correctAnswers / totalAnswers) * 100;
-
-        // Show results without playing sound here (sound will be played in showQuizResults)
-        showQuizResults({
-            correct: correctAnswers,
-            total: totalAnswers,
-            percentage: percentage
-        });
+        showFinalResults();
     }
 }
 
@@ -2386,8 +2206,10 @@ document.addEventListener('DOMContentLoaded', function () {
             feedbackDiv.style.display = 'block';
 
             const writtenAnswer = container.querySelector('.written-answer');
-            const isCorrect = submittedAnswer !== null
-                && String(submittedAnswer).trim().toLowerCase() === String(qData.correct_answer || '').trim().toLowerCase();
+            const recordedResult = questionResults[normalizedQuestionId] || questionResults[Number(normalizedQuestionId)];
+            const isCorrect = recordedResult
+                ? Boolean(recordedResult.is_correct)
+                : submittedAnswer !== null && String(submittedAnswer).trim().toLowerCase() === String(qData.correct_answer || '').trim().toLowerCase();
 
             if (writtenAnswer) {
                 alertDiv.className = `alert ${isCorrect ? 'alert-success' : 'alert-danger'}`;

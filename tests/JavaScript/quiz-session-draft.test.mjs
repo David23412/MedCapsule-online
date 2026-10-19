@@ -8,9 +8,13 @@ function harness() {
     let now = 1_800_000_000_000;
     const records = new Map();
     const timers = new Map();
+    const pendingTimers = new Map();
+    const events = new Map();
     const window = {
         location: { pathname: '/quiz', search: '' },
-        addEventListener() {},
+        addEventListener(event, callback) { const callbacks=events.get(event)||[];callbacks.push(callback);events.set(event,callbacks); },
+        setTimeout(callback) { const id=pendingTimers.size+1;pendingTimers.set(id,callback);return id; },
+        clearTimeout(id) {pendingTimers.delete(id);},
         setInterval(callback) { const id = timers.size + 1; timers.set(id, callback); return id; },
         clearInterval(id) { timers.delete(id); },
     };
@@ -23,7 +27,7 @@ function harness() {
     };
     vm.runInNewContext(source, { window, document: {}, localStorage: storage, Date: { now: () => now } });
     return { create: options => window.QuizSessionDraft.create({ key: 'test', ...options }),
-        advance: ms => { now += ms; }, tick: () => [...timers.values()].forEach(callback => callback()), storage };
+        advance: ms => { now += ms; }, tick: () => [...timers.values()].forEach(callback => callback()), storage, pagehide:()=>events.get('pagehide')?.forEach(callback=>callback()), flush:()=>[...pendingTimers.values()].forEach(callback=>callback()) };
 }
 
 test('a changed question set starts with fresh answers and timer', () => {
@@ -92,4 +96,22 @@ test('opening an expired draft starts fresh without a reload loop', () => {
     const reopened = h.create({ questionIds: [1], onExpire: () => expired++ });
     assert.equal(reopened.load().answers, undefined);
     assert.equal(expired, 0);
+});
+
+test('rapid typing is coalesced and the latest input is flushed on page exit', () => {
+    const h=harness();
+    const draft=h.create({questionIds:[1]});
+    draft.save({answers:{1:'kid'}});
+    draft.save({answers:{1:'kidny'}});
+    h.pagehide();
+    assert.equal(draft.load().answers['1'],'kidny');
+});
+
+test('a pending save cannot recreate a completed draft after it is cleared',()=>{
+    const h=harness();
+    const draft=h.create({questionIds:[1]});
+    draft.save({answers:{1:'kidny'}});
+    draft.clear();
+    h.flush();h.pagehide();
+    assert.equal(h.storage.getItem(draft.storageKey),null);
 });

@@ -1495,7 +1495,7 @@
                     </div>
                 </div>
 
-                <form id="quiz-form" action="{{ secure_url(route('quiz.grade', ['course' => $course->id, 'topic' => $topic->id], false)) }}" method="POST">
+                <form id="quiz-form" action="{{ route('quiz.grade', ['course' => $course->id, 'topic' => $topic->id], false) }}" method="POST">
                     @csrf
                     @if(isset($assignment) && $assignment)
                         <input type="hidden" name="assignment_id" value="{{ $assignment->id }}">
@@ -1684,6 +1684,8 @@
 
             let selectedAnswers = {};
             let latestReviewPayload = null;
+            let isSubmitting = false;
+            let quizCompleted = false;
             const totalQuestions = {{ $questions->count() }};
             const solveQuizConfig = window.SolveQuizPageConfig || {};
             const quizDraft = window.QuizSessionDraft?.create({
@@ -1735,7 +1737,7 @@
             }
 
             function saveQuizDraft() {
-                if (!quizDraft) {
+                if (!quizDraft || quizCompleted) {
                     return;
                 }
 
@@ -1902,8 +1904,7 @@
                             existingCorrectAnswerCard.remove();
                         }
 
-                        const isCorrect = Boolean(correctAnswer) &&
-                            String(correctAnswer).trim().toLowerCase() === String(submittedAnswer || '').trim().toLowerCase();
+                        const isCorrect = !Object.prototype.hasOwnProperty.call(incorrectAnswers, questionId);
 
                         if (isCorrect) {
                             writtenAnswer.classList.add('correct');
@@ -2203,8 +2204,7 @@
                     timerInterval = setTimeout(updateTimer, 1000);
                 }
                 
-                // Start the timer
-                updateTimer();
+                // Submission listeners must exist before an expired draft can submit.
                 updateProgress();
                 if (savedDraft && Number.isFinite(Number(savedDraft.scrollY))) {
                     requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY), behavior: 'auto' }));
@@ -2266,8 +2266,9 @@
 
                 quizForm.addEventListener("submit", function (event) {
                     event.preventDefault();
-                    
-                    const startTime = performance.now();
+                    if (isSubmitting || quizCompleted) return;
+                    isSubmitting = true;
+                    const gradingStartedAt = performance.now();
                     console.log('� SF16 RAPTOR QUIZ GRADING...');
 
                     // INSTANT UI FEEDBACK
@@ -2298,7 +2299,7 @@
                     }
                     
                     const percentage = Math.round((score / totalQuestions) * 100);
-                    const gradingTime = performance.now() - startTime;
+                    const gradingTime = performance.now() - gradingStartedAt;
                     
                     console.log(`✅ GRADED in ${Math.round(gradingTime)}ms: ${score}/${totalQuestions} (${percentage}%)`);
                     
@@ -2480,6 +2481,8 @@
                         return response.json();
                     })
                     .then(data => {
+                        if (!data.success || data.error) throw new Error(data.error || 'Grading failed');
+                        quizCompleted = true;
                         quizDraft?.clear();
                         latestReviewPayload = data;
 
@@ -2664,6 +2667,11 @@
                     })
                     .catch((error) => {
                         console.error('Quiz submission error:', error);
+                        isSubmitting = false;
+                        if (!isCountdown || Date.now() - startTime.getTime() < durationMinutes * 60000) {
+                            clearTimeout(timerInterval);
+                            timerInterval = setTimeout(updateTimer, 1000);
+                        }
                         
                         // Re-enable submit button
                         submitButton.disabled = false;
@@ -2708,6 +2716,7 @@
                 });
                 window.addEventListener('scroll', saveQuizDraft, { passive: true });
                 saveQuizDraft();
+                updateTimer();
             }
 
             // Add event listeners to popup buttons

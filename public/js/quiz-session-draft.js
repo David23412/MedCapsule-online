@@ -88,8 +88,13 @@
         let lastPrunedAt = 0;
         let expireTimerId = null;
         let isExpired = false;
+        let pendingState = null;
+        let saveTimerId = null;
 
         function clear() {
+            if (saveTimerId) window.clearTimeout(saveTimerId);
+            saveTimerId = null;
+            pendingState = null;
             try {
                 localStorage.removeItem(storageKey);
             } catch (_error) {
@@ -128,9 +133,17 @@
         function save(state) {
             try {
                 const now = Date.now();
+                if (isExpired) return false;
                 if (now - lastPersistedAt < 250) {
+                    pendingState = state;
+                    if (!saveTimerId) {
+                        saveTimerId = window.setTimeout(flushPendingSave, 250 - (now - lastPersistedAt));
+                    }
                     return true;
                 }
+                if (saveTimerId) window.clearTimeout(saveTimerId);
+                saveTimerId = null;
+                pendingState = null;
 
                 const existingDraft = loadRecord();
                 if (isExpired) {
@@ -161,6 +174,16 @@
             } catch (_error) {
                 return false;
             }
+        }
+
+        function flushPendingSave() {
+            if (saveTimerId) window.clearTimeout(saveTimerId);
+            saveTimerId = null;
+            if (pendingState === null || isExpired) return;
+            const state = pendingState;
+            pendingState = null;
+            lastPersistedAt = 0;
+            save(state);
         }
 
         function load() {
@@ -229,6 +252,7 @@
         }
 
         bindActivityTracking();
+        window.addEventListener('pagehide', flushPendingSave);
         ensureSeedDraft();
         startExpiryMonitor();
 

@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const quizForm = document.getElementById('quiz-form');
             const timeTakenField = document.getElementById('time-taken');
             const timerDisplay = document.getElementById('timer');
+        let isSubmitting = false;
+        let quizCompleted = false;
             
             // NUCLEAR FALLBACK - WAIT AND TRY AGAIN
             if (!progressBarContainer || !submitBtn) {
@@ -79,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function saveDraft() {
-                if (!quizDraft || quizSubmitted) {
+                if (!quizDraft || quizCompleted || quizSubmitted) {
                     return;
                 }
 
@@ -104,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 progressText.textContent = `${answeredQuestions} of ${totalQuestions} questions answered`;
                 
                 // Enable submit button when all questions are answered
-                submitBtn.disabled = answeredQuestions !== totalQuestions;
+                submitBtn.disabled = isSubmitting || quizCompleted || answeredQuestions !== totalQuestions;
             }
             
             // Handle multiple choice question answers
@@ -201,18 +203,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // Start the timer - BUT ONLY IF TIME NOT EXPIRED OR CONFIG OK
-            if (timeLimit > 0) {
-                updateTimer(); // Initial call
-                
-                // Only start interval if we haven't already submitted (e.g. if timeLimit was tiny)
-                if (!quizSubmitted) {
-                    timerInterval = setInterval(updateTimer, 1000);
-                }
-            } else {
-                console.warn('⚠️ Timer not starting - timeLimit is 0 or negative');
-            }
-
             updateProgress();
             if (savedDraft && Number.isFinite(Number(savedDraft.scrollY))) {
                 requestAnimationFrame(() => window.scrollTo({ top: Number(savedDraft.scrollY), behavior: 'auto' }));
@@ -304,6 +294,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function submitQuiz() {
+                if (isSubmitting || quizCompleted) return;
+                isSubmitting = true;
+                clearInterval(timerInterval);
                 // Disable all inputs and submit button
                 document.querySelectorAll('input, textarea, button[type="submit"]').forEach(input => input.disabled = true);
                 primeQuizSounds();
@@ -375,6 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(data => {
                     if (data.success) {
+                        quizCompleted = true;
                         quizDraft?.clear();
                         // Store quiz results globally for review functionality
                         window.lastQuizResults = data;
@@ -465,6 +459,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     console.error('Error:', error);
+                    isSubmitting = false;
+                    if (timeLimit > 0 && Date.now() - startTime < timeLimit * 1000) {
+                        clearInterval(timerInterval);
+                        quizSubmitted = false;
+                        timerInterval = setInterval(updateTimer, 1000);
+                    }
+
                     // Show error message in a popup
                     setPopupActionsDisabled(false);
                     popupTitle.textContent = 'Error';
@@ -515,6 +516,18 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             window.addEventListener('scroll', saveDraft, { passive: true });
             saveDraft();
+
+            // Start only after submission and feedback controls are initialized.
+            if (timeLimit > 0) {
+                updateTimer(); // Initial call
+
+                // Only start interval if we haven't already submitted (e.g. if timeLimit was tiny)
+                if (!quizSubmitted) {
+                    timerInterval = setInterval(updateTimer, 1000);
+                }
+            } else {
+                console.warn('⚠️ Timer not starting - timeLimit is 0 or negative');
+            }
 
             // Function to show review mode with correct/incorrect answer highlighting
             function showReviewMode() {

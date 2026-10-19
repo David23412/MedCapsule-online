@@ -9,6 +9,7 @@ use App\Models\UserTopicSourceProgress;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class TutorSourceProgressService
 {
@@ -199,11 +200,7 @@ class TutorSourceProgressService
      */
     public function getTopicSourceTotals(Topic $topic): array
     {
-        return Question::query()
-            ->where(function ($query) use ($topic) {
-                $query->where('topic_id', $topic->id)
-                    ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
-            })
+        return $this->questionsForTopic($topic)
             ->whereNotNull('source')
             ->where('source', '!=', '')
             ->selectRaw('source, COUNT(*) as total')
@@ -279,6 +276,18 @@ class TutorSourceProgressService
         ];
     }
 
+    private function questionsForTopic(Topic $topic): \Illuminate\Database\Eloquent\Builder
+    {
+        return Question::query()->where(function ($query) use ($topic) {
+            $query->where('topic_id', $topic->id);
+            if (!$topic->is_exam) {
+                $query->orWhereRaw(DB::getDriverName() === 'sqlite'
+                    ? "INSTR(',' || REPLACE(extra_topic, ' ', '') || ',', ',' || ? || ',') > 0"
+                    : 'FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
+            }
+        });
+    }
+
     private function getTotalQuestionsForSource(Topic $topic, string $source): int
     {
         $cacheKey = $topic->id . ':' . $source;
@@ -286,11 +295,7 @@ class TutorSourceProgressService
             return $this->totalQuestionsCache[$cacheKey];
         }
 
-        $this->totalQuestionsCache[$cacheKey] = Question::query()
-            ->where(function ($query) use ($topic) {
-                $query->where('topic_id', $topic->id)
-                    ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$topic->id]);
-            })
+        $this->totalQuestionsCache[$cacheKey] = $this->questionsForTopic($topic)
             ->where('source', $source)
             ->count();
 
