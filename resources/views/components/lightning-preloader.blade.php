@@ -244,7 +244,7 @@ body.fonts-loaded {
     const startTime = performance.now();
     const currentPath = window.location.pathname;
     const isCoursesPage = currentPath.includes('/courses') || currentPath.includes('/dashboard');
-    const revealWhenReady = isCoursesPage || /^\/(login|register)\/?$/.test(currentPath);
+    const revealWhenReady = isCoursesPage || /^\/(login|register|profile)\/?$/.test(currentPath);
     
     // BULLETPROOF HIDE FUNCTION
     function hidePreloader() {

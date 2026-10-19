@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
@@ -96,43 +95,19 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         
-        // RUTHLESS OPTIMIZATION: More responsive caching with hourly granularity
-        $cacheKey = "user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H');
-        
-        $profileData = Cache::remember($cacheKey, 3600, function () use ($user) {
-            // Calculate accuracy from user's total attempts and correct answers
-            $totalQuestions = $user->total_questions_attempted ?? 0;
-            $totalCorrect = $user->getTotalCorrectAnswers();
-            $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
-
-            // Get the study streak value directly from the user model
-            $studyStreak = $user->study_streak_days ?? 0;
-
-            // OPTIMIZED: Single query for study time calculation
-            $studyTimeBreakdown = $this->calculateStudyTimeBreakdown($user);
-
-            // Format study times without redundant labels
-            $formattedStudyTimes = [
-                'total' => $this->formatStudyTime($studyTimeBreakdown['total']),
-                'quiz' => $this->formatStudyTime($studyTimeBreakdown['quiz']),
-                'tutor' => $this->formatStudyTime($studyTimeBreakdown['tutor']),
-                'random_quiz' => $this->formatStudyTime($studyTimeBreakdown['random_quiz']),
-                'mistake_review' => $this->formatStudyTime($studyTimeBreakdown['mistake_review'])
-            ];
-
-            return compact('accuracyRate', 'totalQuestions', 'studyStreak', 'formattedStudyTimes');
-        });
-
-        // Extract cached data
-        extract($profileData);
-
+        $totalQuestions = (int) ($user->total_questions_attempted ?? 0);
+        $totalCorrect = (int) $user->getTotalCorrectAnswers();
+        $accuracyRate = $totalQuestions > 0 ? round(($totalCorrect / $totalQuestions) * 100, 1) : 0;
+        $studyStreak = (int) ($user->study_streak_days ?? 0);
         $weekStart = now()->startOfWeek();
         $weekEnd = now()->endOfWeek();
-        $weeklyQuestions = Cache::remember("profile_weekly_questions_{$user->id}_" . now()->format('Y-m-d'), 300, function () use ($user, $weekStart, $weekEnd) {
-            return \App\Models\QuizAttempt::where('user_id', $user->id)
-                ->whereBetween('created_at', [$weekStart, $weekEnd])
-                ->sum('total_questions');
-        });
+        // One aggregate supplies study time, weekly progress, and chart cache freshness.
+        $studyTimeBreakdown = $this->calculateStudyTimeBreakdown($user);
+        $formattedStudyTimes = [];
+        foreach (['total', 'quiz', 'tutor', 'random_quiz', 'mistake_review'] as $mode) {
+            $formattedStudyTimes[$mode] = $this->formatStudyTime($studyTimeBreakdown[$mode]);
+        }
+        $weeklyQuestions = (int) $studyTimeBreakdown['weekly_questions'];
 
         $weeklyGoal = $user->weekly_goal ?? 50;
         $progressPercent = $weeklyGoal > 0 ? min(100, ($weeklyQuestions / $weeklyGoal) * 100) : 0;
@@ -146,39 +121,38 @@ class ProfileController extends Controller
         }
         $hasLeaderboardColumn = self::$hasLeaderboardColumn;
 
-        // Cached user rank — includes users ranked by XP then correct_answers_count
+        // Rank is cheap to count and must reflect fresh scores and visibility.
         $userRank = null;
         $userXp = (int) ($user->xp ?? 0);
         $userCorrect = (int) ($user->correct_answers_count ?? 0);
         $isVisibleOnLeaderboard = !$hasLeaderboardColumn || ($user->show_on_leaderboard ?? true);
 
-        if (($userXp > 0 || $userCorrect > 0) && $isVisibleOnLeaderboard) {
-            $userRank = Cache::remember("user_rank_v2_{$user->id}", 1800, function() use ($user, $userXp, $userCorrect, $hasLeaderboardColumn) {
-                $query = DB::table('users')
-                    ->where('users.role', User::ROLE_STUDENT)
-                    ->where(function ($q) {
-                        $q->where('users.xp', '>', 0)
-                          ->orWhere('users.correct_answers_count', '>', 0);
-                    })
-                    ->where(function ($q) use ($userXp, $userCorrect) {
-                        $q->where('users.xp', '>', $userXp)
-                          ->orWhere(function ($q2) use ($userXp, $userCorrect) {
-                              $q2->where('users.xp', '=', $userXp)
-                                 ->where('users.correct_answers_count', '>', $userCorrect);
-                          });
-                    });
+        if ($user->role === User::ROLE_STUDENT && ($userXp > 0 || $userCorrect > 0) && $isVisibleOnLeaderboard) {
+            $query = DB::table('users')
+                ->where('users.role', User::ROLE_STUDENT)
+                ->where(function ($q) {
+                    $q->where('users.xp', '>', 0)
+                      ->orWhere('users.correct_answers_count', '>', 0);
+                })
+                ->where(function ($q) use ($userXp, $userCorrect) {
+                    $q->where('users.xp', '>', $userXp)
+                      ->orWhere(function ($q2) use ($userXp, $userCorrect) {
+                          $q2->where('users.xp', '=', $userXp)
+                             ->where('users.correct_answers_count', '>', $userCorrect);
+                      });
+                });
 
-                if ($hasLeaderboardColumn) {
-                    $query->where('show_on_leaderboard', true);
-                }
+            if ($hasLeaderboardColumn) {
+                $query->where('show_on_leaderboard', true);
+            }
 
-                return $query->count() + 1;
-            });
+            $userRank = $query->count() + 1;
         }
 
         // ULTRA-EFFICIENT: Group by attempt_id - multiple sources from same quiz = ONE point
         // REAL-TIME OPTIMIZATION: Reduced cache time for immediate chart updates
-        $performanceData = Cache::remember("performance_data_optimized_{$user->id}", 30, function() use ($user) {
+        $chartCacheKey = "profile_chart_v2_{$user->id}_" . $studyTimeBreakdown['last_attempt_id'];
+        $performanceData = Cache::remember($chartCacheKey, 30, function() use ($user) {
             // FINAL OPTIMIZATION: Pre-compute CASE statement to reduce DB::raw overhead
             $topicCase = DB::raw('CASE
                 WHEN quiz_attempts.study_mode = "random" THEN "Random Quiz"
@@ -192,7 +166,6 @@ class ProfileController extends Controller
                 ->leftJoin('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
                 ->where('quiz_attempts.user_id', $user->id)
                 ->where('quiz_attempts.quiz_type', '!=', 'mistake_review')
-                ->whereNotNull('quiz_attempts.attempt_id') // Only group attempts with attempt_id
                 ->select([
                     'quiz_attempts.attempt_id',
                     DB::raw('MAX(quiz_attempts.created_at) as date'),
@@ -204,7 +177,7 @@ class ProfileController extends Controller
                     DB::raw('COUNT(*) as attempts_count'),
                     $topicCase
                 ])
-                ->groupBy('quiz_attempts.attempt_id', 'quiz_attempts.topic_id', 'quiz_attempts.study_mode', 'topics.name', 'quiz_attempts.quiz_type')
+                ->groupBy(DB::raw('COALESCE(quiz_attempts.attempt_id, -quiz_attempts.id)'), 'quiz_attempts.attempt_id', 'quiz_attempts.topic_id', 'quiz_attempts.study_mode', 'topics.name', 'quiz_attempts.quiz_type')
                 ->orderBy('date', 'desc')
                 ->take(7)
                 ->get();
@@ -245,40 +218,38 @@ class ProfileController extends Controller
         $courseCompletionWidget = $this->getCourseQuestionCompletionWidget($user->id);
         
         // Leaderboard top 10 — includes users with XP or correct answers
-        $leaderboard = Cache::remember('profile_leaderboard_top10_v2', 300, function () use ($hasLeaderboardColumn) {
-            $query = DB::table('users')
-                ->select(
-                    'users.id',
-                    'users.name',
-                    'users.correct_answers_count',
-                    'users.xp',
-                    DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
-                )
-                ->where(function ($q) {
-                    $q->where('users.xp', '>', 0)
-                      ->orWhere('users.correct_answers_count', '>', 0);
-                })
-                ->where('users.role', User::ROLE_STUDENT);
+        $query = DB::table('users')
+            ->select(
+                'users.id',
+                'users.name',
+                'users.correct_answers_count',
+                'users.xp',
+                DB::raw('FLOOR(COALESCE(users.xp, 0) / 1000) + 1 as level')
+            )
+            ->where(function ($q) {
+                $q->where('users.xp', '>', 0)
+                  ->orWhere('users.correct_answers_count', '>', 0);
+            })
+            ->where('users.role', User::ROLE_STUDENT);
 
-            if ($hasLeaderboardColumn) {
-                $query->where('users.show_on_leaderboard', true);
-            }
+        if ($hasLeaderboardColumn) {
+            $query->where('users.show_on_leaderboard', true);
+        }
 
-            return $query
-                ->orderByDesc('users.xp')
-                ->orderByDesc('users.correct_answers_count')
-                ->limit(10)
-                ->get()
-                ->map(function($user) {
-                    return (object) [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'xp' => $user->xp ?? 0,
-                        'level' => $user->level,
-                        'correct_answers' => $user->correct_answers_count
-                    ];
-                });
-        });
+        $leaderboard = $query
+            ->orderByDesc('users.xp')
+            ->orderByDesc('users.correct_answers_count')
+            ->limit(10)
+            ->get()
+            ->map(function($user) {
+                return (object) [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'xp' => $user->xp ?? 0,
+                    'level' => $user->level,
+                    'correct_answers' => $user->correct_answers_count
+                ];
+            });
 
         $tenthPlaceXp = count($leaderboard) >= 10 ? $leaderboard[9]->xp : 0;
         $currentUserView = $this->studentViewDataService->buildCurrentUserView($user, [
@@ -384,22 +355,25 @@ class ProfileController extends Controller
                     'user_topic_source_progress.completed_question_ids'
                 )
                 ->get()
-                ->each(function ($row) use (&$completedQuestionIdsByCourseSource) {
-                    $key = (int) $row->course_id . '|' . (string) $row->source;
+                ->each(function ($row) use (&$completedQuestionIdsByCourseSource, $questionLookup) {
                     foreach ($this->decodeQuestionIds($row->completed_question_ids) as $questionId) {
+                        $question = $questionLookup[$questionId] ?? null;
+                        if (!$question || $question['course_id'] !== (int) $row->course_id) continue;
+                        $key = $question['course_id'] . '|' . $question['source'];
                         $completedQuestionIdsByCourseSource[$key][$questionId] = true;
                     }
                 });
         }
 
         DB::table('quiz_attempts')
-            ->join('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
+            ->leftJoin('topics', 'quiz_attempts.topic_id', '=', 'topics.id')
             ->where('quiz_attempts.user_id', $userId)
-            ->whereIn('topics.course_id', $enrolledCourseIds)
+            ->where(function ($query) use ($enrolledCourseIds) {
+                $query->whereIn('topics.course_id', $enrolledCourseIds)->orWhereNull('quiz_attempts.topic_id');
+            })
             ->whereNotNull('quiz_attempts.question_data')
-            ->select('quiz_attempts.question_data')
-            ->orderBy('quiz_attempts.id')
-            ->get()
+            ->select('quiz_attempts.id', 'quiz_attempts.question_data')
+            ->lazyById(200, 'quiz_attempts.id', 'id')
             ->each(function ($attempt) use (&$completedQuestionIdsByCourseSource, $questionLookup) {
                 $questionData = json_decode((string) $attempt->question_data, true);
 
@@ -408,6 +382,7 @@ class ProfileController extends Controller
                 }
 
                 foreach ($questionData as $item) {
+                    if (!is_array($item)) continue;
                     $questionId = (int) ($item['question_id'] ?? 0);
                     if ($questionId <= 0 || !isset($questionLookup[$questionId])) {
                         continue;
@@ -523,11 +498,15 @@ class ProfileController extends Controller
                 SUM(CASE WHEN quiz_attempts.study_mode = "tutor" THEN quiz_attempts.duration_seconds ELSE 0 END) as tutor,
                 SUM(CASE WHEN quiz_attempts.quiz_type = "random" THEN quiz_attempts.duration_seconds ELSE 0 END) as random_quiz,
                 SUM(CASE WHEN quiz_attempts.quiz_type = "mistake_review" OR quiz_attempts.study_mode = "mistake_review" THEN quiz_attempts.duration_seconds ELSE 0 END) as mistake_review,
+                MAX(quiz_attempts.id) as last_attempt_id,
+                SUM(CASE WHEN quiz_attempts.created_at BETWEEN ? AND ? THEN quiz_attempts.total_questions ELSE 0 END) as weekly_questions,
                 SUM(quiz_attempts.duration_seconds) as total
-            ')
+            ', [now()->startOfWeek()->toDateTimeString(), now()->endOfWeek()->toDateTimeString()])
             ->first();
 
         return [
+            'last_attempt_id' => $result->last_attempt_id ?? 0,
+            'weekly_questions' => $result->weekly_questions ?? 0,
             'quiz' => $result->quiz ?? 0,
             'tutor' => $result->tutor ?? 0,
             'random_quiz' => $result->random_quiz ?? 0,
@@ -537,132 +516,72 @@ class ProfileController extends Controller
     }
 
     /**
-     * Handle profile picture upload with MEGA LETHAL security
+     * Preserve the current photo until its replacement is uploaded and saved.
      */
     public function updateProfilePicture(Request $request)
     {
+        $request->validate([
+            'profile_picture' => 'required|file|image|mimes:jpeg,jpg,png,gif,webp|max:5120',
+        ]);
+        $user = $request->user();
         try {
-            // 🔒 MEGA LETHAL SECURITY: Use secure file upload service
-            $request->validate([
-                'profile_picture' => 'required|file|image|mimes:jpeg,jpg,png,gif,webp|max:5120'
-            ]);
-
-            $user = auth()->user();
-
-            if ($request->hasFile('profile_picture')) {
-                // Delete old profile picture if exists (secure deletion)
-                if ($user->profile_picture_url) {
-                    $oldPath = str_starts_with($user->profile_picture_url, 'uploads/')
-                        ? substr($user->profile_picture_url, strlen('uploads/'))
-                        : $user->profile_picture_url;
-
-                    $candidatePaths = [
-                        Storage::disk('secure_uploads')->path($oldPath),
-                        storage_path('app/uploads/' . $oldPath),
-                    ];
-
-                    foreach ($candidatePaths as $oldFilePath) {
-                        if (file_exists($oldFilePath)) {
-                            unlink($oldFilePath);
-                            break;
-                        }
-                    }
-                }
-
-                // 🔒 USE SECURE FILE UPLOAD SERVICE - MEGA LETHAL PROTECTION
-                $secureUploadService = app(SecureFileUploadService::class);
-
-                try {
-                    $uploadResult = $secureUploadService->processSecureUpload(
-                        $request->file('profile_picture'),
-                        'images', // category
-                        'profile-pictures' // directory
-                    );
-
-                    // Update user's profile_picture_url with the full storage path
-                    $user->profile_picture_url = $uploadResult['storage_path'];
-                    $user->save();
-
-                    $cacheBust = time();
-
-
-                    // Check if it's an AJAX request
-                    if (request()->ajax() || request()->wantsJson()) {
-                        // Use the User model's consistent URL generation method
-                        $user->refresh(); // Refresh to get updated profile_picture_url
-                        $correctUrl = $user->getProfileImageUrl(true); // With cache bust
-
-                        return response()->json([
-                            'success' => true,
-                            'message' => 'Profile picture updated successfully!',
-                            'new_url' => $correctUrl,
-                            'timestamp' => $cacheBust,
-                            'cache_bust' => $cacheBust
-                        ]);
-                    }
-
-                    return redirect()->back()
-                        ->with('success', 'Profile picture updated successfully!')
-                        ->with('cache_bust', time());
-
-                } catch (\Exception $e) {
-                    \Log::error('Secure profile picture upload failed', [
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage(),
-                        'original_filename' => $request->file('profile_picture')->getClientOriginalName()
-                    ]);
-
-                    if (request()->ajax() || request()->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'File upload failed security validation: ' . $e->getMessage()
-                        ], 422);
-                    }
-
-                    return redirect()->back()
-                        ->with('error', 'File upload failed security validation: ' . $e->getMessage());
-                }
-            }
-
-            return redirect()->back()->with('error', 'No file uploaded.');
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            if (request()->ajax() || request()->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
-                    'errors' => $e->errors()
-                ], 422);
-            }
-
-            return redirect()->back()->withErrors($e->validator)->withInput();
-
+            $upload = app(SecureFileUploadService::class)->processSecureUpload(
+                $request->file('profile_picture'), 'images', 'profile-pictures'
+            );
         } catch (\Exception $e) {
-            \Log::error('Profile picture upload failed', [
-                'user_id' => auth()->id(),
-                'error' => $e->getMessage()
-            ]);
+            Log::warning('Profile photo rejected', ['user_id' => $user->id, 'exception' => get_class($e)]);
+            $message = 'Unable to upload this image. Please choose a JPG, PNG, GIF, or WebP image under 5 MB.';
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->with('error', $message);
+        }
 
-            if (request()->ajax() || request()->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update profile picture: ' . $e->getMessage()
-                ], 500);
+        $oldPath = null;
+        try {
+            $user = DB::transaction(function () use ($user, $upload, &$oldPath) {
+                $currentUser = User::query()->lockForUpdate()->findOrFail($user->id);
+                $oldPath = $currentUser->profile_picture_url;
+                $currentUser->profile_picture_url = $upload['storage_path'];
+                $currentUser->save();
+                return $currentUser;
+            });
+        } catch (\Throwable $e) {
+            $this->deleteProfileImage($upload['storage_path']);
+            Log::error('Profile photo save failed', ['user_id' => $user->id, 'exception' => get_class($e)]);
+            $message = 'Your photo could not be saved. Your previous photo is kept. Please try again.';
+            return $request->expectsJson()
+                ? response()->json(['success' => false, 'message' => $message], 500)
+                : back()->with('error', $message);
+        }
+
+        if ($oldPath !== $upload['storage_path']) $this->deleteProfileImage($oldPath);
+        return $request->expectsJson()
+            ? response()->json([
+                'success' => true, 'message' => 'Profile picture updated successfully!',
+                'new_url' => $user->getProfileImageUrl(true), 'timestamp' => time(), 'cache_bust' => time(),
+            ])
+            : back()->with('success', 'Profile picture updated successfully!');
+    }
+
+    private function deleteProfileImage(?string $path): void
+    {
+        if (!$path) return;
+        $path = str_starts_with($path, 'uploads/') ? substr($path, 8) : $path;
+        if (!str_starts_with($path, 'profile-pictures/')) return;
+        try {
+            foreach ([Storage::disk('secure_uploads')->path('profile-pictures'), storage_path('app/uploads/profile-pictures')] as $base) {
+                $directory = realpath($base);
+                $file = realpath($base . '/' . substr($path, strlen('profile-pictures/')));
+                if ($directory && $file && is_file($file) && str_starts_with($file, $directory . DIRECTORY_SEPARATOR)) {
+                    unlink($file);
+                    return;
+                }
             }
-
-            return redirect()->back()->with('error', 'Failed to update profile picture: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::warning('Old profile photo cleanup skipped', ['exception' => get_class($e)]);
         }
     }
 
-
-    
-
-
-
-
-    /**
-     * Update user's weekly study goal
-     */
     public function updateWeeklyGoal(Request $request)
     {
         try {
@@ -677,11 +596,11 @@ class ProfileController extends Controller
 
             $user = auth()->user();
             $user->weekly_goal = $validated['weekly_goal'];
-            $user->exam_date = $validated['exam_date'] ?? null;
             $user->daily_study_minutes = $validated['daily_study_minutes'];
             $user->planner_focus = $validated['planner_focus'];
-            $user->repair_mode = $validated['repair_mode'] ?? null;
-            $user->mistake_mastery_mode = $validated['mistake_mastery_mode'] ?? null;
+            foreach (['exam_date', 'repair_mode', 'mistake_mastery_mode'] as $field) {
+                if (array_key_exists($field, $validated)) $user->{$field} = $validated[$field];
+            }
             $user->save();
 
             Cache::forget("user_profile_optimized_{$user->id}_" . now()->format('Y-m-d-H'));
@@ -699,6 +618,8 @@ class ProfileController extends Controller
                 'mistake_mastery_mode' => $user->mistake_mastery_mode,
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             \Log::error('Failed to update planner settings', [
                 'user_id' => auth()->id(),
@@ -782,13 +703,13 @@ class ProfileController extends Controller
                 'message' => 'Course planner settings updated successfully!',
                 'course_id' => $courseId,
                 'overrides' => [
-                    'planner_exam_date' => $plannerUpdates['planner_exam_date'] ?? data_get($enrollment, 'planner_exam_date'),
-                    'planner_target_score' => $plannerUpdates['planner_target_score'] ?? data_get($enrollment, 'planner_target_score'),
-                    'planner_daily_study_minutes' => $plannerUpdates['planner_daily_study_minutes'] ?? data_get($enrollment, 'planner_daily_study_minutes'),
-                    'planner_focus' => $plannerUpdates['planner_focus'] ?? data_get($enrollment, 'planner_focus'),
-                    'planner_preferred_source' => $plannerUpdates['planner_preferred_source'] ?? data_get($enrollment, 'planner_preferred_source'),
-                    'planner_repair_mode' => $plannerUpdates['planner_repair_mode'] ?? data_get($enrollment, 'planner_repair_mode'),
-                    'planner_mistake_mastery_mode' => $plannerUpdates['planner_mistake_mastery_mode'] ?? data_get($enrollment, 'planner_mistake_mastery_mode'),
+                    'planner_exam_date' => array_key_exists('planner_exam_date', $plannerUpdates) ? $plannerUpdates['planner_exam_date'] : data_get($enrollment, 'planner_exam_date'),
+                    'planner_target_score' => array_key_exists('planner_target_score', $plannerUpdates) ? $plannerUpdates['planner_target_score'] : data_get($enrollment, 'planner_target_score'),
+                    'planner_daily_study_minutes' => array_key_exists('planner_daily_study_minutes', $plannerUpdates) ? $plannerUpdates['planner_daily_study_minutes'] : data_get($enrollment, 'planner_daily_study_minutes'),
+                    'planner_focus' => array_key_exists('planner_focus', $plannerUpdates) ? $plannerUpdates['planner_focus'] : data_get($enrollment, 'planner_focus'),
+                    'planner_preferred_source' => array_key_exists('planner_preferred_source', $plannerUpdates) ? $plannerUpdates['planner_preferred_source'] : data_get($enrollment, 'planner_preferred_source'),
+                    'planner_repair_mode' => array_key_exists('planner_repair_mode', $plannerUpdates) ? $plannerUpdates['planner_repair_mode'] : data_get($enrollment, 'planner_repair_mode'),
+                    'planner_mistake_mastery_mode' => array_key_exists('planner_mistake_mastery_mode', $plannerUpdates) ? $plannerUpdates['planner_mistake_mastery_mode'] : data_get($enrollment, 'planner_mistake_mastery_mode'),
                 ],
                 'defaults' => [
                     'exam_date' => optional($user->exam_date)->format('Y-m-d'),
@@ -805,6 +726,8 @@ class ProfileController extends Controller
             }
 
             return redirect()->back()->with('status', $responsePayload['message']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to update course planner settings', [
                 'user_id' => auth()->id(),
@@ -869,6 +792,8 @@ class ProfileController extends Controller
                 'show_on_leaderboard' => (bool) $user->show_on_leaderboard
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to update privacy settings', [
                 'user_id' => auth()->id(),

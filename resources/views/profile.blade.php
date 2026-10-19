@@ -15,8 +15,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- RUTHLESS: Async loading for better performance -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" defer></script>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
@@ -24,7 +24,7 @@
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
     @include('partials.admin-dark-mode-head')
-    <link rel="stylesheet" href="{{ asset('css/profile-page.css') }}">
+    <link rel="stylesheet" href="{{ app(\App\Services\BladeAssetService::class)->url('css/profile-page.css') }}">
     <style>
         body {
             zoom: 0.75;
@@ -238,17 +238,17 @@
         <div class="profile-header animate-fadeInUp">
             <span class="profile-hero-orb orb-one"></span>
             <span class="profile-hero-orb orb-two"></span>
-            <form action="{{ secure_url(route('profile.update-picture', [], false)) }}" method="POST" enctype="multipart/form-data" id="profileForm" style="display: none;">
+            <form action="{{ route('profile.update-picture', [], false) }}" method="POST" enctype="multipart/form-data" id="profileForm" style="display: none;">
                 @csrf
                 <input type="file" 
                        name="profile_picture" 
                        id="profilePictureInput" 
-                       accept="image/*"
+                       accept="image/jpeg,image/png,image/gif,image/webp"
                        style="display: none;">
             </form>
             <div class="profile-hero-layout">
                 <div class="profile-picture-shell">
-                    <div class="profile-picture" id="profilePictureContainer" style="cursor: pointer;" title="Click to upload new profile picture">
+                    <div class="profile-picture" id="profilePictureContainer" role="button" tabindex="0" aria-label="Upload profile picture" style="cursor: pointer;" title="Click to upload new profile picture">
                         @php
                             $profileImageUrl = $currentUserView['profile_image_url'] ?? auth()->user()->getProfileImageUrl();
                             $profileFallbackUrl = $currentUserView['profile_fallback_url'] ?? ('https://ui-avatars.com/api/?name=' . urlencode(auth()->user()->name) . '&size=200&background=007bff&color=ffffff');
@@ -256,7 +256,7 @@
                         <img src="{{ $profileImageUrl }}"
                              alt="Profile Picture"
                              id="profileImage"
-                             onerror="this.src='{{ $profileFallbackUrl }}'">
+                             onerror="this.onerror=null;this.src='{{ $profileFallbackUrl }}'">
                         <div class="upload-overlay">
                             <i class="fas fa-camera"></i>
                         </div>
@@ -317,7 +317,7 @@
             <div class="col-md-3">
                 <div class="stats-card accuracy-card animate-fadeInUp" style="animation-delay: 0.2s">
                     <h5><i class="fas fa-bullseye me-2 pulsing-icon"></i>Accuracy Rate</h5>
-                    <div class="stats-value">{{ number_format($accuracyRate, 1) }}%</div>
+                    <div class="stats-value" id="profileAccuracy">{{ number_format($accuracyRate, 1) }}%</div>
                     <small class="text-muted">Based on {{ $totalQuestions }} attempts</small>
                 </div>
             </div>
@@ -348,7 +348,7 @@
             <div class="col-md-3">
                 <div class="stats-card animate-fadeInUp" style="animation-delay: 0.4s">
                     <h5><i class="fas fa-question-circle me-2"></i>Total Questions</h5>
-                    <div class="stats-value">{{ $totalQuestions }}</div>
+                    <div class="stats-value" id="profileTotalQuestions">{{ $totalQuestions }}</div>
                     <small class="text-muted">Questions attempted</small>
                 </div>
             </div>
@@ -445,12 +445,12 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div style="flex: 1;">
                             <div class="d-flex align-items-baseline gap-3 mb-3">
-                                <span style="font-size: 3rem; font-weight: 800; color: {{ $currentUserView['weekly_progress_color'] ?? '#ef4444' }}; line-height: 1;">{{ $currentUserView['weekly_questions'] ?? 0 }}</span>
-                                <span style="font-size: 1.5rem; font-weight: 600; color: #64748b;">/ {{ $currentUserView['weekly_goal'] ?? 50 }}</span>
+                                <span id="profileWeeklyQuestions" style="font-size: 3rem; font-weight: 800; color: {{ $currentUserView['weekly_progress_color'] ?? '#ef4444' }}; line-height: 1;">{{ $currentUserView['weekly_questions'] ?? 0 }}</span>
+                                <span id="profileWeeklyGoal" style="font-size: 1.5rem; font-weight: 600; color: #64748b;">/ {{ $currentUserView['weekly_goal'] ?? 50 }}</span>
                             </div>
                             
                             <div class="progress" style="height: 10px; border-radius: 10px; background: #e2e8f0; margin-bottom: 10px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.08);">
-                                <div class="progress-bar" role="progressbar" 
+                                <div class="progress-bar" id="profileWeeklyBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $currentUserView['weekly_progress_percent'] ?? 0 }}"
                                      style="width: {{ $currentUserView['weekly_progress_percent'] ?? 0 }}%; 
                                             background: linear-gradient(90deg, {{ $currentUserView['weekly_progress_color'] ?? '#ef4444' }}, {{ ($currentUserView['weekly_progress_color'] ?? '#ef4444') }}dd);
                                             border-radius: 10px;
@@ -461,7 +461,7 @@
                             
                             <div class="d-flex justify-content-between align-items-center">
                                 <span style="color: #64748b; font-size: 0.9rem;">{{ $currentUserView['week_start_label'] ?? '' }} - {{ $currentUserView['week_end_label'] ?? '' }}</span>
-                                <span style="font-weight: 700; font-size: 1.1rem; color: {{ $currentUserView['weekly_progress_color'] ?? '#ef4444' }};">{{ number_format($currentUserView['weekly_progress_percent'] ?? 0, 0) }}%</span>
+                                <span id="profileWeeklyPercent" style="font-weight: 700; font-size: 1.1rem; color: {{ $currentUserView['weekly_progress_color'] ?? '#ef4444' }};">{{ number_format($currentUserView['weekly_progress_percent'] ?? 0, 0) }}%</span>
                             </div>
                             <div class="d-flex flex-wrap gap-2 mt-3">
                                 <span class="badge rounded-pill text-bg-light" style="padding: 0.55rem 0.85rem; font-weight: 600;">
@@ -673,11 +673,11 @@
                                 You need {{ $xpNeeded }} more XP to reach the top 10!
                             </p>
                         </div>
-                        @elseif(!$userRank)
+                        @elseif(!$userRank && ($currentUserView['is_student'] ?? false))
                         <div class="text-center mt-3">
                             <p class="text-muted" style="font-size: 0.9rem;">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Start practicing to earn XP and join the leaderboard!
+                                {{ ($currentUserView['show_on_leaderboard'] ?? true) ? 'Start practicing to earn XP and join the leaderboard!' : 'Your leaderboard visibility is off.' }}
                             </p>
                         </div>
                         @endif
@@ -691,7 +691,7 @@
         window.ProfilePageConfig = {
             chartData: @json($chartData),
             correctCount: {{ $currentUserView['correct_answers_count'] ?? auth()->user()->correct_answers_count }},
-            incorrectCount: {{ $totalQuestions - ($currentUserView['correct_answers_count'] ?? auth()->user()->correct_answers_count) }},
+            incorrectCount: {{ max(0, $totalQuestions - ($currentUserView['correct_answers_count'] ?? auth()->user()->correct_answers_count)) }},
             totalCount: {{ $totalQuestions }},
             courseCompletion: @json($courseCompletionWidget),
             weeklyGoal: {{ $currentUserView['weekly_goal'] ?? (auth()->user()->weekly_goal ?? 50) }},
@@ -699,11 +699,11 @@
 
             dailyStudyMinutes: {{ $currentUserView['daily_study_minutes'] ?? 0 }},
             plannerFocus: @json($currentUserView['planner_focus'] ?? 'balanced'),
-            updateGoalRoute: @json(route('profile.update-goal'))
+            updateGoalRoute: @json(route('profile.update-goal', [], false))
         };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="{{ asset('js/profile-page.js') }}" defer></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/profile-page.js') }}" defer></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const darkModeToggle = document.getElementById('darkModeToggle');

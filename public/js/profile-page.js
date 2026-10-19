@@ -3,6 +3,17 @@
 
     let performanceChart;
     let distributionChart;
+    let goalSaving = false;
+
+    async function readProfileResponse(response) {
+        const data = await response.json();
+        if (!response.ok || data.success === false) {
+            throw new Error(Object.values(data.errors || {}).flat()[0] || data.message || 'The request failed. Please try again.');
+        }
+        return data;
+    }
+
+    function initializePerformanceChart() {
 
     const performanceCanvas = document.getElementById('performanceChart');
     if (performanceCanvas && window.Chart) {
@@ -213,11 +224,13 @@
         });
     }
 
+    }
+    function initializeDistributionChart() {
     const distributionCanvas = document.getElementById('distributionChart');
     if (distributionCanvas && window.Chart) {
         const distributionCtx = distributionCanvas.getContext('2d');
         const correctCount = Number(profilePageConfig.correctCount || 0);
-        const incorrectCount = Number(profilePageConfig.incorrectCount || 0);
+        const incorrectCount = Math.max(0, Number(profilePageConfig.incorrectCount || 0));
         const totalCount = Number(profilePageConfig.totalCount || 0);
         const safeTotalCount = totalCount > 0 ? totalCount : 1;
 
@@ -243,6 +256,13 @@
                 }
             }
         });
+    }
+
+    }
+    for (const initialize of [initializePerformanceChart, initializeDistributionChart]) {
+        try { initialize(); } catch (error) {
+            console.warn('Profile chart could not be loaded:', error);
+        }
     }
 
     const completionCourseSelect = document.getElementById('courseCompletionCourseSelect');
@@ -413,33 +433,45 @@
         });
 
         const profilePicInput = document.getElementById('profilePictureInput');
-        if (profilePicInput) {
-            document.getElementById('profilePictureContainer').addEventListener('click', function () {
-                profilePicInput.click();
+        const pictureContainer = document.getElementById('profilePictureContainer');
+        if (profilePicInput && pictureContainer) {
+            let uploading = false;
+            pictureContainer.addEventListener('click', () => { if (!uploading) profilePicInput.click(); });
+            pictureContainer.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    if (!uploading) profilePicInput.click();
+                }
             });
-
-            profilePicInput.addEventListener('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
+            profilePicInput.addEventListener('change', async function () {
+                const file = profilePicInput.files[0];
+                if (!file || uploading) return;
+                if (file.size > 5 * 1024 * 1024 || !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+                    alert('Choose a JPG, PNG, GIF, or WebP image under 5 MB.');
+                    profilePicInput.value = '';
                     return;
                 }
-
+                uploading = true;
+                profilePicInput.disabled = true;
+                pictureContainer.setAttribute('aria-busy', 'true');
                 const formData = new FormData();
                 formData.append('profile_picture', file);
                 formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-
-                fetch(document.getElementById('profileForm').action, {
-                    method: 'POST',
-                    body: formData
-                }).then(response => response.json())
-                    .then(data => {
-                        if (data.new_url) {
-                            document.getElementById('profileImage').src = data.new_url + '?t=' + Date.now();
-                        }
-                        if (data.message) {
-                            alert(data.message);
-                        }
-                    });
+                try {
+                    const data = await fetch(document.getElementById('profileForm').action, {
+                        method: 'POST', body: formData,
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    }).then(readProfileResponse);
+                    if (data.new_url) document.getElementById('profileImage').src = data.new_url;
+                    if (data.message) alert(data.message);
+                } catch (error) {
+                    alert(error.message || 'Your photo could not be uploaded. Please try again.');
+                } finally {
+                    uploading = false;
+                    profilePicInput.disabled = false;
+                    profilePicInput.value = '';
+                    pictureContainer.removeAttribute('aria-busy');
+                }
             });
         }
 
@@ -475,42 +507,43 @@
     }
 
     window.openGoalModal = function openGoalModal() {
+        if (document.getElementById('goalModal')) return;
         const currentGoal = Number(profilePageConfig.weeklyGoal || 50);
         const currentDailyStudyMinutes = Number(profilePageConfig.dailyStudyMinutes || 90);
         const currentPlannerFocus = String(profilePageConfig.plannerFocus || 'balanced');
         const currentExamDate = profilePageConfig.examDate || '';
         const modal = document.createElement('div');
         modal.innerHTML = `
-            <div class="modal fade show" id="goalModal" style="display: block; background: rgba(0,0,0,0.6);" onclick="if(event.target === this) closeGoalModal()">
+            <div class="modal fade show" id="goalModal" role="dialog" aria-modal="true" aria-labelledby="goalModalTitle" style="display: block; background: rgba(0,0,0,0.6);" onclick="if(event.target === this) closeGoalModal()">
                 <div class="modal-dialog modal-dialog-centered" style="max-width: 520px;">
                     <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
                         <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 1.5rem;">
-                            <h5 class="modal-title" style="font-weight: 700; font-size: 1.3rem; color: #1e293b;">
+                            <h5 id="goalModalTitle" class="modal-title" style="font-weight: 700; font-size: 1.3rem; color: #1e293b;">
                                 Planner Settings
                             </h5>
-                            <button type="button" class="btn-close" onclick="closeGoalModal()"></button>
+                            <button type="button" class="btn-close" aria-label="Close planner settings" onclick="closeGoalModal()"></button>
                         </div>
                         <div class="modal-body" style="padding: 2rem;">
                             <div class="mb-4">
-                                <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Questions per week</label>
+                                <label for="goalInput" class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Questions per week</label>
                                 <input type="number" class="form-control" id="goalInput" value="${currentGoal}"
                                        min="10" max="500" step="5"
                                        style="font-size: 1.5rem; padding: 1rem; border: 2px solid #cbd5e1; border-radius: 10px; text-align: center; font-weight: 700;">
                             </div>
                             <div class="row g-3 mb-4">
                                 <div class="col-sm-12">
-                                    <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Daily study time</label>
+                                    <label for="dailyStudyMinutesInput" class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Daily study time</label>
                                     <input type="number" class="form-control" id="dailyStudyMinutesInput" value="${currentDailyStudyMinutes}"
                                            min="30" max="480" step="15"
                                            style="padding: 0.85rem; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 700;">
                                 </div>
                                 <div class="col-sm-6">
-                                    <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Exam date</label>
+                                    <label for="examDateInput" class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Exam date</label>
                                     <input type="date" class="form-control" id="examDateInput" value="${currentExamDate}"
                                            style="padding: 0.85rem; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 600;">
                                 </div>
                                 <div class="col-sm-6">
-                                    <label class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Planner focus</label>
+                                    <label for="plannerFocusInput" class="form-label" style="font-weight: 600; color: #475569; font-size: 0.95rem;">Planner focus</label>
                                     <select class="form-select" id="plannerFocusInput"
                                             style="padding: 0.85rem; border: 2px solid #cbd5e1; border-radius: 10px; font-weight: 600;">
                                         <option value="balanced" ${currentPlannerFocus === 'balanced' ? 'selected' : ''}>Balanced</option>
@@ -536,37 +569,46 @@
             </div>
         `;
         document.body.appendChild(modal);
+        document.getElementById('goalInput')?.focus();
     };
 
     window.closeGoalModal = function closeGoalModal() {
+        if (goalSaving) return;
         const modal = document.getElementById('goalModal');
         if (modal) {
-            modal.closest('.modal').remove();
+            if (modal.parentElement && modal.parentElement !== document.body) modal.parentElement.remove();
+            else modal.remove();
         }
     };
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && document.getElementById('goalModal')) window.closeGoalModal();
+    });
 
     window.setQuickGoal = function setQuickGoal(value) {
         document.getElementById('goalInput').value = value;
     };
 
     window.saveGoal = function saveGoal() {
-        const goal = parseInt(document.getElementById('goalInput').value, 10);
-        const dailyStudyMinutes = parseInt(document.getElementById('dailyStudyMinutesInput').value, 10);
+        if (goalSaving || !document.getElementById('goalModal')) return;
+        const goal = Number(document.getElementById('goalInput').value);
+        const dailyStudyMinutes = Number(document.getElementById('dailyStudyMinutesInput').value);
         const examDate = document.getElementById('examDateInput').value || null;
         const plannerFocus = document.getElementById('plannerFocusInput').value;
 
-        if (goal < 10 || goal > 500) {
+        if (!Number.isInteger(goal) || goal < 10 || goal > 500) {
             alert('Please enter a goal between 10 and 500 questions');
             return;
         }
 
-        if (dailyStudyMinutes < 30 || dailyStudyMinutes > 480) {
+        if (!Number.isInteger(dailyStudyMinutes) || dailyStudyMinutes < 30 || dailyStudyMinutes > 480) {
             alert('Please enter daily study time between 30 and 480 minutes');
             return;
         }
 
         const saveBtn = document.querySelector('#goalModal .btn-primary');
         const originalBtnText = saveBtn.innerHTML;
+        goalSaving = true;
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
 
@@ -575,7 +617,8 @@
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 weekly_goal: goal,
@@ -584,9 +627,10 @@
                 planner_focus: plannerFocus
             })
         })
-            .then(response => response.json())
+            .then(readProfileResponse)
             .then(data => {
                 if (data.success) {
+                    goalSaving = false;
                     window.closeGoalModal();
                     
                     // Update the DOM in-place
@@ -596,22 +640,28 @@
                     profilePageConfig.examDate = examDate;
 
                     // Update goal text (e.g., "/ 50")
-                    const goalDisplay = document.querySelector('.study-goals-card .d-flex.align-items-baseline span:last-child');
+                    const goalDisplay = document.getElementById('profileWeeklyGoal');
                     if (goalDisplay) {
                         goalDisplay.textContent = `/ ${goal}`;
                     }
 
                     // Update progress bar percentage
-                    const currentQuestions = parseInt(document.querySelector('.study-goals-card .d-flex.align-items-baseline span:first-child')?.textContent || '0');
+                    const currentQuestions = parseInt(document.getElementById('profileWeeklyQuestions')?.textContent || '0');
                     const newPercent = Math.min(100, Math.round((currentQuestions / goal) * 100));
-                    const progressBar = document.querySelector('.study-goals-card .progress-bar');
+                    const progressColor = newPercent >= 100 ? '#10b981' : newPercent >= 70 ? '#3b82f6' : newPercent >= 40 ? '#f59e0b' : '#ef4444';
+                    const progressBar = document.getElementById('profileWeeklyBar');
                     if (progressBar) {
                         progressBar.style.width = `${newPercent}%`;
+                        progressBar.style.background = `linear-gradient(90deg, ${progressColor}, ${progressColor}dd)`;
+                        progressBar.setAttribute('aria-valuenow', String(newPercent));
                     }
-                    const percentDisplay = document.querySelector('.study-goals-card .d-flex.justify-content-between.align-items-center span:last-child');
+                    const percentDisplay = document.getElementById('profileWeeklyPercent');
                     if (percentDisplay) {
                         percentDisplay.textContent = `${newPercent}%`;
+                        percentDisplay.style.color = progressColor;
                     }
+                    const weeklyCount = document.getElementById('profileWeeklyQuestions');
+                    if (weeklyCount) weeklyCount.style.color = progressColor;
 
                     // Update badges
                     const badges = document.querySelectorAll('.study-goals-card .badge');
@@ -621,7 +671,7 @@
                         
                         // Handle exam date badge
                         if (examDate) {
-                            const dateObj = new Date(examDate);
+                            const dateObj = new Date(examDate + 'T00:00:00');
                             const options = { year: 'numeric', month: 'short', day: 'numeric' };
                             const formattedDate = dateObj.toLocaleDateString('en-US', options);
                             
@@ -642,6 +692,8 @@
                         }
                     }
 
+                    if (!examDate && badges.length >= 3) badges[2].remove();
+
                     // Show success micro-interaction
                     if (progressBar) {
                         progressBar.classList.add('pulse');
@@ -653,9 +705,10 @@
             })
             .catch(error => {
                 console.error('Error saving goal:', error);
-                alert('Failed to save goal. Please try again.');
+                alert(error.message || 'Failed to save goal. Please try again.');
             })
             .finally(() => {
+                goalSaving = false;
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = originalBtnText;
             });
@@ -663,7 +716,7 @@
 
     // Cross-Tab Sync: Listen for quiz completions in other tabs
     window.addEventListener('storage', function(e) {
-        if (e.key === 'quizProgressUpdate') {
+        if (e.key === 'quizProgressUpdate' || e.key === 'assignmentCompleted') {
 
             refreshProfileStats();
         }
@@ -675,21 +728,31 @@
         refreshProfileStats();
     });
 
+    let progressRequest = null;
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') refreshProfileStats();
+    });
+    document.addEventListener('assignmentCompleted', refreshProfileStats);
+
     function refreshProfileStats() {
-        // Fetch the latest progress data from the existing AJAX endpoint
-        fetch('/profile/progress', {
+        if (document.visibilityState === 'hidden' || navigator.onLine === false) return;
+        if (progressRequest) return progressRequest;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        progressRequest = fetch('/profile/progress', {
+            signal: controller.signal,
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(readProfileResponse)
         .then(data => {
             if (data.accuracy_rate !== undefined) {
                 // Update Accuracy Card
-                const accuracyValue = document.querySelector('.accuracy-card .stats-value');
+                const accuracyValue = document.getElementById('profileAccuracy');
                 if (accuracyValue) {
-                    accuracyValue.textContent = `${data.accuracy_rate.toFixed(1)}%`;
+                    accuracyValue.textContent = `${Number(data.accuracy_rate).toFixed(1)}%`;
                 }
                 const accuracySub = document.querySelector('.accuracy-card small');
                 if (accuracySub) {
@@ -697,7 +760,7 @@
                 }
 
                 // Update Total Questions Card
-                const totalQuestionsValue = document.querySelectorAll('.stats-card .stats-value')[3]; // 4th card
+                const totalQuestionsValue = document.getElementById('profileTotalQuestions');
                 if (totalQuestionsValue) {
                     totalQuestionsValue.textContent = data.total_questions_attempted;
                 }
@@ -705,10 +768,10 @@
                 // Update Charts
                 if (distributionChart) {
                     const safeTotal = data.total_questions_attempted > 0 ? data.total_questions_attempted : 1;
-                    distributionChart.data.datasets[0].data = [data.correct_answers_count, data.total_questions_attempted - data.correct_answers_count];
+                    distributionChart.data.datasets[0].data = [data.correct_answers_count, Math.max(0, data.total_questions_attempted - data.correct_answers_count)];
                     distributionChart.data.labels = [
                         `Correct (${Math.round(data.correct_answers_count / safeTotal * 100)}%)`,
-                        `Incorrect (${Math.round((data.total_questions_attempted - data.correct_answers_count) / safeTotal * 100)}%)`
+                        `Incorrect (${Math.round((Math.max(0, data.total_questions_attempted - data.correct_answers_count)) / safeTotal * 100)}%)`
                     ];
                     distributionChart.update('none'); // Update without animation for a "live" feel
                 }
@@ -718,7 +781,9 @@
                 // For now, accuracy and distribution are high-impact.
             }
         })
-        .catch(err => console.error('Error refreshing profile stats:', err));
+        .catch(() => {})
+        .finally(() => { clearTimeout(timeout); progressRequest = null; });
+        return progressRequest;
     }
 
     // Privacy Toggle logic
@@ -726,7 +791,9 @@
         const privacyToggle = document.getElementById('leaderboardToggle');
         if (privacyToggle) {
             privacyToggle.addEventListener('change', function() {
+                if (this.disabled) return;
                 const isChecked = this.checked;
+                this.disabled = true;
                 const originalValue = !isChecked;
                 
                 // Visual feedback: briefly fade out
@@ -740,13 +807,14 @@
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         show_on_leaderboard: isChecked
                     })
                 })
-                .then(response => response.json())
+                .then(readProfileResponse)
                 .then(data => {
                     if (control) {
                         control.classList.remove('updating');
@@ -765,8 +833,8 @@
                         control.classList.remove('updating');
                     }
                     this.checked = originalValue;
-                    alert('An error occurred. Please try again.');
-                });
+                    alert(error.message || 'An error occurred. Please try again.');
+                }).finally(() => { this.disabled = false; });
             });
         }
     });
