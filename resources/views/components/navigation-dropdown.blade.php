@@ -187,7 +187,7 @@
             </button>
         </li>
         <li>
-            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}" class="dropdown-item p-0">
+            <form method="POST" action="{{ route('logout', [], false) }}" class="dropdown-item p-0">
                 @csrf
                 <button type="submit" class="dropdown-item w-100 text-danger">
                     <i class="fas fa-sign-out-alt me-2"></i>Logout

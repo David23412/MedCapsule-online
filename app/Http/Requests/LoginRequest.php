@@ -34,11 +34,8 @@ class LoginRequest extends FormRequest
     {
         $normalized = [
             'email' => IdentityInput::normalizeEmail($this->input('email')),
+            'remember' => $this->boolean('remember'),
         ];
-
-        if ($this->has('remember')) {
-            $normalized['remember'] = $this->boolean('remember');
-        }
 
         $this->merge($normalized);
     }

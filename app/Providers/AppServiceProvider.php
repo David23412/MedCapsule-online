@@ -18,7 +18,6 @@ use App\Services\PerformanceMonitorService;
 use App\Services\StudentViewDataService;
 use App\Models\Question;
 use App\Observers\QuestionObserver;
-use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -104,7 +103,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $email = Str::lower((string) $request->input('email'));
+            $email = \App\Support\IdentityInput::normalizeEmail($request->input('email'));
             $loginKey = ($email !== '' ? $email : 'guest').'|'.$request->ip();
 
             return [

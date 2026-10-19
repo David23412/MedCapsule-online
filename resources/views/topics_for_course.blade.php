@@ -252,7 +252,7 @@
             'profileMeta' => 'Study profile',
             'profileImageUrl' => $currentUserView['profile_image_url'],
             'profileFallbackUrl' => $currentUserView['profile_fallback_url'],
-            'logoutAction' => secure_url(route('logout', [], false)),
+            'logoutAction' => route('logout', [], false),
         ])
     </div>
 

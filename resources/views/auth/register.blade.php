@@ -95,10 +95,15 @@
             top: 50%;
             transform: translateY(-50%);
             cursor: pointer;
+            border: 0;
+            padding: 0;
+            background: transparent;
             color: #6c757d;
             z-index: 10;
             transition: color 0.2s;
         }
+        .password-wrapper .form-control { padding-right: 2.75rem; }
+        .toggle-password:focus-visible { outline: 2px solid #007bff; outline-offset: 3px; }
         .toggle-password:hover {
             color: #007bff;
         }
@@ -160,39 +165,43 @@
                     <div class="card-body p-4">
                         <h4 class="text-center mb-4">Create Account</h4>
                         
-                        <form method="POST" action="{{ route('register') }}">
+                        @error('error')
+                            <div class="alert alert-danger" role="alert">{{ $message }}</div>
+                        @enderror
+
+                        <form data-auth-form="register" method="POST" action="{{ route('register') }}">
                             @csrf
 
                             <div class="mb-3">
                                 <label for="name" class="form-label">Full Name</label>
-                                <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus>
+                                <input id="name" type="text" class="form-control @error('name') is-invalid @enderror" name="name" maxlength="255" value="{{ old('name') }}" required autocomplete="name" autofocus aria-invalid="{{ $errors->has('name') ? 'true' : 'false' }}" @error('name') aria-describedby="name-error" @enderror>
                                 @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback" id="name-error" role="alert">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email Address</label>
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email">
+                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" maxlength="255" autocapitalize="none" spellcheck="false" value="{{ old('email') }}" required autocomplete="email" aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" @error('email') aria-describedby="email-error" @enderror>
                                 @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback" id="email-error" role="alert">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div class="mb-3">
                                 <label for="number" class="form-label">Phone Number</label>
-                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required minlength="11" maxlength="11" pattern="01[0125][0-9]{8}" placeholder="01XXXXXXXXX" autocomplete="tel">
+                                <input id="number" type="tel" class="form-control @error('number') is-invalid @enderror" name="number" value="{{ old('number') }}" required maxlength="32" inputmode="tel" placeholder="01XXXXXXXXX" autocomplete="tel" aria-invalid="{{ $errors->has('number') ? 'true' : 'false' }}" @error('number') aria-describedby="number-error" @enderror>
                                 @error('number')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback" id="number-error" role="alert">{{ $message }}</div>
                                 @enderror
                                 <div class="form-text small">
-                                    Must be 11 digits starting with 010, 011, 012, or 015
+                                    Egyptian mobile number: 010, 011, 012, or 015. +20 and Arabic digits are accepted.
                                 </div>
                             </div>
 
                             <div class="mb-3">
                                 <label for="university" class="form-label">University</label>
-                                <select id="university" class="form-select @error('university') is-invalid @enderror" name="university" required autocomplete="university">
+                                <select id="university" class="form-select @error('university') is-invalid @enderror" name="university" required autocomplete="organization" aria-invalid="{{ $errors->has('university') ? 'true' : 'false' }}" @error('university') aria-describedby="university-error" @enderror>
                                     <option value="" disabled {{ old('university') ? '' : 'selected' }}>Select your university</option>
                                     @foreach ($universities as $university)
                                         <option value="{{ $university['value'] }}" {{ old('university') === $university['value'] ? 'selected' : '' }}>
@@ -201,17 +210,17 @@
                                     @endforeach
                                 </select>
                                 @error('university')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback" id="university-error" role="alert">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
                                 <div class="password-wrapper">
-                                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="new-password">
-                                    <i class="far fa-eye toggle-password" data-target="password"></i>
+                                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required maxlength="255" minlength="8" autocomplete="new-password" aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}" @error('password') aria-describedby="password-error" @enderror>
+                                    <button type="button" class="toggle-password" data-password-toggle="password" aria-label="Show password" aria-controls="password" aria-pressed="false"><i class="far fa-eye" aria-hidden="true"></i></button>
                                     @error('password')
-                                        <div class="invalid-feedback">{{ $message }}</div>
+                                        <div class="invalid-feedback" id="password-error" role="alert">{{ $message }}</div>
                                     @enderror
                                 </div>
                                 <div class="form-text small">
@@ -222,16 +231,22 @@
                             <div class="mb-3">
                                 <label for="password-confirm" class="form-label">Confirm Password</label>
                                 <div class="password-wrapper">
-                                    <input id="password-confirm" type="password" class="form-control" name="password_confirmation" required autocomplete="new-password">
-                                    <i class="far fa-eye toggle-password" data-target="password-confirm"></i>
+                                    <input id="password-confirm" type="password" class="form-control @error('password_confirmation') is-invalid @enderror" name="password_confirmation" required minlength="8" maxlength="255" autocomplete="new-password" aria-invalid="{{ $errors->has('password_confirmation') ? 'true' : 'false' }}" @error('password_confirmation') aria-describedby="password_confirmation-error" @enderror>
+                                    <button type="button" class="toggle-password" data-password-toggle="password-confirm" aria-label="Show password" aria-controls="password-confirm" aria-pressed="false"><i class="far fa-eye" aria-hidden="true"></i></button>
+                                    @error('password_confirmation')
+                                        <div class="invalid-feedback" id="password_confirmation-error" role="alert">{{ $message }}</div>
+                                    @enderror
                                 </div>
                             </div>
 
                             <div class="mb-3 form-check">
-                                <input class="form-check-input" type="checkbox" name="terms" id="terms" required>
+                                <input class="form-check-input @error('terms') is-invalid @enderror" type="checkbox" name="terms" id="terms" required {{ old('terms') ? 'checked' : '' }} aria-invalid="{{ $errors->has('terms') ? 'true' : 'false' }}" @error('terms') aria-describedby="terms-error" @enderror>
                                 <label class="form-check-label small" for="terms">
-                                    I agree to the <a href="{{ route('terms') }}" target="_blank" class="text-decoration-none">Terms of Service</a> and <a href="{{ route('privacy') }}" target="_blank" class="text-decoration-none">Privacy Policy</a>
+                                    I agree to the <a href="{{ route('terms') }}" target="_blank" rel="noopener" class="text-decoration-none">Terms of Service</a> and <a href="{{ route('privacy') }}" target="_blank" rel="noopener" class="text-decoration-none">Privacy Policy</a>
                                 </label>
+                                @error('terms')
+                                    <div class="invalid-feedback" id="terms-error" role="alert">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="d-grid mb-3">
@@ -251,38 +266,7 @@
     </div>
 
     <!-- Optimized JS Loading -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     @include('partials.admin-dark-mode-script')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Password toggle logic
-            const togglePasswords = document.querySelectorAll('.toggle-password');
-            togglePasswords.forEach(icon => {
-                icon.addEventListener('click', function() {
-                    const targetId = this.getAttribute('data-target');
-                    const input = document.getElementById(targetId);
-                    
-                    if (input.type === 'password') {
-                        input.type = 'text';
-                        this.classList.remove('fa-eye');
-                        this.classList.add('fa-eye-slash');
-                    } else {
-                        input.type = 'password';
-                        this.classList.remove('fa-eye-slash');
-                        this.classList.add('fa-eye');
-                    }
-                });
-            });
-
-            // Number field restriction logic
-            const numberInput = document.getElementById('number');
-            if (numberInput) {
-                numberInput.addEventListener('input', function(e) {
-                    // Remove any non-digit characters
-                    this.value = this.value.replace(/\D/g, '').substring(0, 11);
-                });
-            }
-        });
-    </script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/auth-forms.js') }}" defer></script>
 </body>
 </html>

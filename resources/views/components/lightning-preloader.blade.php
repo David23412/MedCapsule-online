@@ -244,6 +244,7 @@ body.fonts-loaded {
     const startTime = performance.now();
     const currentPath = window.location.pathname;
     const isCoursesPage = currentPath.includes('/courses') || currentPath.includes('/dashboard');
+    const revealWhenReady = isCoursesPage || /^\/(login|register)\/?$/.test(currentPath);
     
     // BULLETPROOF HIDE FUNCTION
     function hidePreloader() {
@@ -283,13 +284,13 @@ body.fonts-loaded {
     }
     
     // BULLETPROOF TIMING - VISIBLE BUT SNAPPY
-    if (isCoursesPage) {
-        // Course controls and deferred scripts are ready at DOMContentLoaded.
-        const revealCourses = () => requestAnimationFrame(hidePreloader);
+    if (revealWhenReady) {
+        // Form controls and deferred scripts are ready at DOMContentLoaded.
+        const revealPage = () => requestAnimationFrame(hidePreloader);
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', revealCourses, { once: true });
+            document.addEventListener('DOMContentLoaded', revealPage, { once: true });
         } else {
-            revealCourses();
+            revealPage();
         }
     } else {
         // HOME PAGE: Visible but still fast
@@ -309,17 +310,17 @@ body.fonts-loaded {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
-                if (!preloaderHidden && !isCoursesPage) {
+                if (!preloaderHidden && !revealWhenReady) {
                     hidePreloader();
                 }
             }, 500); // Increased so it's visible
         });
-    } else if (!isCoursesPage) {
+    } else if (!revealWhenReady) {
         // DOM already ready and it's home page - but still show preloader
         setTimeout(hidePreloader, 600);
     }
     
-    console.log(`⚡ PRELOADER CONFIGURED: ${isCoursesPage ? 'COURSES (when ready)' : 'HOME'} MODE`);
+    console.log(`⚡ PRELOADER CONFIGURED: ${revealWhenReady ? 'WHEN READY' : 'HOME'} MODE`);
     
 })();
 </script> 

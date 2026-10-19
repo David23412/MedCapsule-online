@@ -30,22 +30,30 @@ final class IdentityInput
         'temp-mail.org',
     ];
 
-    public static function normalizeName(?string $value): string
+    public static function normalizeName(mixed $value): string
     {
-        $value = trim((string) $value);
+        $value = is_string($value) ? trim($value) : '';
         $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
 
         return $value;
     }
 
-    public static function normalizeEmail(?string $value): string
+    public static function normalizeEmail(mixed $value): string
     {
-        return mb_strtolower(trim((string) $value));
+        return is_string($value) ? mb_strtolower(trim($value)) : '';
     }
 
-    public static function normalizeEgyptianPhone(?string $value): string
+    public static function normalizeEgyptianPhone(mixed $value): string
     {
-        $digits = preg_replace('/\D+/', '', (string) $value) ?? '';
+        $value = strtr(is_string($value) ? $value : '', array_combine(
+            preg_split('//u', '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹', -1, PREG_SPLIT_NO_EMPTY),
+            str_split('01234567890123456789')
+        ));
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        if (str_starts_with($digits, '0020') && strlen($digits) === 14) {
+            $digits = substr($digits, 2);
+        }
 
         if (str_starts_with($digits, '20') && strlen($digits) === 12) {
             $digits = '0'.substr($digits, 2);

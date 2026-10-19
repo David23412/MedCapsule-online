@@ -5,19 +5,14 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
-use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\SessionSecurityService;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
-// TODO: Inject services in constructor
-    // TODO: Inject services in constructor
-    // TODO: Inject services in constructor
-    class LoginController extends Controller
+class LoginController extends Controller
 {
     protected $securityService;
 
@@ -29,19 +24,10 @@ use Illuminate\Support\Facades\Schema;
 
     public function showLoginForm()
     {
-        // Cache login form data for performance
-        $cacheKey = UltraConsolidatedCacheService::generateCacheKey('login_form_data', ['timestamp' => now()->format('Y-m-d')]);
-        $formData = Cache::remember($cacheKey, 86400, function () {
-            return [
-                'app_name' => config('app.name'),
-                'login_attempts_remaining' => 5
-            ];
-        });
-        
-        return view('auth.login', $formData);
+        return view('auth.login');
     }
 
-    public function login(\App\Http\Requests\LoginRequest $request)
+    public function login(LoginRequest $request)
     {
         $validated = $request->validated();
         $credentials = [
@@ -59,20 +45,20 @@ use Illuminate\Support\Facades\Schema;
                 if (Cache::has($blockKey)) {
                     return back()->withErrors([
                         'email' => 'Account temporarily blocked due to suspicious activity. Please try again later.'
-                    ])->onlyInput('email');
+                    ])->withInput($request->only('email', 'remember'));
                 }
 
                 // Check if user is permanently locked (Hard Lock escalation)
                 if ($this->securityService->isPermanentlyLocked($user->id)) {
                     return back()->withErrors([
                         'email' => 'This account has been permanently locked due to multiple security violations. Please contact support.'
-                    ])->onlyInput('email');
+                    ])->withInput($request->only('email', 'remember'));
                 }
 
             }
         }
 
-        if (Auth::attempt($credentials, $request->filled('remember'))) {
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
             // CRITICAL FIX: Regenerate session to prevent fixation attacks
             $request->session()->regenerate();
             
@@ -83,9 +69,6 @@ use Illuminate\Support\Facades\Schema;
             $this->markCurrentSessionAsAuthenticated($request);
 
             $user = Auth::user();
-            
-            // CRITICAL FIX: Force reload user to ensure fresh data
-            $user->refresh();
             
             // Analyze login attempt for security risks
             $securityAnalysis = $this->securityService->analyzeLoginAttempt($user, $request);
@@ -99,6 +82,7 @@ use Illuminate\Support\Facades\Schema;
                 // Force logout and require additional verification
                 Auth::logout();
                 $request->session()->invalidate();
+                $request->session()->regenerateToken();
                 
                 return redirect()->route('login')->with('error', 
                     'Suspicious login detected. Please verify your identity and try again.');
@@ -144,7 +128,7 @@ use Illuminate\Support\Facades\Schema;
         }
 
         return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.'])->onlyInput('email');
+            'email' => 'The provided credentials do not match our records.'])->withInput($request->only('email', 'remember'));
     }
 
     public function logout(Request $request)

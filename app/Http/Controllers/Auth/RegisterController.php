@@ -4,13 +4,11 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
+use App\Http\Requests\RegisterRequest;
 use App\Services\SessionSecurityService;
 
 class RegisterController extends Controller
@@ -23,23 +21,9 @@ class RegisterController extends Controller
 
     public function showRegistrationForm()
     {
-        // LETHAL CACHING: Ultra-aggressive caching for registration form data
-        $cacheKey = 'registration_form_data_' . now()->format('Y-m-d');
-        
-        $formData = Cache::remember($cacheKey, 86400, function () {
-            return [
-                'universities' => $this->getUniversitiesList(),
-                'countries' => $this->getCountriesList(),
-                'terms_version' => config('app.terms_version', '1.0')
-            ];
-        });
-        
-        return view('auth.register', $formData);
+        return view('auth.register', ['universities' => $this->getUniversitiesList()]);
     }
 
-    /**
-     * LETHAL CACHING: Get universities list
-     */
     private function getUniversitiesList(): array
     {
         return [
@@ -62,85 +46,57 @@ class RegisterController extends Controller
         ];
     }
 
-    /**
-     * LETHAL CACHING: Get countries list
-     */
-    private function getCountriesList(): array
+    public function register(RegisterRequest $request)
     {
-        return [
-            'Ghana', 'Nigeria', 'Kenya', 'South Africa', 'Other'
-        ];
-    }
+        $validated = $request->validated();
 
-    public function register(\App\Http\Requests\RegisterRequest $request)
-    {
         try {
-            $validated = $request->validated();
+            // Account creation and required session setup must succeed together.
+            $user = DB::transaction(function () use ($validated, $request) {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'number' => $validated['number'],
+                    'university' => $validated['university'],
+                    'password' => Hash::make($validated['password']),
+                    'survey_completed' => false,
+                    'free_courses_unlocked' => false,
+                ]);
+                Auth::login($user);
+                $request->session()->regenerate();
+                $request->session()->put('auth.user_id', $user->id);
+                $request->session()->put('auth.logged_in_at', now()->timestamp);
+                app(SessionSecurityService::class)->handleNewLogin($user, $request);
+                $request->session()->save();
 
-            // Create the user
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'number' => $validated['number'],
-                'university' => $validated['university'],
-                'password' => Hash::make($validated['password']),
-                'survey_completed' => false,
-                'free_courses_unlocked' => false,
-            ]);
-
-            // Log the user in
-            Auth::login($user);
-            
-            // CRITICAL FIX: Regenerate session after registration
-            request()->session()->regenerate();
-            request()->session()->save();
-            
-            // CRITICAL FIX: Store authentication flag in session
-            request()->session()->put('auth.user_id', $user->id);
-            request()->session()->put('auth.logged_in_at', now()->timestamp);
-            request()->session()->save();
-
-            app(SessionSecurityService::class)->handleNewLogin($user, $request);
-
+                return $user;
+            });
+        } catch (\Throwable $e) {
             if (Auth::check()) {
-                // 🔔 TRIGGER MEDCAPSULE WELCOME NOTIFICATION FOR NEW USER
-                try {
-                    \App\Services\NotificationTriggerService::onUserWelcome($user);
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to send welcome notification for new user', [
-                        'user_id' => $user->id,
-                        'error' => $e->getMessage()
-                    ]);
-                    // Continue with registration even if notification fails
-                }
-                
-                return redirect()->intended(route('courses.index'))
-                    ->with('success', 'Welcome to MedCapsule!');
-            } else {
-                Log::error('Auth check failed after login', ['user_id' => $user->id]);
-                throw new \Exception('Failed to authenticate user after creation');
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
             }
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::warning('Registration validation failed', [
-                'fields' => array_keys($e->errors()),
-                'ip' => $request->ip(),
-            ]);
-
-            return redirect()->back()
-                ->withErrors($e->errors())
-                ->withInput($request->except('password', 'password_confirmation'));
-
-        } catch (\Exception $e) {
             Log::error('Registration failed', [
-                'error' => $e->getMessage(),
                 'exception' => get_class($e),
                 'ip' => $request->ip(),
             ]);
-            
+
             return redirect()->back()
                 ->withInput($request->except('password', 'password_confirmation'))
                 ->withErrors(['error' => 'Registration failed. Please try again.']);
         }
+
+        try {
+            \App\Services\NotificationTriggerService::onUserWelcome($user);
+        } catch (\Exception $e) {
+            Log::warning('Failed to send welcome notification for new user', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return redirect()->intended(route('courses.index'))
+            ->with('success', 'Welcome to MedCapsule!');
     }
 }

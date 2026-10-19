@@ -96,10 +96,15 @@
             top: 50%;
             transform: translateY(-50%);
             cursor: pointer;
+            border: 0;
+            padding: 0;
+            background: transparent;
             color: #6c757d;
             z-index: 10;
             transition: color 0.2s;
         }
+        .password-wrapper .form-control { padding-right: 2.75rem; }
+        .toggle-password:focus-visible { outline: 2px solid #007bff; outline-offset: 3px; }
         .toggle-password:hover {
             color: #007bff;
         }
@@ -167,14 +172,18 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ route('login') }}">
+                        @if(session('error'))
+                            <div class="alert alert-danger" role="alert">{{ session('error') }}</div>
+                        @endif
+
+                        <form data-auth-form="login" method="POST" action="{{ route('login') }}">
                             @csrf
 
                             <div class="mb-3">
                                 <label for="email" class="form-label">Email</label>
-                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" autofocus>
+                                <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email" maxlength="255" autocapitalize="none" spellcheck="false" value="{{ old('email') }}" required autocomplete="email" autofocus aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}" @error('email') aria-describedby="email-error" @enderror>
                                 @error('email')
-                                    <div class="invalid-feedback">
+                                    <div class="invalid-feedback" id="email-error" role="alert">
                                         {{ $message }}
                                     </div>
                                 @enderror
@@ -190,10 +199,10 @@
                                     @endif
                                 </div>
                                 <div class="password-wrapper">
-                                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
-                                    <i class="far fa-eye toggle-password" id="togglePassword"></i>
+                                    <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required maxlength="255" autocomplete="current-password" aria-invalid="{{ $errors->has('password') ? 'true' : 'false' }}" @error('password') aria-describedby="password-error" @enderror>
+                                    <button type="button" class="toggle-password" data-password-toggle="password" aria-label="Show password" aria-controls="password" aria-pressed="false"><i class="far fa-eye" aria-hidden="true"></i></button>
                                     @error('password')
-                                        <div class="invalid-feedback">
+                                        <div class="invalid-feedback" id="password-error" role="alert">
                                             {{ $message }}
                                         </div>
                                     @enderror
@@ -201,6 +210,7 @@
                             </div>
 
                             <div class="mb-3 form-check">
+                                <input type="hidden" name="remember" value="0">
                                 <input class="form-check-input" type="checkbox" name="remember" id="remember" value="1" {{ old('remember', true) ? 'checked' : '' }}>
                                 <label class="form-check-label small" for="remember">
                                     Remember me
@@ -225,23 +235,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @include('partials.admin-dark-mode-script')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const togglePassword = document.getElementById('togglePassword');
-            const passwordInput = document.getElementById('password');
-            
-            if (togglePassword && passwordInput) {
-                togglePassword.addEventListener('click', function() {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    
-                    this.classList.toggle('fa-eye');
-                    this.classList.toggle('fa-eye-slash');
-                });
-            }
-        });
-    </script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/auth-forms.js') }}" defer></script>
 </body>
 </html>

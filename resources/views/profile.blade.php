@@ -220,7 +220,7 @@
 
         <!-- Footer / Logout -->
         <div class="sidebar-footer">
-            <form method="POST" action="{{ secure_url(route('logout', [], false)) }}">
+            <form method="POST" action="{{ route('logout', [], false) }}">
                 @csrf
                 <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start" style="cursor: pointer;">
                     <i class="fas fa-arrow-right-from-bracket nav-icon"></i>

@@ -56,8 +56,8 @@ class RegisterRequest extends FormRequest
                 'Al Kasr Al Ainy',
                 'Alexandria University',
             ])],
-            'password' => 'required|string|min:8|confirmed',
-            'password_confirmation' => 'required|string|min:8',
+            'password' => 'required|string|min:8|max:255|confirmed',
+            'password_confirmation' => 'required|string|min:8|max:255',
             'role' => 'nullable|in:student,tutor',
             'terms' => 'required|accepted'
         ];
