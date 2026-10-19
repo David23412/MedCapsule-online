@@ -222,7 +222,8 @@ async function loadFilteredMistakes(url, options = {}) {
         activeFilterController.abort();
     }
 
-    activeFilterController = new AbortController();
+    const controller = new AbortController();
+    activeFilterController = controller;
     setFilterLoadingState(true);
 
     try {
@@ -230,7 +231,7 @@ async function loadFilteredMistakes(url, options = {}) {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            signal: activeFilterController.signal,
+            signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -238,15 +239,24 @@ async function loadFilteredMistakes(url, options = {}) {
         }
 
         const html = await response.text();
+        if (activeFilterController !== controller) return;
         const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+        if (!nextDocument.querySelector('#mistakes-content')) {
+            window.location.href = response.url || url;
+            return;
+        }
+        const resolvedUrl = response.url || url;
 
+        replaceSection('.sidebar-coming-soon', nextDocument);
         replaceSection('.header-section', nextDocument);
         replaceSection('.filter-section', nextDocument);
         replaceSection('#mistakes-content', nextDocument);
         replaceSection('#deleteAllMistakesModal', nextDocument);
 
         if (pushState) {
-            window.history.pushState({}, '', url);
+            window.history.pushState({}, '', resolvedUrl);
+        } else if (response.redirected) {
+            window.history.replaceState({}, '', resolvedUrl);
         }
 
         initializeFlashcardToggle();
@@ -259,13 +269,16 @@ async function loadFilteredMistakes(url, options = {}) {
 
         window.location.href = url;
     } finally {
-        setFilterLoadingState(false);
-        activeFilterController = null;
+        if (activeFilterController === controller) {
+            setFilterLoadingState(false);
+            activeFilterController = null;
+        }
     }
 }
 
 function buildFilterUrl(form) {
     const url = new URL(form.action || reviewIndexUrl || window.location.href, window.location.origin);
+    url.searchParams.delete('page');
     const formData = new FormData(form);
     const selectedCourse = String(formData.get('course') || '').trim();
 
@@ -430,18 +443,7 @@ function removeMistake(questionId) {
             setTimeout(() => {
                 card.remove();
 
-                if (document.querySelectorAll('.mistake-card').length === 0) {
-                    const mistakesContent = document.querySelector('#mistakes-content');
-                    if (mistakesContent) {
-                        mistakesContent.innerHTML = `
-                            <div class="empty-state">
-                                <i class="fas fa-check"></i>
-                                <h3>No Mistakes!</h3>
-                                <p>Fantastic work! You're crushing it with zero mistakes. Keep up the amazing progress!</p>
-                            </div>
-                        `;
-                    }
-                }
+                loadFilteredMistakes(window.location.href, { pushState: false });
 
                 showToast('Question removed successfully!', 'success');
             }, 300);

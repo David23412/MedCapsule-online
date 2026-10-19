@@ -535,9 +535,16 @@
             }
         }
 
+        let progressRequest = null;
+        let progressAuthExpired = false;
         async function fetchRecentProgressUpdates() {
+            if (progressRequest || progressAuthExpired || document.visibilityState !== 'visible' || navigator.onLine === false) return;
+            const controller = new AbortController();
+            progressRequest = controller;
+            const timeout = setTimeout(() => controller.abort(), 12000);
             try {
                 const response = await fetch(`${recentProgressRoute}?since=${latestProgressSyncTimestamp}`, {
+                    signal: controller.signal,
                     method: 'GET',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -546,9 +553,12 @@
                     credentials: 'same-origin'
                 });
 
-                if (!response.ok) {
+                if (response.status === 401 || response.status === 419 || response.redirected) {
+                    progressAuthExpired = true;
+                    stopProgressPolling();
                     return;
                 }
+                if (!response.ok) return;
 
                 const data = await response.json();
                 if (!data.success || !Array.isArray(data.updates)) {
@@ -559,7 +569,10 @@
                     .sort((a, b) => normalizeTimestamp(a.timestamp) - normalizeTimestamp(b.timestamp))
                     .forEach(update => applyProgressUpdate(update));
             } catch (error) {
-                console.error('Failed to fetch recent topic progress updates:', error);
+                if (error.name !== 'AbortError') console.error('Failed to fetch recent topic progress updates:', error);
+            } finally {
+                clearTimeout(timeout);
+                if (progressRequest === controller) progressRequest = null;
             }
         }
 
@@ -734,7 +747,7 @@
         const activeCountdowns = new Map();
 
         function startCountdown(countdown) {
-            if (activeCountdowns.has(countdown)) {
+            if (document.visibilityState !== 'visible' || activeCountdowns.has(countdown)) {
                 return;
             }
 
@@ -758,6 +771,7 @@
             const deadline = new Date(countdown.dataset.deadline);
             const now = new Date();
             const timeLeft = deadline - now;
+            if (!Number.isFinite(timeLeft)) return;
 
             if (timeLeft <= 0) {
                 handleOverdueAssignment(countdown);
@@ -771,18 +785,7 @@
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             const seconds = totalSeconds % 60;
 
-            let displayHours = hours;
-            const ampm = displayHours >= 12 ? 'PM' : 'AM';
-            displayHours = displayHours % 12;
-            displayHours = displayHours ? displayHours : 12;
-
-            const formattedHours12 = String(displayHours).padStart(2, '0');
-            const formattedMinutes = String(minutes).padStart(2, '0');
-            const formattedSeconds = String(seconds).padStart(2, '0');
-
-            const countdownText = days > 0
-                ? `${days}d ${formattedHours12}:${formattedMinutes}:${formattedSeconds} ${ampm}`
-                : `${formattedHours12}:${formattedMinutes}:${formattedSeconds} ${ampm}`;
+            const countdownText = `${days > 0 ? `${days}d ` : ''}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
             if (timeLeft < 3600000) {
                 countdown.classList.add('countdown-urgent');
@@ -833,6 +836,18 @@
             }
         }
 
+        document.addEventListener('visibilitychange', () => {
+            document.querySelectorAll('.assignment-countdown-minimal').forEach(countdown => {
+                if (document.visibilityState === 'visible') {
+                    updateSingleCountdown(countdown);
+                    countdownObserver.observe(countdown);
+                } else {
+                    pauseCountdown(countdown);
+                    countdownObserver.unobserve(countdown);
+                }
+            });
+        });
+
         document.querySelectorAll('.assignment-countdown-minimal').forEach(countdown => {
             countdownObserver.observe(countdown);
         });
@@ -867,7 +882,6 @@
 
         hydrateProgressFromStorage();
         hydrateAssignmentCompletionFromStorage();
-        fetchRecentProgressUpdates();
         window.addEventListener('pageshow', function(e) {
             // Small delay to let server-side POST from quiz completion settle
             setTimeout(fetchRecentProgressUpdates, e.persisted ? 300 : 0);
@@ -876,7 +890,7 @@
         // Instant AJAX polling: fetch updates every 15 seconds while page is visible
         let progressPollInterval = null;
         function startProgressPolling() {
-            if (progressPollInterval) return;
+            if (progressPollInterval || progressAuthExpired || document.visibilityState !== 'visible' || navigator.onLine === false) return;
             progressPollInterval = setInterval(function() {
                 fetchRecentProgressUpdates();
             }, 15000);
@@ -888,6 +902,22 @@
             }
         }
         startProgressPolling();
+        fetchRecentProgressUpdates();
+        window.addEventListener('online', () => { startProgressPolling(); fetchRecentProgressUpdates(); });
+        window.addEventListener('offline', stopProgressPolling);
+        window.addEventListener('pagehide', () => {
+            stopProgressPolling();
+            progressRequest?.abort();
+            activeCountdowns.forEach(clearInterval);
+            activeCountdowns.clear();
+        });
+        window.addEventListener('pageshow', () => {
+            startProgressPolling();
+            document.querySelectorAll('.assignment-countdown-minimal').forEach(countdown => {
+                countdownObserver.unobserve(countdown);
+                countdownObserver.observe(countdown);
+            });
+        });
 
         // Also re-fetch immediately when tab becomes visible again
         document.addEventListener('visibilitychange', function() {

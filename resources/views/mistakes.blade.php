@@ -123,7 +123,7 @@
                             <span class="nav-link-label">Bank Health</span>
                         </div>
                         <p class="sidebar-insight-copy">
-                            {{ $mistakes->count() }} cards are active in {{ strtolower($mistakeStats['active_review_label']) }}.
+                            {{ $filteredMistakesCount ?? $mistakes->count() }} cards are active in {{ strtolower($mistakeStats['active_review_label']) }}.
                         </p>
                         <div class="sidebar-chip-list">
                             <span class="sidebar-chip">{{ $mistakeStats['active_review_label'] }}</span>
@@ -134,8 +134,8 @@
                     <div class="sidebar-stat-grid">
                         <div class="sidebar-stat-card sidebar-stat-card-loaded">
                             <span class="sidebar-stat-label">Queue</span>
-                            <strong>{{ $mistakes->count() }}</strong>
-                            <small>Visible now</small>
+                            <strong>{{ $filteredMistakesCount ?? $mistakes->count() }}</strong>
+                            <small>In this filter</small>
                         </div>
                         <div class="sidebar-stat-card sidebar-stat-card-skipped">
                             <span class="sidebar-stat-label">Skipped</span>
@@ -405,6 +405,17 @@
                             </div>
                         </div>
                 @endforeach
+            @endif
+            @if(isset($mistakesPagination) && $mistakesPagination->hasPages())
+                <nav class="mistakes-pagination" aria-label="Mistake pages">
+                    @if($mistakesPagination->previousPageUrl())
+                        <a href="{{ $mistakesPagination->previousPageUrl() }}" rel="prev">Previous</a>
+                    @endif
+                    <span>{{ $mistakesPagination->firstItem() }}–{{ $mistakesPagination->lastItem() }} of {{ $mistakesPagination->total() }}</span>
+                    @if($mistakesPagination->nextPageUrl())
+                        <a href="{{ $mistakesPagination->nextPageUrl() }}" rel="next">Next</a>
+                    @endif
+                </nav>
             @endif
             </div>
         </div>

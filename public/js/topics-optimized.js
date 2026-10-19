@@ -13,7 +13,6 @@ class OptimizedTopicsPage {
     constructor() {
         this.init();
         this.setupEventDelegation();
-        this.setupAssignmentCountdowns();
         this.setupModalOptimizations();
     }
 
@@ -24,7 +23,6 @@ class OptimizedTopicsPage {
         // Cache frequently used DOM elements
         this.topicsContainer = document.querySelector('.topics-container');
         this.caseFilters = document.querySelector('.case-filters');
-        this.assignmentCountdowns = new Map(); // Cache countdown elements
         this.filterState = { active: 'all' };
         
         // Performance monitoring
@@ -147,124 +145,6 @@ class OptimizedTopicsPage {
     }
 
     /**
-     * 🚀 ASSIGNMENT COUNTDOWNS: Optimized with lazy updates and visibility check
-     */
-    setupAssignmentCountdowns() {
-        // Find all countdown elements and cache them
-        const countdownElements = document.querySelectorAll('[data-deadline]');
-        
-        countdownElements.forEach(element => {
-            const deadline = element.dataset.deadline;
-            if (deadline) {
-                this.assignmentCountdowns.set(element, {
-                    deadline: new Date(deadline),
-                    element: element,
-                    lastUpdate: 0
-                });
-            }
-        });
-
-        if (this.assignmentCountdowns.size > 0) {
-            // Start optimized countdown updates
-            this.startOptimizedCountdowns();
-        }
-    }
-
-    /**
-     * 🚀 PERFORMANCE: Optimized countdown updates with visibility check
-     */
-    startOptimizedCountdowns() {
-        const updateInterval = 5000; // Update every 5 seconds instead of 1 second
-        
-        const updateCountdowns = () => {
-            // Only update if page is visible
-            if (document.visibilityState !== 'visible') {
-                return;
-            }
-
-            const now = Date.now();
-            
-            this.assignmentCountdowns.forEach((data, element) => {
-                // Skip if updated recently (debouncing)
-                if (now - data.lastUpdate < 4000) {
-                    return;
-                }
-
-                const timeRemaining = data.deadline.getTime() - now;
-                
-                if (timeRemaining <= 0) {
-                    // Assignment is overdue
-                    this.handleOverdueAssignment(element);
-                } else {
-                    // Update countdown display
-                    this.updateCountdownDisplay(element, timeRemaining);
-                }
-                
-                data.lastUpdate = now;
-            });
-        };
-
-        // Use setInterval with visibility check
-        this.countdownInterval = setInterval(updateCountdowns, updateInterval);
-        
-        // Initial update
-        updateCountdowns();
-    }
-
-    /**
-     * 🚀 OPTIMIZED: Update countdown display with minimal DOM manipulation
-     */
-    updateCountdownDisplay(element, timeRemaining) {
-        const countdownDisplay = element.querySelector('.countdown-display');
-        if (!countdownDisplay) return;
-
-        const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-        const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-
-        let displayText;
-        if (hours > 0) {
-            displayText = `${hours}h ${minutes}m`;
-        } else if (minutes > 0) {
-            displayText = `${minutes}m ${seconds}s`;
-        } else {
-            displayText = `${seconds}s`;
-        }
-
-        // Only update if text has changed (avoid unnecessary DOM writes)
-        if (countdownDisplay.textContent !== displayText) {
-            countdownDisplay.textContent = displayText;
-            
-            // Add urgency styling for last 10 minutes
-            if (timeRemaining < 600000) { // 10 minutes
-                element.classList.add('countdown-urgent');
-            }
-        }
-    }
-
-    /**
-     * 🚀 PERFORMANCE: Handle overdue assignments efficiently
-     */
-    handleOverdueAssignment(element) {
-        const assignmentCard = element.closest('.topic-card');
-        if (assignmentCard) {
-            // Update assignment status
-            assignmentCard.classList.add('assignment-overdue');
-            assignmentCard.classList.remove('assignment-active');
-            
-            // Update countdown display
-            const countdownDisplay = element.querySelector('.countdown-display');
-            if (countdownDisplay) {
-                countdownDisplay.textContent = 'Overdue';
-                countdownDisplay.parentElement.classList.add('overdue');
-            }
-            
-            // Remove from active countdowns
-            this.assignmentCountdowns.delete(element);
-        }
-    }
-
-    /**
      * 🚀 ASSIGNMENT START: Optimized assignment start handling
      */
     handleAssignmentStart(button, topicCard) {
@@ -337,14 +217,6 @@ class OptimizedTopicsPage {
      * 🚀 CLEANUP: Prevent memory leaks
      */
     destroy() {
-        // Clear countdown interval
-        if (this.countdownInterval) {
-            clearInterval(this.countdownInterval);
-        }
-
-        // Clear cached elements
-        this.assignmentCountdowns.clear();
-        
         // Remove event listeners (if needed for SPA)
         if (this.topicsContainer) {
             this.topicsContainer.removeEventListener('click', this.handleTopicInteraction);
@@ -363,7 +235,6 @@ class OptimizedTopicsPage {
         return {
             ...this.performanceMetrics,
             totalTime: performance.now() - this.performanceMetrics.startTime,
-            activeCountdowns: this.assignmentCountdowns.size,
             filterState: this.filterState.active
         };
     }
@@ -388,19 +259,6 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('beforeunload', function() {
     if (window.optimizedTopicsPage) {
         window.optimizedTopicsPage.destroy();
-    }
-});
-
-/**
- * 🚀 VISIBILITY API: Pause/resume countdowns based on page visibility
- */
-document.addEventListener('visibilitychange', function() {
-    if (window.optimizedTopicsPage && window.optimizedTopicsPage.assignmentCountdowns.size > 0) {
-        if (document.visibilityState === 'visible') {
-            // Resume countdowns when page becomes visible
-        } else {
-            // Pause countdowns when page is hidden
-        }
     }
 });
 

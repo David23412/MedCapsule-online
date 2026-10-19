@@ -762,7 +762,7 @@
                      data-topic-id="{{ $data['topic']->id }}"
                      data-assignment-id="{{ $assignment->id }}"
                      data-has-assignment="true" 
-                     data-assignment-deadline="{{ $assignment->deadline }}" 
+                     data-assignment-deadline="{{ $assignment->deadline->toIso8601String() }}"
                      data-assignment-status="{{ $data['status'] }}">
                     
                     {{-- Assignment Status Bar --}}
@@ -771,7 +771,7 @@
                             @if($data['status'] === 'active' && !$data['is_locked'])
                                 <span>Assignment Due:</span>
                                 <div class="assignment-countdown-minimal" 
-                                     data-deadline="{{ $assignment->deadline }}"
+                                     data-deadline="{{ $assignment->deadline->toIso8601String() }}"
                                      data-assignment-status="{{ $data['status'] }}"
                                      data-is-locked="{{ $data['is_locked'] ? 'true' : 'false' }}">
                                     <span class="countdown-display"></span>
@@ -999,7 +999,7 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
-    <script src="{{ asset('js/topics-for-course-page.js') }}" defer></script>
+    <script src="{{ $bladeAsset->url('js/topics-for-course-page.js') }}" defer></script>
     <script>
     @if(($previewUpgradeAvailable ?? false) && !($previewHasPendingPayment ?? false))
         document.addEventListener('DOMContentLoaded', function() {

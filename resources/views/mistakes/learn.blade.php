@@ -405,7 +405,7 @@
                     <div class="question">
                         <div class="question-text-content">
                             @php
-                                $questionText = is_string($mistake->question) ? $mistake->question : json_decode($mistake->question)->question;
+                                $questionText = $mistake->question->question ?? '';
                             @endphp
                             {{ $questionText }}
                         </div>
@@ -413,7 +413,7 @@
                             <img src="{{ asset($mistake->question->image_url) }}" alt="Question Image" class="question-image">
                         @endif
                     </div>
-                    <div class="review-sync-feedback" data-role="review-sync-feedback"></div>
+                    <div class="review-sync-feedback" data-role="review-sync-feedback" role="status" aria-live="polite"></div>
                     <div class="spaced-confidence-panel" data-role="spaced-confidence-panel">
                         <div class="spaced-confidence-options" role="group" aria-label="Spaced review confidence">
                             <button type="button" class="spaced-confidence-option" data-confidence="guessed">خمنتها</button>
@@ -448,10 +448,7 @@
                         @foreach($visibleOpts as $idx => $displayLetter)
                             @php
                                 $dbLetter = $shuffledDb[$idx];
-                                $optionText = $mistake->question->{'option_' . strtolower($dbLetter)};
-                                if (!is_string($optionText)) {
-                                    $optionText = json_decode($optionText);
-                                }
+                                $optionText = (string) ($mistake->question->{'option_' . strtolower($dbLetter)} ?? '');
                             @endphp
                             <div class="option" 
                                 data-option="{{ $dbLetter }}"
@@ -511,7 +508,7 @@
     <script>
         window.MistakesLearnPageConfig = {
             reviewLearnUrl: @json(route('review.learn')),
-            saveTimeUrl: @json(secure_url('/learn/save-time')),
+            saveTimeUrl: @json(route('learn.save-time', [], false)),
             autoSelectEasy: @json(!empty($selectedTopicIds ?? [])),
             selectedTopicIds: @json(array_values($selectedTopicIds ?? [])),
             selectedQuestionType: @json($selectedQuestionType ?? 'all'),
@@ -522,7 +519,8 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
-    <script src="{{ asset('js/mistakes-learn-page.js') }}" defer></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/study-requests.js') }}" defer></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/mistakes-learn-page.js') }}" defer></script>
     @include('partials.secure-study-protection', ['surfaceLabel' => 'learn mistakes', 'watermarkEnabled' => false])
 
 </body>

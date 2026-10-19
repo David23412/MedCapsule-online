@@ -105,16 +105,16 @@ Route::group([], function () {
     Route::post('/review/remove-all', [MistakeController::class, 'removeAllMistakes'])
         ->name('review.remove-all');
     Route::post('/review/skip/{question_id}', [MistakeController::class, 'skipMistake'])
-        ->name('review.skip');
+        ->middleware(\App\Http\Middleware\IdempotentStudySubmission::class)->name('review.skip');
 
     // Mistakes routes - FIXED: Add missing mistakes.index route
     Route::resource('mistakes', MistakeController::class)->only(['index']);
     Route::post('/learn/check/{question_id}', [LearnController::class, 'checkMistake'])
         ->name('learn.check');
     Route::post('/learn/finalize/{question_id}', [LearnController::class, 'finalizeMistake'])
-        ->name('learn.finalize');
+        ->middleware(\App\Http\Middleware\IdempotentStudySubmission::class)->name('learn.finalize');
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
-        ->name('learn.review');
+        ->middleware(\App\Http\Middleware\IdempotentStudySubmission::class)->name('learn.review');
     Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])
         ->name('learn.save-time');
     

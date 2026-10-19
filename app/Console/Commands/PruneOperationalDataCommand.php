@@ -56,6 +56,12 @@ class PruneOperationalDataCommand extends Command
             $dryRun
         );
 
+        $this->prune(
+            $rows, 'Confirmed study submissions', 'study_submissions', 'older than 7 days',
+            fn (): Builder => DB::table('study_submissions')->where('created_at', '<', $now->copy()->subDays(7)),
+            $dryRun
+        );
+
         $sessionCutoff = $now->copy()->subMinutes($sessionMinutes)->timestamp;
         $this->prune(
             $rows,

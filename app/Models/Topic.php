@@ -84,12 +84,19 @@ class Topic extends Model
         return Cache::remember("topic:{$this->id}:all_questions", 3600, function () {
             return Question::where(function($q) {
                     $q->where('topic_id', $this->id)
-                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$this->id]);
+                      ->orWhereRaw($this->linkedQuestionCondition(), [$this->id]);
                 })
                 ->with(['topic'])
                 ->orderBy('id')
                 ->get();
         });
+    }
+
+    private function linkedQuestionCondition(): string
+    {
+        return DB::getDriverName() === 'sqlite'
+            ? "INSTR(',' || REPLACE(COALESCE(extra_topic, ''), ' ', '') || ',', ',' || ? || ',') > 0"
+            : "FIND_IN_SET(?, REPLACE(extra_topic, ' ', '')) > 0";
     }
 
     /** Keep video topics and topics with questions available to their quiz. */
@@ -297,7 +304,7 @@ class Topic extends Model
         return Cache::remember("topic:{$this->id}:questions_count", 3600, function () {
             return Question::where(function($q) {
                     $q->where('topic_id', $this->id)
-                      ->orWhereRaw('FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0', [$this->id]);
+                      ->orWhereRaw($this->linkedQuestionCondition(), [$this->id]);
                 })->count();
         });
     }

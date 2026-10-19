@@ -623,7 +623,7 @@ function initializeMistakesLearnPage() {
                     return true;
                 }
 
-                if (question?.confidenceLevel) {
+                if (question?.confidenceLevel || question?.pendingFinalization) {
                     return true;
                 }
 
@@ -727,28 +727,13 @@ function initializeMistakesLearnPage() {
                     }
                     : {};
 
-                const response = await fetch(`/learn/review/${questionId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
+                return window.StudyRequests.post(`/learn/review/${questionId}`, {
                         selected_answer: answer,
                         mode: selectedMode,
                         time_spent: timeSpentSeconds,
                         confidence: selectedMode === 'spaced' ? confidence : null,
                         ...interactionPayload
-                    })
-                });
-
-                const payload = await response.json();
-
-                if (!response.ok || payload.success !== true) {
-                    throw new Error(payload.message || 'Failed to record review');
-                }
-
-                return payload;
+                    });
             };
 
             const buildSpacedInteractionPayload = (question) => ({
@@ -760,27 +745,14 @@ function initializeMistakesLearnPage() {
             });
 
             const submitSpacedCheckAnswer = async (question, answer, timeSpentSeconds = 0) => {
-                const response = await fetch(`/learn/check/${question.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
+                if (question.pendingFinalization) return question.checkedOutcome;
+                question.checkedOutcome = await window.StudyRequests.post(`/learn/check/${question.id}`, {
                         selected_answer: answer,
                         time_spent: timeSpentSeconds,
                         confidence: question.confidenceLevel,
                         ...buildSpacedInteractionPayload(question)
-                    })
-                });
-
-                const payload = await response.json();
-
-                if (!response.ok || payload.success !== true) {
-                    throw new Error(payload.message || 'Failed to check answer');
-                }
-
-                return payload;
+                    });
+                return question.checkedOutcome;
             };
 
             const finalizeSpacedQuestion = async (question, timeSpentSeconds = 0) => {
@@ -788,15 +760,7 @@ function initializeMistakesLearnPage() {
                     return null;
                 }
 
-                question.finalized = true;
-
-                const response = await fetch(`/learn/finalize/${question.id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
+                const payload = await window.StudyRequests.post(`/learn/finalize/${question.id}`, {
                         session_successes: question.sessionSuccesses,
                         session_failures: question.sessionFailures,
                         best_confidence: question.bestConfidence || 'unsure',
@@ -807,16 +771,9 @@ function initializeMistakesLearnPage() {
                         time_to_first_selection: question.timeToFirstSelection,
                         first_confidence: question.firstSessionConfidenceLevel || question.firstConfidenceLevel,
                         confidence_change_count: question.totalConfidenceChanges || question.confidenceChangeCount || 0,
-                    })
-                });
-
-                const payload = await response.json();
-
-                if (!response.ok || payload.success !== true) {
-                    question.finalized = false;
-                    question.sessionResolved = false;
-                    throw new Error(payload.message || 'Failed to save mastery');
-                }
+                    });
+                question.finalized = true;
+                question.pendingFinalization = false;
 
                 syncAdaptiveState(question, payload);
                 question.sessionResolved = true;
@@ -979,6 +936,7 @@ function initializeMistakesLearnPage() {
             };
 
             const applySpacedOutcome = (question, isCorrect, payload = null) => {
+                if (question.pendingFinalization) return;
                 totalAttempts++;
 
                 const confidence = question.confidenceLevel;
@@ -999,6 +957,7 @@ function initializeMistakesLearnPage() {
                     question.sessionResolved = false;
                 }
 
+                question.pendingFinalization = question.sessionResolved;
                 question.correctStreak = question.sessionSuccesses;
                 resetSpacedInteractionState(question);
                 renderConfidenceState(question);
@@ -1480,9 +1439,12 @@ function initializeMistakesLearnPage() {
                 updateQueueSummary();
             });
 
+            let currentQuestionSaving = false;
+
             // Setup submit button for written answers
             document.querySelectorAll('.submit-written-answer').forEach(button => {
                 button.addEventListener('click', function() {
+                    if (this.disabled || currentQuestionSaving) return;
                     const container = this.closest('.written-answer-container');
                     const textarea = container.querySelector('.written-answer');
                     const feedbackElement = container.querySelector('.written-answer-feedback');
@@ -1503,6 +1465,7 @@ function initializeMistakesLearnPage() {
                     clearReviewSyncError(currentQuestion);
                     
                     // Disable input while processing
+                    currentQuestionSaving = true;
                     textarea.disabled = true;
                     this.disabled = true;
                     
@@ -1579,6 +1542,7 @@ function initializeMistakesLearnPage() {
                                 textarea.value = '';
                                 textarea.disabled = false;
                                 this.disabled = false;
+                                currentQuestionSaving = false;
                                 
                                 // Clear all feedback elements
                                 feedbackElement.textContent = '';
@@ -1602,17 +1566,19 @@ function initializeMistakesLearnPage() {
                             // Re-enable the form
                             textarea.disabled = false;
                             this.disabled = false;
+                            currentQuestionSaving = false;
                         }
                     })
                     .catch(error => {
                         console.error('Error:', error);
                         feedbackElement.textContent = error.message || 'Error checking answer. Please try again.';
                         feedbackElement.className = 'written-answer-feedback incorrect';
-                        showReviewSyncError(currentQuestion, 'Review was not saved. This mistake stayed in the same state.');
+                        showReviewSyncError(currentQuestion, 'Save not confirmed. Your answer is still here. Submit again to retry.');
                         
                         // Re-enable the form
                         textarea.disabled = false;
                         this.disabled = false;
+                        currentQuestionSaving = false;
                     });
                 });
             });
@@ -1727,7 +1693,7 @@ function initializeMistakesLearnPage() {
             // 💀 LETHAL INSTANT SOUND SYSTEM - F16 RAPTOR SPEED 💀
             document.querySelectorAll('.option').forEach(option => {
                 option.addEventListener('click', function(e) {
-                    if (!this.parentElement.classList.contains('answered')) {
+                    if (!currentQuestionSaving && !this.parentElement.classList.contains('answered')) {
                         const currentQuestion = questionsData[currentQuestionIndex];
 
                         if (!requireSpacedConfidence(currentQuestion)) {
@@ -1746,6 +1712,7 @@ function initializeMistakesLearnPage() {
                         playInstantOptionFeedback(isCorrect);
                         clearReviewSyncError(currentQuestion);
 
+                        currentQuestionSaving = true;
                         // Mark options container as answered
                         this.parentElement.classList.add('answered');
                         this.classList.add(isCorrect ? 'correct' : 'incorrect');
@@ -1773,6 +1740,7 @@ function initializeMistakesLearnPage() {
                                         : Promise.resolve(null);
 
                                     return finalizePromise.then(() => setTimeout(() => {
+                                        currentQuestionSaving = false;
                                         this.parentElement.classList.remove('answered');
                                         this.classList.remove('correct', 'incorrect');
                                         showNextQuestion();
@@ -1780,6 +1748,7 @@ function initializeMistakesLearnPage() {
                                 })
                                 .catch((error) => {
                                     console.error('Error syncing spaced review:', error);
+                                    currentQuestionSaving = false;
                                     this.parentElement.classList.remove('answered');
                                     this.classList.remove('correct', 'incorrect');
                                     showReviewSyncError(currentQuestion, error.message || 'Failed to record review. Try again.');
@@ -1787,20 +1756,22 @@ function initializeMistakesLearnPage() {
                             return;
                         }
 
-                        applySessionOutcome(currentQuestion, isCorrect);
-
-                        setTimeout(() => {
-                            this.parentElement.classList.remove('answered');
-                            this.classList.remove('correct', 'incorrect');
-                            showNextQuestion();
-                        }, 600);
-
                         submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
                             .then((data) => {
                                 syncAdaptiveState(currentQuestion, data);
+                                applySessionOutcome(currentQuestion, data.is_correct === true);
+                                setTimeout(() => {
+                                    currentQuestionSaving = false;
+                                    this.parentElement.classList.remove('answered');
+                                    this.classList.remove('correct', 'incorrect');
+                                    showNextQuestion();
+                                }, 600);
                             })
-                            .catch((error) => {
-                                console.error('Error background syncing review:', error);
+                            .catch(() => {
+                                currentQuestionSaving = false;
+                                this.parentElement.classList.remove('answered');
+                                this.classList.remove('correct', 'incorrect');
+                                showReviewSyncError(currentQuestion, 'Save not confirmed. Your progress has not advanced. Select your answer again to retry.');
                             });
                         return;
 
@@ -1811,54 +1782,44 @@ function initializeMistakesLearnPage() {
 
             // Simple skip button handler
             document.querySelectorAll('.skip-question-btn').forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', async function() {
+                    if (this.disabled || currentQuestionSaving) return;
                     const questionId = this.dataset.questionId;
                     const currentQuestion = questionsData[currentQuestionIndex];
-                    
-                    // Simple API call to mark as skipped
-                    fetch(`/review/skip/${questionId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        },
-                        body: JSON.stringify({
+                    this.disabled = true;
+                    currentQuestionSaving = true;
+                    clearReviewSyncError(currentQuestion);
+                    try {
+                        // Confirm skipping before removing the question from this session.
+                        await window.StudyRequests.post(`/review/skip/${questionId}`, {
                             mode: selectedMode === 'practice' ? 'quiz' : selectedMode
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-
-                        } else {
-                            console.warn('⚠️ Skip failed:', data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Error skipping question:', error);
-                    });
-                    
-                    // Always skip locally for this session
-                    skippedQuestions.add(questionId);
-                    currentQuestion.skipped = true;
-                    currentQuestion.sessionResolved = true;
-                    currentQuestion.confidenceLevel = null;
-                    currentQuestion.firstConfidenceLevel = null;
-                    currentQuestion.firstSessionConfidenceLevel = null;
-                    currentQuestion.confidenceChangeCount = 0;
-                    currentQuestion.selectedAnswer = null;
-                    currentQuestion.firstSelectedAnswer = null;
-                    currentQuestion.firstSessionSelectedAnswer = null;
-                    currentQuestion.answerChangeCount = 0;
-                    currentQuestion.timeToFirstSelection = null;
-                    currentQuestion.frozenResponseSeconds = null;
-                    activeQuestions.delete(currentQuestion.id);
-                    renderMemoryState(currentQuestion);
-                    renderConfidenceState(currentQuestion);
-                    renderSpacedSelectionState(currentQuestion);
-                    updateQueueSummary();
-                    updateProgress();
-                    showNextQuestion();
+                        });
+                        skippedQuestions.add(questionId);
+                        currentQuestion.skipped = true;
+                        currentQuestion.sessionResolved = true;
+                        currentQuestion.confidenceLevel = null;
+                        currentQuestion.firstConfidenceLevel = null;
+                        currentQuestion.firstSessionConfidenceLevel = null;
+                        currentQuestion.confidenceChangeCount = 0;
+                        currentQuestion.selectedAnswer = null;
+                        currentQuestion.firstSelectedAnswer = null;
+                        currentQuestion.firstSessionSelectedAnswer = null;
+                        currentQuestion.answerChangeCount = 0;
+                        currentQuestion.timeToFirstSelection = null;
+                        currentQuestion.frozenResponseSeconds = null;
+                        activeQuestions.delete(currentQuestion.id);
+                        renderMemoryState(currentQuestion);
+                        renderConfidenceState(currentQuestion);
+                        renderSpacedSelectionState(currentQuestion);
+                        updateQueueSummary();
+                        updateProgress();
+                        showNextQuestion();
+                    } catch (error) {
+                        showReviewSyncError(currentQuestion, 'Skip not confirmed. Please try again.');
+                    } finally {
+                        this.disabled = false;
+                        currentQuestionSaving = false;
+                    }
                 });
             });
 

@@ -47,50 +47,52 @@ class QuizMistakeController extends Controller
                 $courseFilter = null;
             }
             
-            // SURGICAL OPTIMIZATION: Only log in development
-            if (app()->environment('local', 'testing')) {
+            $query = DB::table('mistakes')
+                ->join('questions', 'mistakes.question_id', '=', 'questions.id')
+                ->join('topics', 'questions.topic_id', '=', 'topics.id')
+                ->join('courses', 'topics.course_id', '=', 'courses.id')
+                ->select([
+                    'mistakes.id',
+                    'mistakes.question_id',
+                    'mistakes.submitted_answer',
+                    'mistakes.last_attempt_date',
+                    'mistakes.correct_streak',
+                    'mistakes.skipped',
+                    'questions.question',
+                    'questions.correct_answer',
+                    'questions.image_url',
+                    'questions.explanation',
+                    'questions.question_type',
+                    'questions.option_a',
+                    'questions.option_b',
+                    'questions.option_c',
+                    'questions.option_d',
+                    'questions.option_e',
+                    'topics.id as topic_id',
+                    'topics.name as topic_name',
+                    'courses.id as course_id',
+                    'courses.name as course_name'
+                ])
+                ->where('mistakes.user_id', $userId);
+
+            if ($courseFilter) {
+                $query->where('courses.id', $courseFilter);
             }
 
-            // 🎯 SMART HYBRID: Ultra-short cache (10 seconds) for near-instant updates
-            // But with immediate invalidation on writes for accuracy
-            $courseFilter = $courseFilter ?: ''; // Ensure empty string instead of null
-            $cacheKey = "mistakes_smart_{$userId}_{$courseFilter}_v3";
-            $cacheKey = trim($cacheKey, '_'); // Remove trailing underscore if no course filter
-            $mistakesData = Cache::remember($cacheKey, 10, function() use ($userId, $courseFilter) { // 10 seconds only
-                $query = DB::table('mistakes')
-                    ->join('questions', 'mistakes.question_id', '=', 'questions.id')
-                    ->join('topics', 'questions.topic_id', '=', 'topics.id')
-                    ->join('courses', 'topics.course_id', '=', 'courses.id')
-                    ->select([
-                        'mistakes.id',
-                        'mistakes.question_id',
-                        'mistakes.submitted_answer',
-                        'mistakes.last_attempt_date',
-                        'mistakes.correct_streak',
-                        'mistakes.skipped',
-                        'questions.question',
-                        'questions.correct_answer',
-                        'questions.image_url',
-                        'questions.explanation',
-                        'questions.question_type',
-                        'questions.option_a',
-                        'questions.option_b',
-                        'questions.option_c',
-                        'questions.option_d',
-                        'questions.option_e',
-                        'topics.id as topic_id',
-                        'topics.name as topic_name',
-                        'courses.id as course_id',
-                        'courses.name as course_name'
-                    ])
-                    ->where('mistakes.user_id', $userId);
-
-                if ($courseFilter) {
-                    $query->where('courses.id', $courseFilter);
-                }
-
-                return $query->orderByDesc('mistakes.last_attempt_date')->get();
-            });
+            $statsQuery = clone $query;
+            $filteredStats = $statsQuery->reorder()->select([])->selectRaw(
+                'COUNT(*) as total, SUM(CASE WHEN mistakes.last_attempt_date < ? THEN 1 ELSE 0 END) as stale_count, '
+                . 'SUM(CASE WHEN mistakes.correct_streak = 0 THEN 1 ELSE 0 END) as cold_review_count, '
+                . 'SUM(CASE WHEN mistakes.correct_streak >= 3 THEN 1 ELSE 0 END) as close_review_count, '
+                . "SUM(CASE WHEN questions.question_type = 'written' THEN 1 ELSE 0 END) as written_count, "
+                . 'MIN(mistakes.last_attempt_date) as oldest_date', [now()->subDays(7)]
+            )->first();
+            $mistakesPagination = $query->orderByDesc('mistakes.last_attempt_date')->orderByDesc('mistakes.id')
+                ->paginate(50)->appends($request->only('course'));
+            if ($mistakesPagination->currentPage() > $mistakesPagination->lastPage()) {
+                return redirect($mistakesPagination->url($mistakesPagination->lastPage()));
+            }
+            $mistakesData = $mistakesPagination->getCollection();
 
             // 🚀 BATCH PROCESSING: Transform raw data efficiently with proper submitted answer handling
             $mistakes = $mistakesData->map(function($mistake) {
@@ -192,17 +194,20 @@ class QuizMistakeController extends Controller
                 'active_review_label' => !empty($courseFilter)
                     ? (optional($availableCourses->firstWhere('id', (int) $courseFilter))->name ?? 'Filtered Course')
                     : 'All Courses',
-                'stale_count' => $mistakes->filter(fn ($mistake) => $mistake->last_attempt_date && $mistake->last_attempt_date->lt(now()->subDays(7)))->count(),
-                'cold_review_count' => $mistakes->filter(fn ($mistake) => (int) $mistake->correct_streak === 0)->count(),
-                'close_review_count' => $mistakes->filter(fn ($mistake) => (int) $mistake->correct_streak >= 3)->count(),
-                'written_count' => $mistakes->filter(fn ($mistake) => ($mistake->question->question_type ?? null) === 'written')->count(),
+                'stale_count' => (int) $filteredStats->stale_count,
+                'cold_review_count' => (int) $filteredStats->cold_review_count,
+                'close_review_count' => (int) $filteredStats->close_review_count,
+                'written_count' => (int) $filteredStats->written_count,
                 'top_weak_course' => $availableCourses->sortByDesc('mistake_count')->first(),
-                'oldest_mistake' => $mistakes->sortBy('last_attempt_date')->first(),
+                'oldest_mistake' => $filteredStats->oldest_date
+                    ? (object) ['last_attempt_date' => \Carbon\Carbon::parse($filteredStats->oldest_date)] : null,
                 'available_courses_sorted' => $availableCourses->sortBy('name')->values(),
             ];
 
             return view('mistakes', [
                 'mistakes' => $mistakes,
+                'mistakesPagination' => $mistakesPagination,
+                'filteredMistakesCount' => (int) $filteredStats->total,
                 'mistakesByCourse' => $mistakesByCourse,
                 'availableCourses' => $availableCourses,
                 'selectedCourse' => $courseFilter,

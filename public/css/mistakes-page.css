@@ -2199,3 +2199,19 @@ body {
         scroll-behavior: auto !important;
     }
 }
+
+.mistakes-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    color: var(--text-secondary, #64748b);
+    font-size: 0.9rem;
+}
+.mistakes-pagination a {
+    color: var(--primary-color, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
