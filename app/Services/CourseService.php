@@ -651,6 +651,16 @@ class CourseService
         $completionPercentages = $this->loadCourseCompletionPercentages($courses, $user->id);
 
         $userCourseData = $this->getUserCourseOptimizationData($user);
+        // Payment status can change independently of cached enrollment metadata.
+        $pendingPaymentCourseIds = DB::table('payments')
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'pending_verification'])
+            ->whereIn('course_id', $courses->pluck('id'))
+            ->whereIn('id', function ($query) use ($user) {
+                $query->selectRaw('MAX(id)')->from('payments')
+                    ->where('user_id', $user->id)->groupBy('course_id');
+            })
+            ->pluck('course_id')->all();
 
         // Use cached data for instant lookups (PRESERVED)
         foreach ($courses as $course) {
@@ -671,7 +681,7 @@ class CourseService
                 : null;
 
             // PRESERVE existing payment check logic
-            $course->has_pending_payment = in_array($course->id, $userCourseData['pending_payment_course_ids'] ?? []);
+            $course->has_pending_payment = in_array($course->id, $pendingPaymentCourseIds);
 
             $course->completion_percentage = $completionPercentages[$course->id] ?? 0;
             $course->mastered_topics_count = 0;
@@ -697,12 +707,21 @@ class CourseService
             return $imageUrl;
         }
 
-        if (str_contains($imageUrl, 'unsplash.com')) {
-            return str_replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=75&fm=webp&', $imageUrl);
+        $host = strtolower((string) parse_url($imageUrl, PHP_URL_HOST));
+        if ($host === 'images.unsplash.com') {
+            $parts = parse_url($imageUrl);
+            parse_str($parts['query'] ?? '', $query);
+            $query = array_replace($query, [
+                'w' => 465, 'h' => 670, 'fit' => 'crop',
+                'auto' => 'format,compress', 'q' => 75, 'fm' => 'webp',
+            ]);
+            $base = explode('?', explode('#', $imageUrl, 2)[0], 2)[0];
+            return $base . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986)
+                . (isset($parts['fragment']) ? '#' . $parts['fragment'] : '');
         }
 
-        if (str_contains($imageUrl, 'picsum.photos')) {
-            return str_replace('picsum.photos/', 'picsum.photos/465/670/', $imageUrl);
+        if ($host === 'picsum.photos') {
+            return preg_replace('~/(?:\d+)(?:/\d+)?(?=\.(?:jpg|webp)(?:[?#]|$)|[?#]|$)~', '/465/670', $imageUrl) ?? $imageUrl;
         }
 
         return $imageUrl;
@@ -906,12 +925,6 @@ class CourseService
         return [
             'access_state_signature' => $accessStateSignature,
             'course_access_levels' => $user->getCourseAccessLevels($enrolledCourseIds),
-            'pending_payment_course_ids' => DB::table('payments')
-                ->where('user_id', $user->id)
-                ->whereIn('status', ['pending', 'pending_verification'])
-                ->pluck('course_id')
-                ->map(static fn ($courseId) => (int) $courseId)
-                ->toArray(),
             'is_admin' => $user->isAdmin(),
         ];
     }

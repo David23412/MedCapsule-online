@@ -23,12 +23,6 @@
     @include('partials.favicon')
     @include('partials.admin-dark-mode-head')
 
-    <!-- RUTHLESS: Resource hints for faster loading -->
-    <link rel="dns-prefetch" href="//fonts.googleapis.com">
-    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
-    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
     <!-- SUPER MINIMAL CRITICAL CSS -->
     <style>
         /* ESSENTIAL FOUC PREVENTION + PERFORMANCE */
@@ -54,7 +48,6 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://code.jquery.com" crossorigin>
     
     <!-- ONLY PRECONNECT TO ACTIVE IMAGE DOMAINS -->
     @if($imageDomains->isNotEmpty())
@@ -76,11 +69,7 @@
     </style>
     
     <!-- LOAD CUSTOM FONTS IN BACKGROUND - FIXED ONLOAD HANDLER -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="if(this&&document.body){this.onload=null;this.rel='stylesheet';document.body.style.fontFamily='Poppins, -apple-system, BlinkMacSystemFont, sans-serif';}">
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&display=swap" rel="preload" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
-
-    <!-- BOLD IMPACTFUL FONT FOR MEDICAL COURSES HEADER -->
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="preload" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Cormorant+Garamond:wght@600;700&display=swap" rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet';">
 
     <!-- FONT AWESOME - ASYNC LOAD - FIXED ONLOAD HANDLER -->
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" as="style" onload="if(this){this.onload=null;this.rel='stylesheet';}">
@@ -423,9 +412,12 @@
                     <div class="course-image"
                          role="img"
                          aria-label="{{ $course->name }} course image"
-                         style="background-image: url('{{ $course->optimized_image_url }}');"
-                         data-bg-image="{{ $course->optimized_image_url }}"
                          data-course-name="{{ $course->name }}">
+                        @if ($course->optimized_image_url)
+                            <img class="course-cover" src="{{ $course->optimized_image_url }}" alt=""
+                                 loading="{{ $loop->index < 2 ? 'eager' : 'lazy' }}"
+                                 fetchpriority="{{ $loop->first ? 'high' : 'auto' }}" decoding="async">
+                        @endif
                         <div class="info-icon" role="button" tabindex="0" aria-label="Course information">
                             <i class="fas fa-info" aria-hidden="true"></i>
                             <div class="info-tooltip">
@@ -635,6 +627,7 @@
             profileRoute: @json(route('profile')),
             user: @json(isset($currentUserView) ? ['id' => $currentUserView['id'], 'name' => $currentUserView['name']] : null),
             authUserId: @json(auth()->id()),
+            pendingCourseIds: @json($courses->where('has_pending_payment', true)->where('is_enrolled', false)->pluck('id')->values()),
             freeCourseSurvey: {
                 enabled: @json(isset($currentUserView) && !($currentUserView['free_courses_unlocked'] ?? false)),
                 draftUrl: @json(route('free-course-survey.draft')),

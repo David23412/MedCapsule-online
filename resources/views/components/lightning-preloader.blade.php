@@ -284,9 +284,13 @@ body.fonts-loaded {
     
     // BULLETPROOF TIMING - VISIBLE BUT SNAPPY
     if (isCoursesPage) {
-        // COURSES PAGE: Wait longer to prevent FOUC
-        setTimeout(hidePreloader, 800);  // Primary timeout
-        setTimeout(hidePreloader, 1200); // Backup timeout
+        // Course controls and deferred scripts are ready at DOMContentLoaded.
+        const revealCourses = () => requestAnimationFrame(hidePreloader);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', revealCourses, { once: true });
+        } else {
+            revealCourses();
+        }
     } else {
         // HOME PAGE: Visible but still fast
         setTimeout(hidePreloader, 600);  // Primary timeout - now visible!
@@ -315,7 +319,7 @@ body.fonts-loaded {
         setTimeout(hidePreloader, 600);
     }
     
-    console.log(`⚡ PRELOADER CONFIGURED: ${isCoursesPage ? 'COURSES (800ms)' : 'HOME (400ms)'} MODE`);
+    console.log(`⚡ PRELOADER CONFIGURED: ${isCoursesPage ? 'COURSES (when ready)' : 'HOME'} MODE`);
     
 })();
 </script> 

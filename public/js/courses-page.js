@@ -1,72 +1,16 @@
 (function() {
     const coursesPageConfig = window.CoursesPageConfig || {};
 
-    // Immediate execution - zero delays
-    (function() {
-        const style = document.createElement('style');
-        style.textContent = `
-            .clean-notification-dropdown { display: none !important; }
-            .clean-notification-dropdown.show { display: flex !important; }
-            .course-image { opacity: 1 !important; background-color: #f8f9fa; }
-            .course-card { opacity: 1 !important; transform: none !important; }
-            .course-image:not([style*="background-image"]) {
-                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-                background-size: 200% 100%;
-                animation: shimmer 1.5s infinite;
-            }
-            @keyframes shimmer {
-                0% { background-position: -200% 0; }
-                100% { background-position: 200% 0; }
-            }
-        `;
-        document.head.appendChild(style);
-    })();
-
+    // Keep cover loading native: one URL, browser lazy loading, no duplicate requests.
     document.addEventListener('DOMContentLoaded', function() {
-        const courseImages = document.querySelectorAll('.course-image[data-bg-image]');
-        const imageQueue = Array.from(courseImages);
-        let loadedCount = 0;
-        const immediateImages = imageQueue.slice(0, 2);
-        const lazyImages = imageQueue.slice(2);
-
-        immediateImages.forEach(imageElement => {
-            loadImage(imageElement);
+        document.querySelectorAll('.course-cover').forEach(image => {
+            const showFallback = () => { image.hidden = true; };
+            image.addEventListener('error', showFallback);
+            if (image.complete && image.naturalWidth === 0) showFallback();
         });
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    loadImage(entry.target);
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { rootMargin: '100px' });
-
-        lazyImages.forEach(img => observer.observe(img));
-
-        function loadImage(imageElement) {
-            const imageUrl = imageElement.dataset.bgImage;
-            let optimizedUrl = imageUrl;
-
-            if (imageUrl.includes('unsplash.com')) {
-                optimizedUrl = imageUrl.replace('?', '?w=465&h=670&fit=crop&auto=format,compress&q=60&fm=webp&');
-            } else if (imageUrl.includes('picsum.photos')) {
-                optimizedUrl = imageUrl.replace('picsum.photos/', 'picsum.photos/465/670/');
-            }
-
-            const img = new Image();
-            img.onload = () => {
-                imageElement.style.backgroundImage = `url('${optimizedUrl}')`;
-                imageElement.style.animation = 'none';
-                loadedCount++;
-            };
-            img.onerror = () => {
-                imageElement.style.backgroundImage = 'linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%)';
-                imageElement.style.animation = 'none';
-            };
-            img.src = optimizedUrl;
-        }
     });
+
+    let trackPendingPayment = () => {};
 
     window.notificationBell = function notificationBell() {
         return {
@@ -520,93 +464,78 @@
         }
     }
 
+    let progressRequest = null;
+    let progressPollInterval = null;
+    let progressSessionExpired = false;
+
+    function canRefreshProgress() {
+        return Boolean(coursesPageConfig.authUserId)
+            && !progressSessionExpired
+            && document.visibilityState === 'visible'
+            && navigator.onLine !== false;
+    }
+
     function fetchUserProgressSnapshot() {
-        return fetch('/profile/progress', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            credentials: 'same-origin'
+        if (!canRefreshProgress()) return Promise.resolve({});
+        if (progressRequest) return progressRequest;
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        progressRequest = fetch('/profile/progress', {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            signal: controller.signal
         }).then(response => {
             if (!response.ok) {
+                if (response.status === 401 || response.status === 419) {
+                    progressSessionExpired = true;
+                    stopProgressPolling();
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-
             return response.json();
+        }).finally(() => {
+            clearTimeout(timeout);
+            progressRequest = null;
         });
+        return progressRequest;
     }
 
     function refreshUserProgressInstantly() {
-        fetchUserProgressSnapshot()
-            .then(data => {
-                applyUserProgressSnapshot(data);
-            })
-            .catch(error => {
-                console.warn('Live progress refresh failed:', error.message);
-            });
+        return fetchUserProgressSnapshot().then(applyUserProgressSnapshot).catch(() => {});
     }
 
-    function pollUserProgress() {
-        if (
-            window.location.hostname.includes('ngrok') ||
-            window.location.hostname.includes('localhost') ||
-            window.location.hostname.includes('127.0.0.1')
-        ) {
-            return;
-        }
-
-        fetchUserProgressSnapshot()
-            .then(data => {
-                applyUserProgressSnapshot(data);
-            })
-            .catch(() => {
-                if (!window.progressPollingErrorLogged) {
-                    window.progressPollingErrorLogged = true;
-                }
-            });
-    }
-
-    let progressPollInterval = null;
     function startProgressPolling() {
-        if (progressPollInterval) {
-            return;
-        }
-        progressPollInterval = setInterval(pollUserProgress, 10000);
+        if (progressPollInterval || !canRefreshProgress()) return;
+        // Events refresh immediately; this is only a fallback for changes on another device.
+        progressPollInterval = setInterval(refreshUserProgressInstantly, 60000);
     }
 
     function stopProgressPolling() {
-        if (!progressPollInterval) {
-            return;
-        }
+        if (!progressPollInterval) return;
         clearInterval(progressPollInterval);
         progressPollInterval = null;
     }
 
-    if (document.visibilityState === 'visible') {
-        startProgressPolling();
-    }
-
+    startProgressPolling();
     document.addEventListener('visibilitychange', function() {
-        if (document.visibilityState === 'visible') {
-            pollUserProgress();
+        if (canRefreshProgress()) {
+            refreshUserProgressInstantly();
             startProgressPolling();
         } else {
             stopProgressPolling();
         }
     });
-
-    window.addEventListener('beforeunload', function() {
-        stopProgressPolling();
+    window.addEventListener('online', function() {
+        refreshUserProgressInstantly();
+        startProgressPolling();
     });
-
+    window.addEventListener('beforeunload', stopProgressPolling);
     window.addEventListener('storage', function(event) {
         if (event.key === 'quizProgressUpdate' || event.key === 'assignmentCompleted') {
             refreshUserProgressInstantly();
         }
     });
-
     document.addEventListener('sourceProgressUpdated', refreshUserProgressInstantly);
     document.addEventListener('assignmentCompleted', refreshUserProgressInstantly);
 
@@ -802,16 +731,6 @@
 
         const paymentModal = new bootstrap.Modal(paymentModalElement);
 
-        function persistPendingPayment(courseId) {
-            const pendingData = {
-                timestamp: Date.now(),
-                courseId,
-                status: 'pending',
-            };
-
-            localStorage.setItem(`payment_pending_${courseId}`, JSON.stringify(pendingData));
-        }
-
         function initializeInjectedPaymentContent() {
             const paymentMethodField = document.getElementById('paymentMethodField');
             if (paymentMethodField) {
@@ -844,168 +763,123 @@
             });
         }
 
-        document.querySelectorAll('.show-payment-modal').forEach(button => {
-            button.addEventListener('click', function() {
-                const courseId = this.dataset.courseId;
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        let paymentOptionsLoading = false;
+        document.addEventListener('click', function(event) {
+            const button = event.target.closest('.show-payment-modal');
+            if (!button || button.disabled || paymentOptionsLoading) return;
+            paymentOptionsLoading = true;
+            const courseId = button.dataset.courseId;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                fetch(`/payments/${courseId}/options`, {
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json'
+            fetch(`/payments/${courseId}/options`, {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok) {
+                        throw new Error(data.message || data.error || 'Payment options are not available for this course.');
                     }
+
+                    return data;
                 })
-                    .then(response => response.json().then(data => ({ ok: response.ok, data })))
-                    .then(({ ok, data }) => {
-                        if (!ok) {
-                            throw new Error(data.message || data.error || 'Payment options are not available for this course.');
+                .then(data => {
+                    if (data.success) {
+                        document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
+                        initializeInjectedPaymentContent();
+                        paymentModal.show();
+
+                        const paymentForm = document.getElementById('coursePaymentForm');
+                        if (!paymentForm) {
+                            return;
                         }
 
-                        return data;
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            document.querySelector('#paymentModal .modal-content').innerHTML = data.html;
-                            initializeInjectedPaymentContent();
-                            paymentModal.show();
+                        paymentForm.addEventListener('submit', function(e) {
+                            e.preventDefault();
 
-                            const paymentForm = document.getElementById('coursePaymentForm');
-                            if (!paymentForm) {
-                                return;
-                            }
+                            const formData = new FormData(this);
+                            const submitBtn = this.querySelector('#submitBtn');
+                            if (submitBtn.disabled) return;
+                            submitBtn.disabled = true;
+                            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
 
-                            paymentForm.addEventListener('submit', function(e) {
-                                e.preventDefault();
-
-                                const formData = new FormData(this);
-                                const submitBtn = this.querySelector('#submitBtn');
-                                submitBtn.disabled = true;
-                                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-
-                                fetch(`/payments/${courseId}/process`, {
-                                    method: 'POST',
-                                    headers: {
-                                        'X-CSRF-TOKEN': csrfToken,
-                                        'X-Requested-With': 'XMLHttpRequest',
-                                        'Accept': 'application/json'
-                                    },
-                                    body: formData
-                                })
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        if (data.success) {
-                                            paymentModal.hide();
-                                            persistPendingPayment(courseId);
-                                            const originalButton = document.getElementById(`paymentBtn_${courseId}`);
-                                            if (!originalButton) {
-                                                return;
-                                            }
-
-                                            originalButton.innerHTML = '<i class="fas fa-clock" style="color: #ff8c00;"></i> <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>';
-                                            originalButton.disabled = true;
-                                            originalButton.style.animation = 'successPulse 1s ease-in-out';
-                                            originalButton.style.backgroundColor = '#fff7ed';
-                                            originalButton.style.borderColor = '#fed7aa';
-                                            originalButton.style.color = '#ea580c';
-                                            originalButton.querySelector('i').style.color = '#ea580c';
-                                            originalButton.querySelector('span').style.color = '#ea580c';
-                                        } else {
-                                            alert(data.message);
-                                            submitBtn.disabled = false;
-                                            submitBtn.innerHTML = 'Submit Payment';
+                            fetch(`/payments/${courseId}/process`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': csrfToken,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json'
+                                },
+                                body: formData
+                            })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        paymentModal.hide();
+                                        trackPendingPayment(courseId);
+                                        const originalButton = document.getElementById(`paymentBtn_${courseId}`);
+                                        if (!originalButton) {
+                                            return;
                                         }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error:', error);
-                                        alert('An error occurred. Please try again.');
+
+                                        originalButton.innerHTML = '<i class="fas fa-clock" style="color: #ff8c00;"></i> <span style="color: #ff8c00; font-weight: bold;">Payment Pending</span>';
+                                        originalButton.disabled = true;
+                                        originalButton.style.animation = 'successPulse 1s ease-in-out';
+                                        originalButton.style.backgroundColor = '#fff7ed';
+                                        originalButton.style.borderColor = '#fed7aa';
+                                        originalButton.style.color = '#ea580c';
+                                        originalButton.querySelector('i').style.color = '#ea580c';
+                                        originalButton.querySelector('span').style.color = '#ea580c';
+                                    } else {
+                                        alert(data.message);
                                         submitBtn.disabled = false;
                                         submitBtn.innerHTML = 'Submit Payment';
-                                    });
-                            });
-                        } else {
-                            alert(data.message || data.error || 'Payment options are not available for this course.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert(error.message || 'An error occurred. Please try again.');
-                    });
-            });
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('An error occurred. Please try again.');
+                                    submitBtn.disabled = false;
+                                    submitBtn.innerHTML = 'Submit Payment';
+                                });
+                        });
+                    } else {
+                        alert(data.message || data.error || 'Payment options are not available for this course.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert(error.message || 'An error occurred. Please try again.');
+                }).finally(() => { paymentOptionsLoading = false; });
         });
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        function updatePaymentButtonsForPendingPayments() {
-            Object.keys(localStorage).forEach(key => {
-                if (!key.startsWith('payment_pending_')) {
-                    return;
-                }
+        if (!coursesPageConfig.authUserId) return;
 
-                const courseId = key.replace('payment_pending_', '');
-
-                try {
-                    const pendingData = JSON.parse(localStorage.getItem(key));
-                    const timeDiff = Date.now() - pendingData.timestamp;
-
-                    if (timeDiff > 24 * 60 * 60 * 1000) {
-                        localStorage.removeItem(key);
-                        return;
-                    }
-                } catch (e) {
-                    // Old format.
-                }
-
-                const button = document.querySelector(`#paymentBtn_${courseId}`);
-                if (!button) {
-                    return;
-                }
-
-                const isAlreadyPending = button.hasAttribute('disabled');
-                const buttonText = button.textContent.trim();
-
-                if (buttonText.includes('Access Course') || buttonText.includes('Continue Learning') || button.href) {
-                    localStorage.removeItem(key);
-                    return;
-                }
-
-                if (buttonText.includes('Payment Pending')) {
-                    return;
-                }
-
-                if (!isAlreadyPending) {
-                    button.innerHTML = '<i class="fas fa-clock"></i><span style="color: #c2410c; margin-left: 8px; font-weight: bold;">Payment Pending</span>';
-                    button.classList.remove('btn-primary', 'show-payment-modal', 'enroll');
-                    button.classList.add('btn-warning');
-                    button.disabled = true;
-                    button.style.cursor = 'default';
-                    button.style.pointerEvents = 'none';
-                    button.style.opacity = '0.8';
-                }
-            });
-        }
-
+        // The server is authoritative; legacy browser keys from other accounts are ignored.
+        const pendingPayments = new Set((coursesPageConfig.pendingCourseIds || []).map(String));
         let paymentStatusPolling = null;
+        let paymentStatusRequest = null;
+        let paymentSessionExpired = false;
 
-        updatePaymentButtonsForPendingPayments();
-        startPaymentStatusPolling();
+        trackPendingPayment = function(courseId) {
+            pendingPayments.add(String(courseId));
+            updateButtonToPendingCourse(courseId);
+            startPaymentStatusPolling();
+        };
 
         function startPaymentStatusPolling() {
-            if (paymentStatusPolling) {
-                return;
-            }
-
-            paymentStatusPolling = setInterval(() => {
-                if (document.visibilityState === 'visible') {
-                    checkPaymentCompletions();
-                }
-            }, 5000);
+            if (paymentStatusPolling || paymentSessionExpired || !pendingPayments.size
+                || document.visibilityState !== 'visible') return;
+            paymentStatusPolling = setInterval(checkPaymentCompletions, 5000);
         }
 
         function stopPaymentStatusPolling() {
-            if (!paymentStatusPolling) {
-                return;
-            }
+            if (!paymentStatusPolling) return;
             clearInterval(paymentStatusPolling);
             paymentStatusPolling = null;
         }
@@ -1018,59 +892,57 @@
                 stopPaymentStatusPolling();
             }
         });
-
-        window.addEventListener('beforeunload', function() {
-            stopPaymentStatusPolling();
-        });
+        window.addEventListener('online', checkPaymentCompletions);
+        window.addEventListener('beforeunload', stopPaymentStatusPolling);
 
         function checkPaymentCompletions() {
-            const pendingPayments = [];
+            if (paymentSessionExpired || !pendingPayments.size || document.visibilityState !== 'visible'
+                || navigator.onLine === false) return Promise.resolve();
+            if (paymentStatusRequest) return paymentStatusRequest;
 
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('payment_pending_')) {
-                    pendingPayments.push(key.replace('payment_pending_', ''));
-                }
-            });
-
-            if (pendingPayments.length === 0) {
-                return;
-            }
-
-            fetch('/api/check-payment-status', {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 15000);
+            paymentStatusRequest = fetch('/api/check-payment-status', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ course_ids: pendingPayments })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        return;
+                signal: controller.signal,
+                body: JSON.stringify({ course_ids: [...pendingPayments] })
+            }).then(response => {
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 419) {
+                        paymentSessionExpired = true;
+                        stopPaymentStatusPolling();
                     }
-
-                    (data.pending_courses || []).forEach(courseId => {
-                        updateButtonToPendingCourse(courseId);
-                    });
-
-                    if ((data.rejected_courses || []).length > 0) {
-                        data.rejected_courses.forEach(courseId => {
-                            localStorage.removeItem(`payment_pending_${courseId}`);
-                            updateButtonToRejectedCourse(courseId);
-                        });
-                    }
-
-                    (data.completed_courses || []).forEach(courseId => {
-                        updateButtonToAccessCourse(courseId);
-                        localStorage.removeItem(`payment_pending_${courseId}`);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error checking payment status:', error);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            }).then(data => {
+                if (!data.success) return;
+                (data.pending_courses || []).forEach(updateButtonToPendingCourse);
+                (data.rejected_courses || []).forEach(courseId => {
+                    pendingPayments.delete(String(courseId));
+                    updateButtonToRejectedCourse(courseId);
                 });
+                (data.completed_courses || []).forEach(courseId => {
+                    pendingPayments.delete(String(courseId));
+                    updateButtonToAccessCourse(courseId);
+                });
+                if (!pendingPayments.size) stopPaymentStatusPolling();
+            }).catch(() => {
+                // Leave server-rendered pending state intact; a later check can retry.
+            }).finally(() => {
+                clearTimeout(timeout);
+                paymentStatusRequest = null;
+            });
+            return paymentStatusRequest;
         }
+
+        checkPaymentCompletions();
+        startPaymentStatusPolling();
 
         function updateButtonToPendingCourse(courseId) {
             const button = document.querySelector(`#paymentBtn_${courseId}`);
@@ -1096,7 +968,7 @@
 
             const newLink = document.createElement('a');
             newLink.href = `/topics/${courseId}`;
-            newLink.className = 'action-btn enroll enrolled';
+            newLink.className = 'action-btn continue';
             newLink.innerHTML = '<i class="fas fa-play"></i> <span>Access Course</span>';
             button.parentNode.replaceChild(newLink, button);
             newLink.style.animation = 'successPulse 0.8s ease-in-out';

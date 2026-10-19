@@ -21,6 +21,8 @@ use App\Http\Controllers\Notification\NotificationActionController;
 // Public routes
 Route::view('/', 'landing')->name('landing');
 Route::get('/courses', [CourseController::class, 'index'])->name('courses.index');
+// Course covers are part of the public catalogue; other uploads retain their existing protection.
+Route::get('/uploads/course-images/{path}', [\App\Http\Controllers\FileServeController::class, 'courseImage'])->where('path', '.*');
 Route::redirect('/home', '/courses', 301);
 Route::view('/terms', 'terms')->name('terms');
 Route::view('/privacy', 'privacy')->name('privacy');
@@ -292,9 +294,6 @@ Route::group([], function () {
 
     // Profile picture serving route (FIXED: Use correct storage location for secure_uploads disk)
     Route::get('/uploads/profile-pictures/{path}', [\App\Http\Controllers\FileServeController::class, 'profilePicture'])->where('path', '.*');
-
-    // Course image serving route (public access)
-    Route::get('/uploads/course-images/{path}', [\App\Http\Controllers\FileServeController::class, 'courseImage'])->where('path', '.*');
 
     // Question image serving route (public access)
     Route::get('/uploads/questions/{path}', [\App\Http\Controllers\FileServeController::class, 'questionImage'])->where('path', '.*');
