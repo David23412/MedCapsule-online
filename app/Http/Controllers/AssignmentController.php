@@ -242,12 +242,33 @@ class AssignmentController extends Controller
      */
     public function getProgress(Assignment $assignment)
     {
+        $viewer = auth()->user();
+        $canViewClass = $viewer->isAdmin()
+            || ($viewer->isTutor() && $viewer->courses()->where('courses.id', $assignment->course_id)->exists());
+        $canViewOwn = !$canViewClass && $viewer->isStudent() && $assignment->isAssignedToUser($viewer->id);
+        abort_unless($canViewClass || $canViewOwn, 403, 'You do not have access to this assignment progress.');
+
         try {
+            if (!$canViewClass) {
+                $assignment->load(['attempts' => function ($query) use ($viewer) {
+                    $query->where('user_id', $viewer->id);
+                }]);
+                $progress = $assignment->getUserProgressWithStatus($viewer);
+
+                return response()->json([
+                    'success' => true,
+                    'progress' => (float) $progress['percentage'],
+                    'status' => $progress['status'],
+                    'status_string' => $progress['status_string'],
+                ]);
+            }
+
             // Load assignment with necessary relationships + all attempts for N+1 prevention
             $assignment->load(['course:id,name', 'topic:id,name', 'attempts']);
             
             // Get all users assigned to this assignment with their progress
-            $assignmentUsers = $assignment->usersWithProgress()->get();
+            $assignmentUsers = $assignment->assignedUsers()->get();
+            $assignment->setRelation('assignedUsers', $assignmentUsers);
             
             $students = [];
             $completedCount = 0;
