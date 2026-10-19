@@ -33,11 +33,12 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
 
         var el = document.createElement('div');
         el.className = 'notification ' + type;
+        const escapeText = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
         el.innerHTML =
             '<div class="notification-icon"><i class="fas ' + ICONS[type] + '"></i></div>' +
             '<div class="notification-content">' +
-                '<div class="notification-title">' + title + '</div>' +
-                (message ? '<div class="notification-message">' + message + '</div>' : '') +
+                '<div class="notification-title">' + escapeText(title) + '</div>' +
+                (message ? '<div class="notification-message">' + escapeText(message) + '</div>' : '') +
             '</div>' +
             '<div class="notification-progress"><div class="notification-progress-bar"></div></div>' +
             '<button class="notification-close" aria-label="Close"><i class="fas fa-times"></i></button>';
@@ -75,6 +76,17 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
 })();
 
         $(document).ready(function() {
+            const tabNames = {'access': 'access', 'payment-history': 'payments', 'video-management': 'videos'};
+            document.querySelectorAll('#manageTabs button[data-bs-toggle="tab"]').forEach(button => {
+                button.addEventListener('shown.bs.tab', () => {
+                    const panel = button.getAttribute('data-bs-target').slice(1);
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('tab', tabNames[panel] || panel);
+                    window.history.replaceState(null, '', url);
+                    $('#manageSectionDescription').text(MANAGE_ACCESS_CONFIG.tabDescriptions?.[panel] || '');
+                });
+            });
+
             function normalizeRole(role) {
                 const parsedRole = Number.parseInt(role, 10);
                 return Number.isNaN(parsedRole) ? 0 : parsedRole;
@@ -206,6 +218,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                             email: user.email,
                             number: user.number,
                             role: normalizeRole(user.role),
+                            is_mentored: user.is_mentored,
                             security_status: normalizeSecurityStatus(user.security_status)
                         };
                     })
@@ -260,6 +273,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     const securityStatus = normalizeSecurityStatus(user.security_status);
                     existingOption
                         .text(optionText)
+                        .attr('data-mentored', (user.is_mentored === true || user.is_mentored === 1 || user.is_mentored === '1') ? '1' : '0')
                         .attr('data-name', user.name || '')
                         .attr('data-email', user.email || '')
                         .attr('data-number', user.number || '')
@@ -276,7 +290,8 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 const option = new Option(optionText, user.id, true, true);
                 const securityStatus = normalizeSecurityStatus(user.security_status);
                 $(option)
-                    .attr('data-name', user.name || '')
+                    .attr('data-mentored', (user.is_mentored === true || user.is_mentored === 1 || user.is_mentored === '1') ? '1' : '0')
+                        .attr('data-name', user.name || '')
                     .attr('data-email', user.email || '')
                     .attr('data-number', user.number || '')
                     .attr('data-role', normalizeRole(user.role))
@@ -292,79 +307,69 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             // Initialize Select2 for user search - FIXED: Show all users without typing
             $('.user-select').select2(select2UserSearchConfig('Type to search for user...'));
             
-            // GRANT ACCESS BUTTON HANDLER
-            $('#grantAccessBtn').on('click', function(e) {
-                e.preventDefault();
-                
+            let accessBusy = false;
+            let accessLoadedFor = null;
+            let accessLoadRequest = null;
+
+            function updateAccessControls() {
                 const userId = $('#user_id').val();
                 const courseId = $('#course_id').val();
-                
-                if (!userId || !courseId) {
-                    showNotification('warning', 'Missing Selection', 'Please select both a user and a course first.');
-                    return;
+                const ready = !accessBusy && userId && accessLoadedFor === String(userId) && courseId;
+                const selected = $('#course_id option:selected');
+                const enrolled = selected.attr('data-enrolled') === 'true';
+                const preview = selected.attr('data-access-level') === 'preview';
+                $('#grantAccessBtn').prop('disabled', !ready || (enrolled && !preview));
+                $('#revokeAccessBtn').prop('disabled', !ready || !enrolled);
+                if (accessBusy) return;
+                $('#grantAccessBtn').html('<i class="fas fa-user-plus me-2"></i>' + (preview ? 'Grant Full Course Access' : 'Grant Course Access'));
+                $('#revokeAccessBtn').html('<i class="fas fa-user-times me-2"></i>Revoke Course Access');
+                if (!userId) {
+                    $('#accessSelectionSummary').text('1. Choose a user. 2. Choose a course. 3. Review their access below.');
+                } else if (accessLoadedFor !== String(userId)) {
+                    $('#accessSelectionSummary').text('Load course access before making changes.');
+                } else if (!courseId) {
+                    $('#accessSelectionSummary').text('Choose a course to see this user’s current access.');
+                } else {
+                    const status = enrolled ? (preview ? 'Preview access' : 'Full course access') : 'Not enrolled';
+                    $('#accessSelectionSummary').text($('#user_id option:selected').attr('data-name') + ' · ' + selected.attr('data-course-name') + ' — ' + status);
                 }
-                
-                var btn = $(this);
-                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
-                
+            }
+
+            function changeCourseAccess(grant) {
+                if (accessBusy) return;
+                const userId = $('#user_id').val();
+                const courseId = $('#course_id').val();
+                const button = grant ? $('#grantAccessBtn') : $('#revokeAccessBtn');
+                if (!userId || !courseId || button.prop('disabled')) return;
+                accessBusy = true;
+                $('#grantAccessBtn, #revokeAccessBtn, #user_id, #course_id').prop('disabled', true);
+                button.html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
                 $.ajax({
-                    url: '/manage-access/enroll',
+                    url: grant ? '/manage-access/enroll' : '/manage-access/revoke',
                     method: 'POST',
-                    data: {
-                        user_id: userId,
-                        course_id: courseId,
-                        _token: MANAGE_ACCESS_CONFIG.csrfToken
-                    },
+                    data: {user_id: userId, course_id: courseId, _token: MANAGE_ACCESS_CONFIG.csrfToken},
                     success: function(response) {
-                        showNotification('success', 'Access Granted!', response.message || 'User has been successfully enrolled in the course.');
+                        if (!response.success) {
+                            showNotification('error', 'Access Not Updated', response.message || 'Please try again.');
+                            return;
+                        }
+                        showNotification(grant ? 'success' : 'warning', grant ? 'Access Granted' : 'Access Revoked', response.message);
                         refreshEnrollmentData();
                     },
                     error: function(xhr) {
-                        var msg = xhr.responseJSON?.message || 'Failed to grant access. Please try again.';
-                        showNotification('error', 'Enrollment Failed', msg);
+                        showNotification('error', 'Access Not Updated', xhr.responseJSON?.message || 'Please try again.');
                     },
                     complete: function() {
-                        btn.prop('disabled', false).html('<i class="fas fa-user-plus me-2"></i>Grant Access');
+                        accessBusy = false;
+                        $('#user_id').prop('disabled', false);
+                        updateCourseDropdown(userId, courseId);
                     }
                 });
-            });
-            
-            // REVOKE ACCESS BUTTON HANDLER
-            $('#revokeAccessBtn').on('click', function(e) {
-                e.preventDefault();
-                
-                const userId = $('#user_id').val();
-                const courseId = $('#course_id').val();
-                
-                if (!userId || !courseId) {
-                    showNotification('warning', 'Missing Selection', 'Please select both a user and a course first.');
-                    return;
-                }
-                
-                var btn = $(this);
-                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Processing...');
-                
-                $.ajax({
-                    url: '/manage-access/revoke',
-                    method: 'POST',
-                    data: {
-                        user_id: userId,
-                        course_id: courseId,
-                        _token: MANAGE_ACCESS_CONFIG.csrfToken
-                    },
-                    success: function(response) {
-                        showNotification('warning', 'Access Revoked', response.message || 'User access has been successfully revoked.');
-                        refreshEnrollmentData();
-                    },
-                    error: function(xhr) {
-                        var msg = xhr.responseJSON?.message || 'Failed to revoke access. Please try again.';
-                        showNotification('error', 'Revoke Failed', msg);
-                    },
-                    complete: function() {
-                        btn.prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Access');
-                    }
-                });
-            });
+            }
+            $('#grantAccessBtn').on('click', function() { changeCourseAccess(true); });
+            $('#revokeAccessBtn').on('click', function() { changeCourseAccess(false); });
+            $('#course_id').on('change', updateAccessControls);
+            $('#retryAccessStatus').on('click', function() { updateCourseDropdown($('#user_id').val()); });
 
             let currentSubjectLockRows = [];
 
@@ -542,7 +547,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     const userOption = $(this).find('option:selected');
 
                     if (userId) {
-                        const userName = userOption.text();
+                        const userName = userOption.attr('data-name') || userOption.text();
                         const userEmail = userOption.data('email');
                         const userNumber = userOption.data('number');
                         const userRole = userOption.data('role');
@@ -563,11 +568,14 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         $('#selectedUserRole').removeClass().addClass('badge').addClass(safeUserRole === 1 ? 'bg-danger' : 'bg-secondary').text(displayRole);
                         $('#selectedUserSecurity').html(securityBadgeHtml(securityStatus) + ' <span class="text-muted">' + escHtml(securityDetailText(securityStatus)) + '</span>');
                         $('#userInfoSection').show();
+                        $('#mentorshipToggleWrapper').show();
+                        $('#mentorshipStatusToggle').prop('checked', userOption.attr('data-mentored') === '1');
 
                         // Update course dropdown with enrollment status
                         updateCourseDropdown(userId);
                     } else {
                         $('#userInfoSection').hide();
+                        $('#mentorshipToggleWrapper').hide();
                         $('#selectedUserNumber').text('');
                         $('#selectedUserSecurity').empty();
                         // Reset course dropdown
@@ -580,55 +588,67 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 }
             });
             
-            // Function to update course dropdown with enrollment status
-            function updateCourseDropdown(userId) {
-                $.ajax({
+            // Ignore responses for a previous user and preserve the course after saving.
+            function updateCourseDropdown(userId, selectedCourseId = '') {
+                accessLoadedFor = null;
+                if (accessLoadRequest) accessLoadRequest.abort();
+                $('#retryAccessStatus').prop('hidden', true);
+                const courseSelect = $('#course_id');
+                courseSelect.prop('disabled', true).empty().append(new Option('Loading course access...', ''));
+                updateAccessControls();
+                $('#accessSelectionSummary').text('Loading current course access...');
+                accessLoadRequest = $.ajax({
                     url: '/manage-access/user-enrollments',
                     method: 'GET',
-                    data: { user_id: userId },
+                    data: {user_id: userId},
                     success: function(response) {
-                        if (response.success) {
-                            const courseSelect = $('#course_id');
-                            courseSelect.empty();
-                            courseSelect.append('<option value="">Choose course...</option>');
-                            
-                            response.courses.forEach(function(course) {
-                                const isEnrolled = course.is_enrolled;
-                                const statusBadge = isEnrolled ? 
-                                    '<span class="badge bg-success">✓ Enrolled</span>' : 
-                                    '<span class="badge bg-secondary">✗ Not Enrolled</span>';
-                                
-                                const priceText = course.formatted_price ? `(${course.formatted_price})` : '';
-                                
-                                courseSelect.append(`
-                                    <option value="${course.id}" data-enrolled="${isEnrolled}" data-price="${course.price}">
-                                        ${course.name} ${priceText} - ${statusBadge}
-                                    </option>
-                                `);
-                            });
+                        if (String($('#user_id').val()) !== String(userId)) return;
+                        if (!response.success || !Array.isArray(response.courses)) {
+                            showAccessLoadError();
+                            return;
                         }
+                        courseSelect.empty().append(new Option('Choose a course...', ''));
+                        response.courses.forEach(function(course) {
+                            const enrolled = course.is_enrolled === true || course.is_enrolled === 1 || course.is_enrolled === '1';
+                            const status = enrolled ? (course.access_level === 'preview' ? 'Preview access' : 'Full access') : 'Not enrolled';
+                            const option = new Option(course.name + ' — ' + status, course.id);
+                            $(option).attr('data-enrolled', String(enrolled)).attr('data-access-level', course.access_level || '')
+                                .attr('data-course-name', course.name).attr('data-price', course.price);
+                            courseSelect.append(option);
+                        });
+                        accessLoadedFor = String(userId);
+                        courseSelect.prop('disabled', false).val(selectedCourseId);
+                        updateAccessControls();
                     },
-                    error: function(xhr) {
-                        console.error('Failed to load user enrollments:', xhr.responseText);
-                        resetCourseDropdown();
+                    error: function(xhr, status) {
+                        if (status === 'abort' || String($('#user_id').val()) !== String(userId)) return;
+                        showAccessLoadError();
                     }
                 });
             }
-            
-            // Function to reset course dropdown
-            function resetCourseDropdown() {
-                const courseSelect = $('#course_id');
-                courseSelect.empty();
-                courseSelect.append('<option value="">Choose course...</option>');
 
-                // Populate course options from config
-                if (MANAGE_ACCESS_CONFIG.courseOptions && MANAGE_ACCESS_CONFIG.courseOptions.length > 0) {
-                    MANAGE_ACCESS_CONFIG.courseOptions.forEach(function(course) {
-                        courseSelect.append('<option value="' + course.id + '" data-price="' + course.price + '">' + course.name + ' (' + course.formattedPrice + ')</option>');
-                    });
-                }
+            function showAccessLoadError() {
+                accessLoadedFor = null;
+                $('#course_id').prop('disabled', true).empty().append(new Option('Course access unavailable', ''));
+                updateAccessControls();
+                $('#accessSelectionSummary').text('Could not load course access. Retry to continue.');
+                $('#retryAccessStatus').prop('hidden', false);
             }
-            
+
+            function resetCourseDropdown() {
+                accessLoadedFor = null;
+                if (accessLoadRequest) accessLoadRequest.abort();
+                $('#course_id').prop('disabled', true).empty().append(new Option('Choose a user first...', ''));
+                $('#retryAccessStatus').prop('hidden', true);
+                updateAccessControls();
+            }
+            resetCourseDropdown();
+
+            $('#user_id').on('select2:select', function(event) {
+                ensureSelectedOption($(this), event.params.data);
+                $(this).trigger('change');
+            });
+
             // Initialize Admin User Select2
             $('.admin-user-select').select2(select2UserSearchConfig('Type to search for user...'));
 
@@ -739,7 +759,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                             }
 
                             // Update the data-mentored attribute on the option so it persists during current session
-                            $('#user_id option:selected').data('mentored', isChecked ? '1' : '0');
+                            $('#user_id option[value="' + userId + '"]').attr('data-mentored', isChecked ? '1' : '0').data('mentored', isChecked ? '1' : '0');
                             
                             // Refresh the table to show the new 0/1 status
                             refreshEnrollmentData();

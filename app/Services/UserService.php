@@ -579,7 +579,7 @@ class UserService
                     $join->on('courses.id', '=', 'course_user.course_id')
                          ->where('course_user.user_id', '=', $userId);
                 })
-                ->selectRaw('courses.id, courses.name, courses.price, COALESCE(course_user.is_enrolled, 0) as is_enrolled')
+                ->selectRaw('courses.id, courses.name, courses.price, COALESCE(course_user.is_enrolled, 0) as is_enrolled, course_user.access_level')
                 ->orderBy('courses.name', 'asc')
                 ->get()
                 ->map(function ($course) {
@@ -587,7 +587,8 @@ class UserService
                         'id' => $course->id,
                         'name' => $course->name,
                         'price' => $course->price,
-                        'is_enrolled' => (bool) $course->is_enrolled
+                        'is_enrolled' => (bool) $course->is_enrolled,
+                        'access_level' => $course->is_enrolled ? ($course->access_level ?: User::COURSE_ACCESS_FULL) : null,
                     ];
                 });
 

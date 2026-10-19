@@ -1,5 +1,6 @@
 @php
     $activeTab = match (request()->query('tab')) {
+        'mentorship' => 'mentorship',
         'payments' => 'payment-history',
         'survey-results' => 'survey-results',
         'scheduler-quality' => 'scheduler-quality',
@@ -9,6 +10,17 @@
         'payment-settings', 'settings' => 'settings',
         default => 'access',
     };
+    $tabDescriptions = [
+        'access' => 'Choose a user and course to review access. Account permissions are managed separately.',
+        'preview-topics' => 'Choose which topics students can open with preview access.',
+        'payment-history' => 'Find payments and review their status.',
+        'survey-results' => 'Review student feedback and individual survey responses.',
+        'mentorship' => 'Review mentored students and their learning progress.',
+        'scheduler-quality' => 'Review learning scheduler performance and coverage.',
+        'security-watchlist' => 'Review flagged accounts and resolve security locks.',
+        'video-management' => 'Add course videos and manage existing recordings.',
+        'settings' => 'Manage topic visibility, payment options, and course display settings.',
+    ];
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -1785,8 +1797,8 @@
         <div class="container">
             <div class="header-shell">
                 <div>
-                    <h2 class="page-title mb-1">User Management</h2>
-                    <p class="page-subtitle mb-0">Grant access • Manage admins • Track payments</p>
+                    <h2 class="page-title mb-1">Manage Access</h2>
+                    <p class="page-subtitle mb-0">Manage course access, account permissions, and platform settings</p>
                 </div>
                 <div class="header-actions">
                     <a href="{{ route('courses.index') }}" class="header-btn back-btn">
@@ -1815,6 +1827,9 @@
         @endif
 
         <!-- Enhanced Stats Dashboard -->
+        <details class="card mb-3" id="platformOverview">
+            <summary class="p-3 fw-semibold" style="cursor: pointer;">Platform overview <span class="fw-normal text-muted ms-2">User totals and system health</span></summary>
+            <div class="p-3 pt-0">
         <div class="row stats-row g-3">
             <div class="col-xl col-md-6 col-sm-6">
                 <div class="stat-card">
@@ -1931,6 +1946,9 @@
             </div>
         </div>
 
+            </div>
+        </details>
+
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs" id="manageTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -1940,7 +1958,7 @@
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $activeTab === 'preview-topics' ? 'active' : '' }}" id="preview-topics-tab" data-bs-toggle="tab" data-bs-target="#preview-topics" type="button" role="tab">
-                    <i class="fas fa-eye me-2"></i>Preview Topics
+                    <i class="fas fa-eye me-2"></i>Course Previews
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -1954,7 +1972,7 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="mentorship-tab" data-bs-toggle="tab" data-bs-target="#mentorship" type="button" role="tab">
+                <button class="nav-link {{ $activeTab === 'mentorship' ? 'active' : '' }}" id="mentorship-tab" data-bs-toggle="tab" data-bs-target="#mentorship" type="button" role="tab">
                     <i class="fas fa-user-graduate me-2"></i>Mentorship
                 </button>
             </li>
@@ -1985,6 +2003,7 @@
             </li>
         </ul>
 
+        <p class="text-muted mt-3 mb-3" id="manageSectionDescription" role="status" aria-live="polite">{{ $tabDescriptions[$activeTab] }}</p>
         <!-- Tab Content -->
         <div class="tab-content" id="manageTabContent">
             <!-- User Access Tab -->
@@ -1995,7 +2014,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <div>
-                                    <i class="fas fa-search me-2"></i>Search Users & Courses
+                                    <i class="fas fa-search me-2"></i>Course Access
                                 </div>
                                 <span class="badge bg-info" data-tooltip="Search and view user and course information">
                                     <i class="fas fa-info-circle"></i>
@@ -2003,8 +2022,8 @@
                             </div>
                             <div class="card-body">
                                 <div class="mb-3">
-                                    <label class="form-label">
-                                        <i class="fas fa-user me-1"></i>Search Users
+                                    <label class="form-label" for="user_id">
+                                        <i class="fas fa-user me-1"></i>1. Choose a user
                                     </label>
                                     <select class="form-control user-select" id="user_id" name="user_id">
                                         <option value="">Type to search for user...</option>
@@ -2026,10 +2045,10 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label class="form-label">
-                                        <i class="fas fa-graduation-cap me-1"></i>Search Courses
+                                    <label class="form-label" for="course_id">
+                                        <i class="fas fa-graduation-cap me-1"></i>2. Choose a course
                                     </label>
-                                    <select class="form-select" id="course_id" name="course_id">
+                                    <select class="form-select" id="course_id" name="course_id" disabled aria-describedby="accessSelectionSummary">
                                         <option value="">Choose course...</option>
                                         @if(isset($courses) && $courses->count() > 0)
                                             @foreach($courses as $course)
@@ -2047,24 +2066,26 @@
                                     </div>
                                 </div>
 
-                                <div class="mt-2 d-flex align-items-center justify-content-between p-2 border rounded bg-light mb-3" id="mentorshipToggleWrapper" style="display: none;">
+                                <div class="border rounded p-3 mb-3" role="status" aria-live="polite" id="accessSelectionSummary">1. Choose a user. 2. Choose a course. 3. Review their access below.</div>
+                                <button type="button" id="retryAccessStatus" class="btn btn-outline-secondary btn-sm mb-3" hidden>Retry loading access</button>
+                                <div class="quick-actions mb-3">
+                                    <button type="button" class="btn btn-primary w-100 mb-2" id="grantAccessBtn" disabled>
+                                        <i class="fas fa-user-plus me-2"></i>Grant Course Access
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger w-100" id="revokeAccessBtn" disabled>
+                                        <i class="fas fa-user-times me-2"></i>Revoke Course Access
+                                    </button>
+                                </div>
+
+                                <div class="mt-2 align-items-center justify-content-between p-2 border rounded bg-light mb-3" id="mentorshipToggleWrapper" style="display: none;">
                                     <div>
                                         <i class="fas fa-user-graduate me-2 text-primary"></i>
                                         <strong>Mentorship Program</strong>
-                                        <div class="small text-muted">Direct Enrollment Status (0/1)</div>
+                                        <div class="small text-muted">Enable or remove mentorship for this user</div>
                                     </div>
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="mentorshipStatusToggle" style="transform: scale(1.4); cursor: pointer;">
                                     </div>
-                                </div>
-
-                                <div class="quick-actions mb-3">
-                                    <button type="button" class="btn btn-primary w-100 mb-2" id="grantAccessBtn">
-                                        <i class="fas fa-user-plus me-2"></i>Grant Course Access
-                                    </button>
-                                    <button type="button" class="btn btn-outline-danger w-100" id="revokeAccessBtn">
-                                        <i class="fas fa-user-times me-2"></i>Revoke Course Access
-                                    </button>
                                 </div>
 
                                 <!-- User Info Display -->
@@ -2096,7 +2117,7 @@
                         <div class="card">
                             <div class="card-header">
                                 <div>
-                                    <i class="fas fa-user-shield me-2"></i>Admin Management
+                                    <i class="fas fa-user-shield me-2"></i>Account Permissions
                                 </div>
                                 <span class="badge bg-warning text-dark" data-tooltip="Manage administrator privileges">
                                     <i class="fas fa-crown"></i> {{ isset($userStats) ? ($userStats['admin_users'] ?? 0) : 0 }}
@@ -2140,12 +2161,12 @@
                                     
                                     <div class="row g-2">
                                         <div class="col-6">
-                                            <button type="button" class="btn btn-success w-100" id="promoteToAdminBtn">
+                                            <button type="button" class="btn btn-success w-100" id="promoteToAdminBtn" disabled>
                                                 <i class="fas fa-user-shield me-2"></i>Promote to Admin
                                             </button>
                                         </div>
                                         <div class="col-6">
-                                            <button type="button" class="btn btn-danger w-100" id="removeAdminBtn">
+                                            <button type="button" class="btn btn-danger w-100" id="removeAdminBtn" disabled>
                                                 <i class="fas fa-user-times me-2"></i>Revoke Admin
                                             </button>
                                         </div>
@@ -2567,7 +2588,7 @@
             </div>
 
             <!-- Mentorship Tab -->
-            <div class="tab-pane fade" id="mentorship" role="tabpanel">
+            <div class="tab-pane fade {{ $activeTab === 'mentorship' ? 'show active' : '' }}" id="mentorship" role="tabpanel">
                 <!-- Mentorship Stats -->
                 <div class="row g-3 mb-4" id="mentorship-stats-container">
                     <div class="col-md-3">
@@ -3175,6 +3196,7 @@
         window.MANAGE_ACCESS_CONFIG = {
             csrfToken: '{{ csrf_token() }}',
             activeTab: '{{ $activeTab ?? "" }}',
+            tabDescriptions: @json($tabDescriptions),
             studentProfileBaseUrl: '{{ url('/tutor/student') }}',
             deleteUserBaseUrl: '{{ url('/admin/delete/user') }}',
             routes: {
@@ -3200,7 +3222,7 @@
             ) !!}
         };
     </script>
-    <script src="{{ asset('js/admin-manage-access.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-manage-access.js') }}"></script>
 
     <script>
         $(document).ready(function() {
