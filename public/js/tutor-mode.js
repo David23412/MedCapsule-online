@@ -696,15 +696,16 @@ function initializeHighlighting() {
     normalizeQuestionTextNodes();
 
     // Load saved highlights from localStorage
-    const savedHighlights = localStorage.getItem('tutorModeHighlights');
-    if (savedHighlights) {
-        try {
-            highlights = JSON.parse(savedHighlights);
+    try {
+        const savedHighlights = localStorage.getItem('tutorModeHighlights');
+        if (savedHighlights) {
+            const parsed = JSON.parse(savedHighlights);
+            highlights = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
             restoreHighlights();
             console.log('📚 Loaded saved highlights:', highlights);
-        } catch (e) {
-            console.error('Failed to load highlights:', e);
         }
+    } catch (e) {
+        console.warn('Saved highlights are unavailable:', e);
     }
 
     // Handle text selection - add to question cards specifically
@@ -719,7 +720,7 @@ function initializeHighlighting() {
 
     // Hide toolbar when clicking outside
     document.addEventListener('mousedown', function (e) {
-        if (!highlightToolbar.contains(e.target) && !e.target.closest('.question-text')) {
+        if (highlightToolbar && !highlightToolbar.contains(e.target) && !e.target.closest('.question-text')) {
             console.log('📋 Clicking outside toolbar - hiding');
             hideToolbar();
         }
@@ -958,7 +959,11 @@ function persistQuestionHighlights(questionId, questionElement, intervals) {
         delete highlights[questionId];
     }
 
-    localStorage.setItem('tutorModeHighlights', JSON.stringify(highlights));
+    try {
+        localStorage.setItem('tutorModeHighlights', JSON.stringify(highlights));
+    } catch (e) {
+        console.warn('Highlights will only be kept for this page:', e);
+    }
 }
 
 function restoreHighlights() {
@@ -2276,8 +2281,11 @@ document.addEventListener('visibilitychange', function () {
 // KEYBOARD ARROW NAVIGATION (Left / Right to switch questions)
 // ============================================================
 document.addEventListener('keydown', function (e) {
+    if (e.defaultPrevented || e.isComposing || e.keyCode === 229 || e.ctrlKey || e.metaKey || e.altKey) return;
     // Don't intercept when typing in inputs/selects or when edit modal is open
     const tag = (e.target.tagName || '').toLowerCase();
+    if (e.target.isContentEditable || tag === 'button' || tag === 'a' || e.target.closest?.('button, a')) return;
+    if (tag === 'textarea' && e.shiftKey && e.key === 'Enter') return;
     if (document.getElementById('edit-question-overlay')?.classList.contains('show')) return;
     const activeQuestionCard = document.getElementById(`question-${currentQuestionIndex}`);
 
@@ -2305,10 +2313,6 @@ document.addEventListener('keydown', function (e) {
 
             if (isCheckVisible) {
                 e.preventDefault();
-
-                if (isTypingInTextarea && e.shiftKey) {
-                    return;
-                }
 
                 const questionId = getQuestionIdFromCard(activeQuestionCard);
                 const questionNumber = getQuestionNumberFromCard(activeQuestionCard);
