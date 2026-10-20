@@ -94,7 +94,8 @@ class UserCourseController extends Controller
         $user = User::findOrFail($request->validated('user_id'));
         $course = Course::findOrFail($request->validated('course_id'));
 
-        $result = $this->userCourseService->revokeUserAccess($user, $course);
+        $result = $this->userCourseService->revokeUserAccess($user, $course,
+            $request->has('is_enrolled') ? $request->boolean('is_enrolled') : null);
 
         return response()->json($result, $result['success'] ? 200 : 400);
     }
@@ -263,7 +264,7 @@ class UserCourseController extends Controller
     public function toggleAdmin(ToggleAdminRequest $request)
     {
         $user = User::findOrFail($request->validated('user_id'));
-        $result = $this->userService->toggleAdminRole($user, auth()->user());
+        $result = $this->userService->toggleAdminRole($user, auth()->user(), $request->validated('action'));
 
         return response()->json($result, $result['success'] ? 200 : 400);
     }

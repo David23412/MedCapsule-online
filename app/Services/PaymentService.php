@@ -187,12 +187,18 @@ class PaymentService
             $payments = $query->orderBy('created_at', 'desc')
                              ->paginate($perPage, ['*'], 'page', $page);
 
-            // Calculate payment statistics
+            // Count settled revenue separately from requests awaiting review, in one query.
+            $totals = Payment::query()->selectRaw("
+                COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) AS total_revenue,
+                COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed_count,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_count,
+                COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejected_count
+            ")->first();
             $stats = [
-                'total_revenue' => Payment::whereIn('status', ['completed', 'pending'])->sum('amount'),
-                'completed_count' => Payment::where('status', 'completed')->count(),
-                'pending_count' => Payment::where('status', 'pending')->count(),
-                'rejected_count' => Payment::where('status', 'rejected')->count(),
+                'total_revenue' => (float) $totals->total_revenue,
+                'completed_count' => (int) $totals->completed_count,
+                'pending_count' => (int) $totals->pending_count,
+                'rejected_count' => (int) $totals->rejected_count,
             ];
 
             // Transform payment data for frontend

@@ -19,18 +19,26 @@ class UserService
      * @param User $admin
      * @return array
      */
-    public function toggleAdminRole(User $user, User $admin): array
+    public function toggleAdminRole(User $user, User $admin, ?string $action = null): array
     {
         if ($user->id === $admin->id) {
             return ['success' => false, 'message' => 'Admins cannot change their own role.'];
         }
 
         try {
-            $newRole = $user->isAdmin() ? User::ROLE_STUDENT : User::ROLE_ADMIN;
+            $newRole = DB::transaction(function () use ($user, $action) {
+                $current = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $role = match ($action) {
+                    'grant', 'promote' => User::ROLE_ADMIN,
+                    'revoke' => $current->isAdmin() ? User::ROLE_STUDENT : $current->role,
+                    default => $current->isAdmin() ? User::ROLE_STUDENT : User::ROLE_ADMIN,
+                };
+                $current->update(['role' => $role]);
+                return $role;
+            }, 3);
             $user->role = $newRole;
-            $user->save();
 
-            $roleName = $user->isAdmin() ? 'Admin' : 'Student';
+            $roleName = $user->isAdmin() ? 'Admin' : ($user->isTutor() ? 'Tutor' : 'Student');
 
 
             return [

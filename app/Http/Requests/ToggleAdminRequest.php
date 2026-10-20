@@ -25,6 +25,7 @@ class ToggleAdminRequest extends FormRequest
     {
         return [
             'user_id' => 'required|integer|exists:users,id',
+            'action' => 'sometimes|string|in:grant,promote,revoke',
         ];
     }
 }

@@ -20,9 +20,10 @@ class NotificationActionController extends Controller
      */
     public function markAsRead(Request $request): JsonResponse
     {
+        $validated = $request->validate(['notification_id' => 'required|string|max:100']);
         try {
             $user = auth()->user();
-            $notificationId = $request->get('notification_id');
+            $notificationId = $validated['notification_id'];
             
             $success = UniversalNotificationService::markAsRead($user, $notificationId);
             $unreadCount = UniversalNotificationService::getUnreadCount($user);
@@ -70,9 +71,10 @@ class NotificationActionController extends Controller
      */
     public function deleteNotification(Request $request): JsonResponse
     {
+        $validated = $request->validate(['notification_id' => 'required|string|max:100']);
         try {
             $user = auth()->user();
-            $notificationId = $request->get('notification_id');
+            $notificationId = $validated['notification_id'];
             
             $success = UniversalNotificationService::deleteNotification($user, $notificationId);
             

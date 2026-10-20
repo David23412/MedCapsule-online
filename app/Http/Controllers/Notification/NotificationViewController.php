@@ -19,9 +19,10 @@ class NotificationViewController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $validated = $request->validate(['limit' => 'sometimes|integer|between:1,100']);
         try {
             $user = auth()->user();
-            $limit = $request->get('limit', 100);
+            $limit = (int) ($validated['limit'] ?? 100);
 
             return response()->json([
                 'success' => true,

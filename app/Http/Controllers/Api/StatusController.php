@@ -20,7 +20,11 @@ class StatusController extends Controller
 
     public function checkEnrollmentStatus(Request $request): JsonResponse
     {
-        $courseIds = array_filter((array) $request->input('course_ids', []));
+        $validated = $request->validate([
+            'course_ids' => 'sometimes|array|max:200',
+            'course_ids.*' => 'required|integer|min:1',
+        ]);
+        $courseIds = array_values(array_unique($validated['course_ids'] ?? []));
         $userId = auth()->id();
 
         if (!$userId || empty($courseIds)) {
@@ -30,8 +34,8 @@ class StatusController extends Controller
         $enrollments = DB::table('course_user')
             ->where('user_id', $userId)
             ->whereIn('course_id', $courseIds)
-            ->whereNotNull('enrolled_at')
-            ->pluck('enrolled_at', 'course_id')
+            ->where('is_enrolled', true)
+            ->pluck('is_enrolled', 'course_id')
             ->toArray();
 
         $changes = array_map(static function ($courseId) use ($enrollments): array {
@@ -49,7 +53,11 @@ class StatusController extends Controller
 
     public function checkPaymentStatus(Request $request): JsonResponse
     {
-        $courseIds = array_filter((array) $request->input('course_ids', []));
+        $validated = $request->validate([
+            'course_ids' => 'sometimes|array|max:200',
+            'course_ids.*' => 'required|integer|min:1',
+        ]);
+        $courseIds = array_values(array_unique($validated['course_ids'] ?? []));
         $userId = auth()->id();
 
         if (!$userId || empty($courseIds)) {

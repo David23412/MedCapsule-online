@@ -1,5 +1,7 @@
 const MANAGE_ACCESS_CONFIG = window.MANAGE_ACCESS_CONFIG || {};
 const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
+// Admin controls must recover when a request stalls.
+$.ajaxSetup({timeout: 15000});
 
 // ── Unified Notification System (global scope) ─────────────────────────
 (function () {
@@ -347,7 +349,8 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 $.ajax({
                     url: grant ? '/manage-access/enroll' : '/manage-access/revoke',
                     method: 'POST',
-                    data: {user_id: userId, course_id: courseId, _token: MANAGE_ACCESS_CONFIG.csrfToken},
+                    timeout: 12000,
+                    data: {user_id: userId, course_id: courseId, is_enrolled: grant ? 1 : 0, _token: MANAGE_ACCESS_CONFIG.csrfToken},
                     success: function(response) {
                         if (!response.success) {
                             showNotification('error', 'Access Not Updated', response.message || 'Please try again.');
@@ -659,6 +662,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             // Admin Management Variables
             let selectedAdminUserId = null;
             let selectedAdminIsAdmin = false;
+            let adminRoleBusy = false;
             let selectedAdminSecurityStatus = normalizeSecurityStatus();
             
             // Admin user selection handler
@@ -782,6 +786,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             $('#promoteToAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
+                if (adminRoleBusy) return;
                 if (!selectedAdminUserId || selectedAdminIsAdmin === true) {
                     showNotification('warning', 'Invalid Action', 'Please select a non-admin user to promote.');
                     return;
@@ -791,6 +796,8 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     return;
                 }
                 
+                adminRoleBusy = true;
+                $('#admin_user_id, #promoteToAdminBtn, #removeAdminBtn').prop('disabled', true);
                 var btn = $(this);
                 btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Promoting...').prop('disabled', true);
                 
@@ -799,7 +806,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     method: 'POST',
                     data: {
                         user_id: selectedAdminUserId,
-                        action: 'promote',
+                        action: 'grant',
                         _token: MANAGE_ACCESS_CONFIG.csrfToken
                     },
                     success: function(response) {
@@ -807,7 +814,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                             showNotification('success', 'Admin Promoted!', response.message || 'User promoted to administrator successfully.');
                             // Update UI in place
                             selectedAdminIsAdmin = true;
-                            $('#admin_user_id').find('option:selected').attr('data-role', 1);
+                            $('#admin_user_id').find('option:selected').attr('data-role', 1).data('role', 1);
                             $('#selectedAdminUserStatus').removeClass('bg-secondary').addClass('bg-danger').text('ADMIN');
                             btn.prop('disabled', true).html('<i class="fas fa-check me-2"></i>Already Admin');
                             $('#removeAdminBtn').prop('disabled', false).html('<i class="fas fa-user-times me-2"></i>Revoke Admin');
@@ -820,6 +827,10 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         showNotification('error', 'Promotion Failed', xhr.responseJSON?.message || 'Failed to promote user.');
                     },
                     complete: function() {
+                        adminRoleBusy = false;
+                        $('#admin_user_id').prop('disabled', false);
+                        $('#promoteToAdminBtn').prop('disabled', selectedAdminIsAdmin);
+                        $('#removeAdminBtn').prop('disabled', !selectedAdminIsAdmin);
                         if (!selectedAdminIsAdmin) {
                             btn.html('<i class="fas fa-user-shield me-2"></i>Promote to Admin').prop('disabled', false);
                         }
@@ -831,6 +842,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
             $('#removeAdminBtn').on('click', function(e) {
                 e.preventDefault();
                 
+                if (adminRoleBusy) return;
                 if (!selectedAdminUserId || selectedAdminIsAdmin !== true) {
                     showNotification('warning', 'Invalid Action', 'Please select an admin user to revoke privileges.');
                     return;
@@ -840,6 +852,8 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     return;
                 }
                 
+                adminRoleBusy = true;
+                $('#admin_user_id, #promoteToAdminBtn, #removeAdminBtn').prop('disabled', true);
                 var btn = $(this);
                 btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Revoking...').prop('disabled', true);
                 
@@ -856,7 +870,7 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                             showNotification('success', 'Admin Revoked', response.message || 'Administrator privileges revoked successfully.');
                             // Update UI in place
                             selectedAdminIsAdmin = false;
-                            $('#admin_user_id').find('option:selected').attr('data-role', 3);
+                            $('#admin_user_id').find('option:selected').attr('data-role', response.new_role).data('role', response.new_role);
                             $('#selectedAdminUserStatus').removeClass('bg-danger').addClass('bg-secondary').text('STUDENT');
                             btn.prop('disabled', true).html('<i class="fas fa-user-times me-2"></i>Not Admin');
                             $('#promoteToAdminBtn').prop('disabled', false).html('<i class="fas fa-user-shield me-2"></i>Promote to Admin');
@@ -869,6 +883,10 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                         showNotification('error', 'Revoke Failed', xhr.responseJSON?.message || 'Failed to revoke admin privileges.');
                     },
                     complete: function() {
+                        adminRoleBusy = false;
+                        $('#admin_user_id').prop('disabled', false);
+                        $('#promoteToAdminBtn').prop('disabled', selectedAdminIsAdmin);
+                        $('#removeAdminBtn').prop('disabled', !selectedAdminIsAdmin);
                         if (selectedAdminIsAdmin) {
                             btn.html('<i class="fas fa-user-times me-2"></i>Revoke Admin').prop('disabled', false);
                         }
@@ -1384,10 +1402,12 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
 
     // ── Real-time System Stats ────────────────────────────────────────
     (function initSystemStats() {
-        var refreshTimer = null;
+        var request = null;
 
         function loadSystemStats() {
-            $.ajax({
+            if (document.hidden || request) return;
+            request = $.ajax({
+                timeout: 12000,
                 url: '/manage-access/system-stats',
                 method: 'GET',
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
@@ -1398,7 +1418,9 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     var dbText = $('#sysDbStatus');
                     if (d.db_online) {
                         dbIcon.css('color', '#198754');
-                        dbText.text('Online');
+                        dbText.text('Online').css('color', '');
+                        $('#sysHealthBadge').html('<i class="fas fa-check-circle"></i>All Systems Operational')
+                            .css({color: '', borderColor: ''});
                     } else {
                         dbIcon.css('color', '#dc3545');
                         dbText.text('Offline').css('color', '#dc3545');
@@ -1419,7 +1441,11 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                     $('#stat-active-users').text(d.active_now);
                     $('#stat-new-today').text(d.new_users_today);
                 },
-                error: function() { /* silent */ }
+                error: function() { /* Keep the previous values until the next successful refresh. */ },
+                complete: function() {
+                    request = null;
+                    $('#refreshSystemStats').find('i').removeClass('fa-spin');
+                }
             });
         }
 
@@ -1427,14 +1453,16 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
         loadSystemStats();
 
         // Auto-refresh every 30 seconds
-        refreshTimer = setInterval(loadSystemStats, 30000);
+        setInterval(loadSystemStats, 30000);
+
+        document.addEventListener('visibilitychange', loadSystemStats);
 
         // Manual refresh
         $('#refreshSystemStats').on('click', function() {
             var btn = $(this);
             btn.find('i').addClass('fa-spin');
             loadSystemStats();
-            setTimeout(function() { btn.find('i').removeClass('fa-spin'); }, 1000);
+
         });
     })();
 
@@ -1481,324 +1509,13 @@ const MANAGE_ACCESS_ROUTES = MANAGE_ACCESS_CONFIG.routes || {};
                 setTimeout(checkTableScroll, 100);
             });
 
-            // Check scroll when payment data is loaded
-            // We'll use a different approach since loadPayments doesn't return a promise
-            let scrollCheckTimeout;
-            const originalLoadPayments = loadPayments;
-            loadPayments = function(page = 1, search = '') {
-                if (scrollCheckTimeout) {
-                    clearTimeout(scrollCheckTimeout);
-                }
-                originalLoadPayments.call(this, page, search);
-                // Check scroll after a delay to allow table to render
-                scrollCheckTimeout = setTimeout(checkTableScroll, 1000);
-            };
-
-            // Monitor table content changes
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList' && mutation.target.id === 'payments-table-body') {
-                        setTimeout(checkTableScroll, 100);
-                    }
-                });
-            });
-
-            // Start observing
-            const targetNode = document.getElementById('payments-table-body');
-            if (targetNode) {
-                observer.observe(targetNode, { childList: true });
-            }
+            $(document).on('payments:updated', checkTableScroll);
 
             // Initial check
             setTimeout(checkTableScroll, 500);
 
         });
         
-        // Load payments function
-        function loadPayments(page = 1, search = '') {
-            // Show loading state
-            const tbody = $('#payments-table-body');
-            tbody.html(`
-                <tr>
-                    <td colspan="9" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                        <div>Loading payments...</div>
-                    </td>
-                </tr>
-            `);
-
-            $.ajax({
-                url: '/manage-access/payments',
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                data: {
-                    page: page,
-                    search: search
-                },
-                success: function(response) {
-                        if (response.success) {
-                        
-                        // Update statistics with proper type checking
-                        const totalRevenue = parseFloat(response.stats.total_revenue || 0);
-                        const completedCount = parseInt(response.stats.completed_count || 0);
-                        const pendingCount = parseInt(response.stats.pending_count || 0);
-                        const rejectedCount = parseInt(response.stats.rejected_count || 0);
-                        
-                        $('#total-revenue').text(totalRevenue.toFixed(2) + ' EGP');
-                        $('#completed-count').text(completedCount);
-                        $('#pending-count').text(pendingCount);
-                        $('#rejected-count').text(rejectedCount);
-                        
-                        // Update payments table
-                        const tbody = $('#payments-table-body');
-                        tbody.empty();
-                        
-                        if (response.payments.length === 0) {
-                            tbody.append(`
-                                <tr>
-                                    <td colspan="9" class="text-center py-4 text-muted">
-                                        <i class="fas fa-credit-card fa-3x mb-3 d-block"></i>
-                                        <div>No payments found</div>
-                                        <small>Payments will appear here once users make purchases</small>
-                                    </td>
-                                </tr>
-                            `);
-                        } else {
-                            response.payments.forEach(function(payment) {
-                                const statusBadge = getStatusBadge(payment.status);
-                                const actions = getPaymentActions(payment);
-                                const date = new Date(payment.created_at).toLocaleDateString();
-                                
-                                // Create price display
-                                const priceDisplay = `<div class="fw-bold">${payment.amount} EGP</div>`;
-                                
-                                // FIXED: Show only transaction code (what user enters)
-                                const transactionCode = payment.reference_number || payment.transaction_id || 'N/A';
-                                const transactionDisplay = `<code class="small fw-bold" style="color: #2196f3; font-size: 0.85rem;">${transactionCode}</code>`;
-
-                                // FIXED: Add yellow highlight for completed payments with data attribute
-                                const rowStyle = payment.status === 'completed' ? 'background-color: #fffbeb !important;' : '';
-                                const dataStatus = payment.status === 'completed' ? 'data-payment-status="completed"' : '';
-
-                                tbody.append(`
-                                    <tr data-payment-id="${payment.id}" ${dataStatus} style="${rowStyle}">
-                                        <td>#${payment.id}</td>
-                                        <td>
-                                            <div class="fw-medium">${payment.user_name}</div>
-                                            <small class="text-muted">${payment.user_email}</small>
-                                        </td>
-                                        <td>
-                                            <span class="data-pill course">${payment.course_name}</span>
-                                        </td>
-                                        <td>${priceDisplay}</td>
-                                        <td><span class="data-pill method">${payment.payment_method}</span></td>
-                                        <td>${statusBadge}</td>
-                                        <td>${transactionDisplay}</td>
-                                        <td>${date}</td>
-                                        <td>${actions}</td>
-                                    </tr>
-                                `);
-                            });
-                        }
-                        
-                        // Update pagination info
-                        $('#showing-records').text(response.payments.length);
-                        $('#total-records-count').text(response.pagination.total);
-                        
-                        // Generate pagination (simple version)
-                        const pagination = $('#payment-pagination');
-                        pagination.empty();
-                        
-                        if (response.pagination.last_page > 1) {
-                            let paginationHtml = '<ul class="pagination pagination-sm mb-0">';
-                            
-                            // Previous button
-                            if (response.pagination.current_page > 1) {
-                                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="loadPayments(${response.pagination.current_page - 1}, '${search}')">Previous</a></li>`;
-                            }
-                            
-                            // Page numbers (simplified)
-                            for (let i = 1; i <= Math.min(response.pagination.last_page, 5); i++) {
-                                const active = i === response.pagination.current_page ? 'active' : '';
-                                paginationHtml += `<li class="page-item ${active}"><a class="page-link" href="#" onclick="loadPayments(${i}, '${search}')">${i}</a></li>`;
-                            }
-                            
-                            // Next button
-                            if (response.pagination.current_page < response.pagination.last_page) {
-                                paginationHtml += `<li class="page-item"><a class="page-link" href="#" onclick="loadPayments(${response.pagination.current_page + 1}, '${search}')">Next</a></li>`;
-                            }
-                            
-                            paginationHtml += '</ul>';
-                            pagination.html(paginationHtml);
-                        }
-                    }
-                },
-                error: function(xhr) {
-                    console.error('Error loading payments:', xhr.responseText);
-                    console.error('Status:', xhr.status);
-                    console.error('Response:', xhr.responseJSON);
-                    
-                    let errorMessage = 'Please try again later';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMessage = xhr.responseJSON.message;
-                    } else if (xhr.status === 404) {
-                        errorMessage = 'Payment endpoint not found. Please check the route.';
-                    } else if (xhr.status === 500) {
-                        errorMessage = 'Server error occurred while loading payments.';
-                    }
-                    
-                    $('#payments-table-body').html(`
-                        <tr>
-                            <td colspan="9" class="text-center py-4 text-danger">
-                                <i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i>
-                                <div>Error loading payments</div>
-                                <small>${errorMessage}</small>
-                                <br><small class="text-muted">Status: ${xhr.status}</small>
-                            </td>
-                        </tr>
-                    `);
-                }
-            });
-        }
-        
-        function getStatusBadge(status) {
-            switch(status) {
-                case 'completed':
-                    return '<span class="data-pill status-completed">Completed</span>';
-                case 'pending':
-                    return '<span class="data-pill status-pending">Pending</span>';
-                case 'rejected':
-                    return '<span class="data-pill status-rejected">Rejected</span>';
-                default:
-                    return '<span class="data-pill status-default">' + status + '</span>';
-            }
-        }
-        
-        function getPaymentActions(payment) {
-            if (payment.status === 'pending') {
-                return `
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-success btn-sm" onclick="acceptPayment(${payment.id})" title="Accept Payment">
-                            <i class="fas fa-check"></i>
-                        </button>
-                        <button class="btn btn-danger btn-sm" onclick="rejectPayment(${payment.id})" title="Reject Payment">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            } else {
-                return '<span class="text-muted small">No actions</span>';
-            }
-        }
-
-        // Payment Management Functions
-        function acceptPayment(paymentId) {
-            fetch(`/admin/payments/verify/${paymentId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ admin_notes: 'Payment accepted' }),
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    if (response.status === 419) {
-                        throw new Error('CSRF token expired. Please refresh the page.');
-                    } else if (response.status === 403) {
-                        throw new Error('Access denied. Admin privileges required.');
-                    } else if (response.status === 401) {
-                        throw new Error('Not authenticated. Please log in.');
-                    } else {
-                        throw new Error(`Server error: ${response.status} ${response.statusText}`);
-                    }
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    showNotification('success', 'Payment Accepted', 'Payment has been verified and approved.');
-                    
-                    // Update the UI with yellow highlight
-                    const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
-                    if (row) {
-                        row.style.setProperty('background-color', '#fffbeb', 'important');
-                        row.setAttribute('data-payment-status', 'completed');
-                        
-                        const statusCell = row.querySelector('.payment-status');
-                        if (statusCell) {
-                            statusCell.textContent = 'Completed';
-                            statusCell.className = 'badge payment-status bg-success';
-                        }
-                        
-                        const actionsCell = row.querySelector('td:last-child');
-                        if (actionsCell) {
-                            actionsCell.innerHTML = '<span class="text-muted small">Completed</span>';
-                        }
-                    }
-                    
-                    loadPayments();
-                } else {
-                    throw new Error(data.message || 'Payment verification failed');
-                }
-            })
-            .catch(error => {
-                showNotification('error', 'Payment Failed', error.message);
-            });
-        }
-
-        function rejectPayment(paymentId) {
-            fetch(`/admin/payments/${paymentId}/reject`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': MANAGE_ACCESS_CONFIG.csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ reason: 'Payment rejected' }),
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    showNotification('warning', 'Payment Rejected', 'Payment has been rejected.');
-                    
-                    const row = document.querySelector(`[data-payment-id="${paymentId}"]`);
-                    if (row) {
-                        const statusCell = row.querySelector('.payment-status');
-                        if (statusCell) {
-                            statusCell.textContent = 'Rejected';
-                            statusCell.className = 'badge payment-status bg-danger';
-                        }
-                        
-                        const actionsCell = row.querySelector('td:last-child');
-                        if (actionsCell) {
-                            actionsCell.innerHTML = '<span class="text-muted small">Rejected</span>';
-                        }
-                    }
-                    
-                    loadPayments();
-                } else {
-                    showNotification('error', 'Reject Failed', data.message || 'Unknown error');
-                }
-            })
-            .catch(error => {
-                showNotification('error', 'Reject Failed', error.message);
-            });
-        }
-
         $(document).ready(function() {
             // Load settings when settings tab is clicked
             $('#settings-tab').on('click', function() {

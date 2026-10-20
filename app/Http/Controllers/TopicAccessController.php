@@ -21,14 +21,14 @@ class TopicAccessController extends Controller
     }
 
     /**
-     * Check access permissions for a topic and user - LETHAL CACHED
+     * Check current topic permissions and assignment deadlines.
      */
     public function checkAccess(Topic $topic, ?User $user = null): array
     {
         try {
             // Default to authenticated user if none provided with eager loading
             $user = $user ?? Auth::user();
-            
+
             if (!$user) {
                 return [
                     'can_access' => false,
@@ -37,101 +37,93 @@ class TopicAccessController extends Controller
                 ];
             }
 
-            // LETHAL OPTIMIZATION: Ultra-aggressive caching for topic access
-            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('topic_access', [
-                'topic_id' => $topic->id,
-                'user_id' => $user->id,
-                'timestamp' => now()->format('Y-m-d-H')
-            ]);
+            // Access and assignment deadlines must reflect current permissions on every request.
+            $topic = $this->loadTopicForAccess($topic->id);
 
-            return Cache::remember($cacheKey, 3600, function () use ($topic, $user) {
-                $topic = $this->loadTopicForAccess($topic->id);
-
-                // Admin users always have access
-                if ($user->isAdmin()) {
-                    return [
-                        'can_access' => true,
-                        'is_admin' => true,
-                        'sources' => $this->getAllTopicSources($topic),
-                        'status_code' => Response::HTTP_OK
-                    ];
-                }
-                
-                // Check if topic is locked
-                if ($topic->is_locked) {
-                    return [
-                        'can_access' => false,
-                        'reason' => $topic->lock_reason ?? 'Topic is locked by tutor',
-                        'locked_by' => $topic->lockedByTutor ? $topic->lockedByTutor->name : 'A tutor',
-                        'locked_at' => $topic->locked_at ? $topic->locked_at->format('Y-m-d H:i:s') : null,
-                        'status_code' => Response::HTTP_FORBIDDEN
-                    ];
-                }
-                
-                // Check if user is enrolled in the course
-                $isEnrolled = $this->isUserEnrolledInTopicCourse($topic, $user);
-                if (!$isEnrolled) {
-                    return [
-                        'can_access' => false,
-                        'reason' => 'User is not enrolled in this course',
-                        'status_code' => Response::HTTP_FORBIDDEN
-                    ];
-                }
-
-                if ($user->isTopicPreviewLocked($topic)) {
-                    return [
-                        'can_access' => false,
-                        'reason' => 'This topic is locked in preview mode. Upgrade to unlock the full course.',
-                        'status_code' => Response::HTTP_FORBIDDEN
-                    ];
-                }
-                
-                [$activeAssignment, $inactiveAssignment] = $this->resolveTopicAssignments(
-                    $this->getAssignmentsForTopicAndUser($topic, $user),
-                    $user
-                );
-
-                if ($activeAssignment) {
-                    // User has an active assignment for this topic
-                    return [
-                        'can_access' => true,
-                        'has_assignment' => true,
-                        'assignment_id' => $activeAssignment->id,
-                        'assignment_mode' => $activeAssignment->assignment_mode,
-                        'assignment_deadline' => $activeAssignment->getDeadlineForUser($user->id)->format('Y-m-d H:i:s'),
-                        'time_limit' => $activeAssignment->time_limit ?? $activeAssignment->duration_minutes,
-                        'sources' => $this->getAssignmentSources($activeAssignment, $topic),
-                        'status_code' => Response::HTTP_OK
-                    ];
-                }
-
-                if ($inactiveAssignment) {
-                    // User has an inactive assignment but can still access in practice mode
-                    return [
-                        'can_access' => true,
-                        'has_inactive_assignment' => true,
-                        'assignment_id' => $inactiveAssignment->id,
-                        'practice_mode' => true,
-                        'sources' => $this->getAllTopicSources($topic),
-                        'status_code' => Response::HTTP_OK
-                    ];
-                }
-                
-                // Regular access - no assignments
+            // Admin users always have access
+            if ($user->isAdmin()) {
                 return [
                     'can_access' => true,
+                    'is_admin' => true,
+                    'sources' => $this->getAllTopicSources($topic),
+                    'status_code' => Response::HTTP_OK
+                ];
+            }
+
+            // Check if topic is locked
+            if ($topic->is_locked) {
+                return [
+                    'can_access' => false,
+                    'reason' => $topic->lock_reason ?? 'Topic is locked by tutor',
+                    'locked_by' => $topic->lockedByTutor ? $topic->lockedByTutor->name : 'A tutor',
+                    'locked_at' => $topic->locked_at ? $topic->locked_at->format('Y-m-d H:i:s') : null,
+                    'status_code' => Response::HTTP_FORBIDDEN
+                ];
+            }
+
+            // Check if user is enrolled in the course
+            $isEnrolled = $this->isUserEnrolledInTopicCourse($topic, $user);
+            if (!$isEnrolled) {
+                return [
+                    'can_access' => false,
+                    'reason' => 'User is not enrolled in this course',
+                    'status_code' => Response::HTTP_FORBIDDEN
+                ];
+            }
+
+            if ($user->isTopicPreviewLocked($topic)) {
+                return [
+                    'can_access' => false,
+                    'reason' => 'This topic is locked in preview mode. Upgrade to unlock the full course.',
+                    'status_code' => Response::HTTP_FORBIDDEN
+                ];
+            }
+
+            [$activeAssignment, $inactiveAssignment] = $this->resolveTopicAssignments(
+                $this->getAssignmentsForTopicAndUser($topic, $user),
+                $user
+            );
+
+            if ($activeAssignment) {
+                // User has an active assignment for this topic
+                return [
+                    'can_access' => true,
+                    'has_assignment' => true,
+                    'assignment_id' => $activeAssignment->id,
+                    'assignment_mode' => $activeAssignment->assignment_mode,
+                    'assignment_deadline' => $activeAssignment->getDeadlineForUser($user->id)->format('Y-m-d H:i:s'),
+                    'time_limit' => $activeAssignment->time_limit ?? $activeAssignment->duration_minutes,
+                    'sources' => $this->getAssignmentSources($activeAssignment, $topic),
+                    'status_code' => Response::HTTP_OK
+                ];
+            }
+
+            if ($inactiveAssignment) {
+                // User has an inactive assignment but can still access in practice mode
+                return [
+                    'can_access' => true,
+                    'has_inactive_assignment' => true,
+                    'assignment_id' => $inactiveAssignment->id,
                     'practice_mode' => true,
                     'sources' => $this->getAllTopicSources($topic),
                     'status_code' => Response::HTTP_OK
                 ];
-            });
+            }
+
+            // Regular access - no assignments
+            return [
+                'can_access' => true,
+                'practice_mode' => true,
+                'sources' => $this->getAllTopicSources($topic),
+                'status_code' => Response::HTTP_OK
+            ];
         } catch (\Exception $e) {
             Log::error('Topic access check failed', [
                 'topic_id' => $topic->id,
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
-            
+
             return [
                 'can_access' => false,
                 'reason' => 'Access check failed',
@@ -139,7 +131,7 @@ class TopicAccessController extends Controller
             ];
         }
     }
-    
+
     /**
      * Get topic sources based on user access mode
      *
@@ -151,7 +143,7 @@ class TopicAccessController extends Controller
     {
         try {
             $user = $user ?? Auth::user();
-            
+
             if (!$user) {
                 return [];
             }
@@ -159,16 +151,16 @@ class TopicAccessController extends Controller
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return []; // Reverted JsonResponse to match array return type hint
         }
-        
+
         $accessResult = $this->checkAccess($topic, $user);
-        
+
         if (!$accessResult['can_access']) {
             return [];
         }
-        
+
         return $accessResult['sources'] ?? $this->getAllTopicSources($topic);
     }
-    
+
     /**
      * Get all sources available for a topic
      *
@@ -187,7 +179,7 @@ class TopicAccessController extends Controller
                 ->toArray();
         });
     }
-    
+
     /**
      * Get sources available for an assignment
      *
@@ -300,7 +292,7 @@ class TopicAccessController extends Controller
 
         return [$activeAssignment, $inactiveAssignment];
     }
-    
+
     /**
      * Get active assignment for a topic and user
      *
@@ -317,7 +309,7 @@ class TopicAccessController extends Controller
 
         return $activeAssignment;
     }
-    
+
     /**
      * Get inactive (locked or completed) assignment for a topic and user.
      *
@@ -334,7 +326,7 @@ class TopicAccessController extends Controller
 
         return $inactiveAssignment;
     }
-    
+
     /**
      * API endpoint to check access for the current user
      *
@@ -348,15 +340,15 @@ class TopicAccessController extends Controller
 
         $topic = Topic::query()->select('topics.id')->findOrFail($topicId);
         $accessResult = $this->checkAccess($topic);
-        
+
         return response()->json($accessResult, $accessResult['status_code']);
-    
+
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Operation failed'], 500);
         }
 }
-    
+
     /**
      * API endpoint to get available sources for the current user
      *
@@ -369,14 +361,14 @@ class TopicAccessController extends Controller
         try {
             $topic = Topic::query()->select('topics.id')->findOrFail($topicId);
             $accessResult = $this->checkAccess($topic);
-            
+
             if (!$accessResult['can_access']) {
                 return response()->json([
                     'error' => $accessResult['reason'],
                     'sources' => []
                 ], $accessResult['status_code']);
             }
-            
+
             return response()->json([
                 'sources' => $accessResult['sources'] ?? []
             ]);

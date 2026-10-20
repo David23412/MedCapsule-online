@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\VideoProgress;
 use App\Models\Topic;
-use App\Models\Video;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -16,22 +15,26 @@ class VideoProgressController extends Controller
      */
     public function updateProgress(Request $request)
     {
+        $validated = $request->validate([
+            'topic_id' => 'required|integer|exists:topics,id',
+            'current_time' => 'required|numeric|between:0,99999999.99',
+            'duration' => 'required|numeric|between:0,99999999.99'
+        ]);
         try {
-            $request->validate([
-                'topic_id' => 'required|exists:topics,id',
-                'current_time' => 'required|numeric|min:0',
-                'duration' => 'required|numeric|min:0'
-            ]);
-
             $userId = Auth::id();
-            $topicId = $request->topic_id;
-            $currentTime = $request->current_time;
-            $duration = $request->duration;
+            $topicId = $validated['topic_id'];
+            $currentTime = $validated['current_time'];
+            $duration = $validated['duration'];
 
             // Get the video for this topic
             $topic = Topic::with('video')->find($topicId);
             if (!$topic || !$topic->video) {
                 return response()->json(['error' => 'Video not found'], 404);
+            }
+
+            $access = app(TopicAccessController::class)->checkAccess($topic);
+            if (!$access['can_access']) {
+                return response()->json(['success' => false, 'error' => $access['reason']], $access['status_code']);
             }
 
             // Update progress
@@ -57,7 +60,7 @@ class VideoProgressController extends Controller
             Log::error('Video progress update failed:', [
                 'error' => $e->getMessage(),
                 'user_id' => Auth::id(),
-                'topic_id' => $request->topic_id ?? null
+            'topic_id' => $request->topic_id ?? null
             ]);
 
             return response()->json(['error' => 'Failed to update progress'], 500);
@@ -67,9 +70,14 @@ class VideoProgressController extends Controller
     /**
      * Get video progress for a topic
      */
-    public function getProgress($topicId)
+    public function getProgress(Topic $topic)
     {
+        $topicId = $topic->id;
         try {
+            $access = app(TopicAccessController::class)->checkAccess($topic);
+            if (!$access['can_access']) {
+                return response()->json(['success' => false, 'error' => $access['reason']], $access['status_code']);
+            }
             $progress = VideoProgress::getTopicProgress(Auth::id(), $topicId);
             
             if (!$progress) {
@@ -93,7 +101,7 @@ class VideoProgressController extends Controller
             Log::error('Get video progress failed:', [
                 'error' => $e->getMessage(),
                 'user_id' => Auth::id(),
-                'topic_id' => $topicId
+            'topic_id' => $topicId
             ]);
 
             return response()->json(['error' => 'Failed to get progress'], 500);

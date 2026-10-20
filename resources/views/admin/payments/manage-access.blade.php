@@ -179,7 +179,7 @@
         const reason = prompt('Please provide a reason for rejecting this payment:');
         if (!reason) return; // User cancelled
         
-        fetch(`/admin/payments/${paymentId}/reject`, {
+        fetch(`/admin/payments/reject/${paymentId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

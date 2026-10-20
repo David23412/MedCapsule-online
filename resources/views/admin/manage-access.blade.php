@@ -3222,7 +3222,9 @@
             ) !!}
         };
     </script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-list.js') }}"></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-manage-access.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-actions.js') }}"></script>
 
     <script>
         $(document).ready(function() {

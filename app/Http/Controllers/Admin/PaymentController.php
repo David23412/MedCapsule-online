@@ -41,57 +41,57 @@ class PaymentController extends Controller
      */
     public function acceptPayment(Payment $payment)
     {
-        // Check if payment is pending
-        if ($payment->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment is not pending'
-            ]);
-        }
-
-        // Update payment to completed
-        $payment->update([
-            'status' => 'completed',
-            'paid_at' => now()
-        ]);
-
-        // Enroll user in course
-        $payment->user->enrollInCourse($payment->course_id, \App\Models\User::COURSE_ACCESS_FULL);
-        $this->clearUserCourseAccessCache($payment->user_id);
-
-        // 🔔 TRIGGER PAYMENT ACCEPTED NOTIFICATION
-        NotificationTriggerService::onPaymentAccepted($payment->user, [
-            'amount' => $payment->amount,
-            'course_name' => $payment->course->name ?? 'Course',
-            'transaction_id' => $payment->reference_number
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Payment accepted. User enrolled in course.'
-        ]);
+        return $this->resolvePayment($payment, 'completed');
     }
 
-    /**
-     * Reject a pending payment - Simple and straightforward
-     */
     public function rejectPayment(Payment $payment)
     {
-        // Check if payment is pending
-        if ($payment->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment is not pending'
-            ]);
+        return $this->resolvePayment($payment, 'rejected');
+    }
+
+    private function resolvePayment(Payment $payment, string $status)
+    {
+        try {
+            $changed = DB::transaction(function () use ($payment, $status) {
+                $current = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+                if ($current->status === $status) {
+                    return false;
+                }
+                if ($current->status !== 'pending') {
+                    throw new \DomainException('This payment has already been processed. Refresh the payment list.');
+                }
+                if ($status === 'completed') {
+                    $user = User::whereKey($current->user_id)->lockForUpdate()->firstOrFail();
+                    $user->enrollInCourse($current->course_id, User::COURSE_ACCESS_FULL);
+                    $current->paid_at = now();
+                }
+                $current->status = $status;
+                $current->save();
+                return true;
+            }, 3);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
+        } catch (\Throwable $e) {
+            Log::error('Payment decision failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Payment was not updated. Please try again.'], 500);
         }
 
-        // Update payment to rejected
-        $payment->update(['status' => 'rejected']);
         $this->clearUserCourseAccessCache($payment->user_id);
-
+        if ($changed && $status === 'completed') {
+            try {
+                NotificationTriggerService::onPaymentAccepted($payment->user, [
+                    'amount' => $payment->amount,
+                    'course_name' => $payment->course->name ?? 'Course',
+                    'transaction_id' => $payment->reference_number,
+                ]);
+            } catch (\Throwable $e) {
+                // Notification delivery must not misreport an already committed approval as failed.
+                Log::error('Payment approval notification failed', ['payment_id' => $payment->id, 'error' => $e->getMessage()]);
+            }
+        }
         return response()->json([
             'success' => true,
-            'message' => 'Payment rejected.'
+            'message' => $status === 'completed' ? 'Payment accepted. User enrolled in course.' : 'Payment rejected.',
         ]);
     }
 

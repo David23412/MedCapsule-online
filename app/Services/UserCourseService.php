@@ -147,41 +147,25 @@ class UserCourseService
      * @param Course $course
      * @return array
      */
-    public function revokeUserAccess(User $user, Course $course): array
+    public function revokeUserAccess(User $user, Course $course, ?bool $desiredEnrollment = null): array
     {
         try {
-            // 🔥 SINGLE ATOMIC OPERATION 🔥
-            // Check if user is already enrolled
-            $existingEnrollment = DB::table('course_user')
-                ->where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->where('is_enrolled', true)
-                ->first();
-
-            if ($existingEnrollment) {
-                // User is enrolled, revoke access by setting is_enrolled to false
-                DB::table('course_user')
-                    ->where('user_id', $user->id)
-                    ->where('course_id', $course->id)
-                    ->update(['is_enrolled' => false, 'updated_at' => now()]);
-
-                $isEnrolled = false;
-                $message = "Access revoked for {$user->name} from {$course->name}.";
-            } else {
-                // User is not enrolled, grant access
-                DB::table('course_user')->updateOrInsert(
-                    ['user_id' => $user->id, 'course_id' => $course->id],
-                    [
-                        'is_enrolled' => true,
-                        'access_level' => User::COURSE_ACCESS_FULL,
-                        'enrolled_at' => now(),
-                        'updated_at' => now(),
-                    ]
-                );
-
-                $isEnrolled = true;
-                $message = "Access granted to {$user->name} for {$course->name}.";
-            }
+            $isEnrolled = DB::transaction(function () use ($user, $course, $desiredEnrollment) {
+                User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                $active = DB::table('course_user')->where('user_id', $user->id)
+                    ->where('course_id', $course->id)->where('is_enrolled', true)->exists();
+                $enrolled = $desiredEnrollment ?? !$active;
+                if ($enrolled) {
+                    $user->enrollInCourse($course->id, User::COURSE_ACCESS_FULL);
+                } else {
+                    DB::table('course_user')->where('user_id', $user->id)->where('course_id', $course->id)
+                        ->update(['is_enrolled' => false, 'updated_at' => now()]);
+                }
+                return $enrolled;
+            }, 3);
+            $message = $isEnrolled
+                ? "Access granted to {$user->name} for {$course->name}."
+                : "Access revoked for {$user->name} from {$course->name}.";
 
             $this->clearCourseCacheForUser($user);
 

@@ -27,6 +27,7 @@ class RevokeRequest extends FormRequest
         return [
             'user_id' => 'required|integer|exists:users,id',
             'course_id' => 'required|integer|exists:courses,id',
+            'is_enrolled' => 'sometimes|boolean',
         ];
     }
 }

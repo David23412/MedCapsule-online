@@ -16,17 +16,30 @@ class ProgressUpdateController extends Controller
     {
         try {
             $validated = $request->validate([
-                'topicId' => 'required|integer',
-                'assignmentId' => 'nullable|integer',
+                'topicId' => 'required|integer|exists:topics,id',
+                'assignmentId' => 'nullable|integer|exists:assignments,id',
                 'mode' => 'nullable|string|in:quiz,tutor',
                 'progress' => 'nullable|array',
                 'overall_topic_progress' => 'nullable|array',
                 'availableSources' => 'nullable|array',
                 'allSourcesMastered' => 'nullable|boolean',
-                'userId' => 'required|integer'
+                'userId' => ['required', 'integer', \Illuminate\Validation\Rule::in([auth()->id()])]
             ]);
 
+            $topic = \App\Models\Topic::findOrFail($validated['topicId']);
+            $access = app(TopicAccessController::class)->checkAccess($topic);
+            if (!$access['can_access']) {
+                return response()->json(['success' => false, 'message' => $access['reason']], $access['status_code']);
+            }
+            if (!empty($validated['assignmentId'])) {
+                $assignment = \App\Models\Assignment::findOrFail($validated['assignmentId']);
+                if ((int) $assignment->topic_id !== (int) $topic->id || !$this->canSyncAssignment($assignment)) {
+                    return response()->json(['success' => false, 'message' => 'Assignment access denied.'], 403);
+                }
+            }
+
             // Provide defaults for optional fields
+            $validated['assignmentId'] = $validated['assignmentId'] ?? null;
             $validated['mode'] = $validated['mode'] ?? 'quiz';
             $validated['progress'] = $validated['progress'] ?? [];
             $validated['overall_topic_progress'] = $validated['overall_topic_progress'] ?? [];
@@ -94,10 +107,14 @@ class ProgressUpdateController extends Controller
      */
     public function getRecentUpdates(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'topicId' => 'nullable|integer|min:1',
+            'since' => 'sometimes|numeric|min:0',
+        ]);
         try {
             $userId = auth()->id();
-            $topicId = $request->input('topicId');
-            $since = $request->input('since', 0);
+            $topicId = $validated['topicId'] ?? null;
+            $since = $validated['since'] ?? 0;
 
             $updates = [];
 
@@ -124,6 +141,8 @@ class ProgressUpdateController extends Controller
                 'timestamp' => now()->timestamp
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to get recent updates', [
                 'error' => $e->getMessage(),
@@ -144,12 +163,17 @@ class ProgressUpdateController extends Controller
     {
         try {
             $validated = $request->validate([
-                'assignmentId' => 'required|integer',
-                'percentage' => 'required|numeric',
-                'score' => 'required|integer',
-                'total' => 'required|integer',
-                'userId' => 'required|integer'
+                'assignmentId' => 'required|integer|exists:assignments,id',
+                'percentage' => 'required|numeric|between:0,100',
+                'score' => 'required|integer|min:0|lte:total',
+                'total' => 'required|integer|min:0',
+                'userId' => ['required', 'integer', \Illuminate\Validation\Rule::in([auth()->id()])]
             ]);
+
+            $assignment = \App\Models\Assignment::findOrFail($validated['assignmentId']);
+            if (!$this->canSyncAssignment($assignment)) {
+                return response()->json(['success' => false, 'message' => 'Assignment access denied.'], 403);
+            }
 
             // Store assignment completion with timestamp
             $assignmentData = array_merge($validated, [
@@ -180,6 +204,8 @@ class ProgressUpdateController extends Controller
                 'timestamp' => $assignmentData['timestamp']
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to store assignment completion', [
                 'error' => $e->getMessage(),
@@ -197,8 +223,8 @@ class ProgressUpdateController extends Controller
     {
         try {
             $validated = $request->validate([
-                'assignmentId' => 'required|integer',
-                'userId' => 'required|integer'
+                'assignmentId' => 'required|integer|exists:assignments,id',
+                'userId' => ['required', 'integer', \Illuminate\Validation\Rule::in([auth()->id()])]
             ]);
 
             $assignment = \App\Models\Assignment::find($validated['assignmentId']);
@@ -209,6 +235,9 @@ class ProgressUpdateController extends Controller
                 ], 404);
             }
 
+            if (!$this->canSyncAssignment($assignment)) {
+                return response()->json(['success' => false, 'message' => 'Assignment access denied.'], 403);
+            }
             $progress = $assignment->getUserProgress($validated['userId']);
 
             return response()->json([
@@ -221,6 +250,8 @@ class ProgressUpdateController extends Controller
                 ]
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Failed to get assignment progress', [
                 'error' => $e->getMessage(),
@@ -232,6 +263,12 @@ class ProgressUpdateController extends Controller
                 'message' => 'Failed to get assignment progress'
             ], 500);
         }
+    }
+
+    private function canSyncAssignment(\App\Models\Assignment $assignment): bool
+    {
+        return auth()->user()->isAdmin()
+            || $assignment->assignedUsers()->where('users.id', auth()->id())->exists();
     }
 
     private function safeRequestContext(Request $request): array
