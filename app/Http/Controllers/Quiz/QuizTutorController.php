@@ -342,7 +342,7 @@ class QuizTutorController extends Controller
      */
     public function updateQuestion(Request $request, Question $question)
     {
-        $questionType = $request->input('question_type', $question->question_type ?? 'multiple_choice');
+        $questionType = $request->input('question_type') ?? $question->question_type ?? 'multiple_choice';
 
         $rules = [
             'question'      => 'required|string|max:5000',
@@ -363,6 +363,15 @@ class QuizTutorController extends Controller
         }
 
         $request->validate($rules);
+        if ($questionType !== 'written') {
+            $field = 'option_' . strtolower($request->input('correct_answer'));
+            $answerText = trim((string) $request->input($field, $question->{$field}));
+            if ($answerText === '' || $answerText === '-') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'correct_answer' => 'The selected correct answer must have option text.',
+                ]);
+            }
+        }
 
         try {
             $before = $question->only([
@@ -373,12 +382,12 @@ class QuizTutorController extends Controller
             $updateData = [
                 'question'      => $request->input('question'),
                 'question_type' => $questionType,
-                'explanation'   => $request->input('explanation'),
+                'explanation'   => $request->input('explanation', $question->explanation),
                 'correct_answer' => $request->input('correct_answer'),
             ];
 
             if ($questionType === 'written') {
-                $updateData['alternative_answers'] = $request->input('alternative_answers');
+                $updateData['alternative_answers'] = $request->input('alternative_answers', $question->alternative_answers);
                 // Clear MCQ fields for written questions
                 $updateData['option_a'] = null;
                 $updateData['option_b'] = null;
@@ -386,10 +395,10 @@ class QuizTutorController extends Controller
                 $updateData['option_d'] = null;
                 $updateData['option_e'] = null;
             } else {
-                $updateData['option_a'] = $request->input('option_a');
-                $updateData['option_b'] = $request->input('option_b');
-                $updateData['option_c'] = $request->input('option_c');
-                $updateData['option_d'] = $request->input('option_d');
+                $updateData['option_a'] = $request->input('option_a', $question->option_a);
+                $updateData['option_b'] = $request->input('option_b', $question->option_b);
+                $updateData['option_c'] = $request->input('option_c', $question->option_c);
+                $updateData['option_d'] = $request->input('option_d', $question->option_d);
                 $updateData['option_e'] = $request->input('option_e', $question->option_e);
                 $updateData['alternative_answers'] = null;
             }

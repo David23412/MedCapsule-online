@@ -859,6 +859,7 @@ class TopicController extends Controller
      */
     public function searchCourseQuestions(Course $course, Request $request)
     {
+        $validated = $request->validate(['query' => 'nullable|string|max:200']);
         try {
             $user = auth()->user();
 
@@ -869,8 +870,8 @@ class TopicController extends Controller
                 ], 403);
             }
 
-            $query = trim((string) $request->input('query', ''));
-            if (strlen($query) < 2) {
+            $query = trim($validated['query'] ?? '');
+            if (mb_strlen($query) < 2) {
                 return response()->json(['success' => true, 'questions' => []]);
             }
 
@@ -882,7 +883,7 @@ class TopicController extends Controller
             }
 
             // 🚀 SMART CACHE LAYER: Load only this course's question data with cross-field blobs
-            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v10", 86400, function() use ($courseTopicIds, $topicNames) {
+            $questions = Cache::remember("course_{$course->id}_questions_search_payload_v11", 86400, function() use ($courseTopicIds, $topicNames) {
                 return Question::query()
                     ->whereIn('topic_id', $courseTopicIds)
                     ->select('id', 'question', 'correct_answer', 'explanation', 'topic_id', 'extra_topic', 'question_type', 'option_a', 'option_b', 'option_c', 'option_d', 'option_e', 'alternative_answers')
@@ -895,7 +896,7 @@ class TopicController extends Controller
                         
                         // Resolve Correct Answer text
                         $actualAnswer = trim($q->correct_answer ?? '');
-                        if ($q->question_type === 'multiple_choice') {
+                        if (in_array($q->question_type, ['multiple_choice', 'mcq', null], true)) {
                             $letter = strtoupper(trim($q->correct_answer));
                             $optionField = 'option_' . strtolower($letter);
                             if (isset($q->{$optionField})) {
@@ -904,7 +905,7 @@ class TopicController extends Controller
                         }
 
                         // Create a normalized search blob for cross-field intelligence
-                        $searchBlob = strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ . ' ' . $actualAnswer . ' ' . $cleanE));
+                        $searchBlob = $this->normalizeQuestionSearchText($cleanQ . ' ' . $actualAnswer . ' ' . $cleanE);
 
                         $associatedTopicIds = collect([(int) $q->topic_id]);
                         if (!empty($q->extra_topic)) {
@@ -936,20 +937,18 @@ class TopicController extends Controller
                             'option_e' => $q->option_e,
                             'topic_titles' => $topicTitles,
                             'search_blob' => $searchBlob,
-                            'normalized_question' => strtolower(preg_replace('/[^a-z0-9 ]/', '', $cleanQ))
+                            'normalized_question' => $this->normalizeQuestionSearchText($cleanQ)
                         ];
                     });
             });
 
             // 🚀 SMART SEARCH ENGINE: Weighted Scoring Logic
-            $queryClean = strtolower(preg_replace('/[^a-z0-9 ]/', '', $query));
-            $queryWords = array_filter(explode(' ', $queryClean), fn($w) => strlen($w) > 1);
+            $queryClean = $this->normalizeQuestionSearchText($query);
+            $queryWords = array_filter(explode(' ', $queryClean), fn($w) => mb_strlen($w) > 1);
 
             if (empty($queryWords)) {
                 return response()->json(['success' => true, 'questions' => []]);
             }
-
-            $currentMistakeIds = Mistake::where('user_id', auth()->id())->pluck('question_id')->toArray();
 
             $results = $questions->map(function($q) use ($queryWords, $queryClean) {
                 $score = 0;
@@ -965,7 +964,7 @@ class TopicController extends Controller
 
                 // 2. Individual Word Weighting
                 foreach ($queryWords as $word) {
-                    $isMedicalTerm = strlen($word) >= 5;
+                    $isMedicalTerm = mb_strlen($word) >= 5;
                     $weight = $isMedicalTerm ? 3 : 1;
 
                     // Word in Question
@@ -989,9 +988,12 @@ class TopicController extends Controller
             ->filter(fn($q) => $q['relevance_score'] > 0)
             ->sortByDesc('relevance_score')
             ->take(15)
-            ->values()
-            ->map(function($q) use ($currentMistakeIds) {
-                $q['is_already_mistake'] = in_array($q['id'], $currentMistakeIds);
+            ->values();
+
+            $currentMistakeIds = Mistake::where('user_id', $user->id)
+                ->whereIn('question_id', $results->pluck('id'))->pluck('question_id')->flip();
+            $results = $results->map(function($q) use ($currentMistakeIds) {
+                $q['is_already_mistake'] = $currentMistakeIds->has($q['id']);
                 // Clean up payload before sending to frontend
                 unset($q['search_blob']);
                 unset($q['normalized_question']);
@@ -1014,28 +1016,34 @@ class TopicController extends Controller
      */
     public function addMistake(Question $question)
     {
+        $user = auth()->user();
+        $course = $question->topic?->course;
+        if (!$user || !$course || !$user->hasFullAccessToCourse($course)) {
+            return response()->json(['success' => false, 'message' => 'Full course access is required to save this question.'], 403);
+        }
         try {
-            $user = auth()->user();
-            
-            // Safety check: is question already a mistake?
-            $exists = Mistake::where('user_id', $user->id)->where('question_id', $question->id)->exists();
-            if ($exists) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Question is already in your mistakes!'
-                ]);
-            }
-
-            // Record as a failure (custom submission text to indicate manual bookmarking)
-            Mistake::recordFailure($user->id, $question, "Bookmarked via Search");
-
+            $alreadySaved = DB::transaction(function () use ($user, $question) {
+                // Serialize bookmarks for this student so simultaneous clicks cannot reset a reviewed mistake.
+                \App\Models\User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+                if (Mistake::where('user_id', $user->id)->where('question_id', $question->id)->exists()) {
+                    return true;
+                }
+                Mistake::recordFailure($user->id, $question, 'Bookmarked via Search');
+                return false;
+            }, 3);
             return response()->json([
                 'success' => true,
-                'message' => 'Question added to your mistakes!'
+                'message' => $alreadySaved ? 'Question is already in your mistakes!' : 'Question added to your mistakes!',
             ]);
         } catch (\Exception $e) {
             Log::error('Add mistake error', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Failed to add question.'], 500);
         }
     }
+
+    private function normalizeQuestionSearchText(string $text): string
+    {
+        return trim(preg_replace('/[^\p{L}\p{N}]+/u', ' ', mb_strtolower(strip_tags($text), 'UTF-8')) ?? '');
+    }
+
 }

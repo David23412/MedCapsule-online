@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Http\Controllers\TopicAccessController;
 use App\Models\Assignment;
+use App\Models\Course;
+use App\Models\Topic;
 use App\Models\User;
 use App\Services\QuizUltraConsolidatedCacheService;
 use Illuminate\Support\Facades\Cache;
@@ -19,7 +21,13 @@ class AssignmentExtensionUpdateTest extends TestCase
         $admin = User::factory()->admin()->create();
         $student = User::factory()->student()->create();
         $other = User::factory()->student()->create();
-        $assignment = Assignment::factory()->completeTopic()->create(['deadline' => now()->addDay()]);
+        // This test exercises assignment extensions for an enrolled paid course.
+        // A randomly free course also requires the separate survey unlock.
+        $course = Course::factory()->premium()->create();
+        $topic = Topic::factory()->forCourse($course)->create();
+        $assignment = Assignment::factory()->completeTopic()->create([
+            'topic_id' => $topic->id, 'course_id' => $course->id, 'deadline' => now()->addDay(),
+        ]);
         $assignment->assignedUsers()->attach([$student->id, $other->id]);
         $extended = now()->addDays(3)->startOfMinute();
         $cacheKey = QuizUltraConsolidatedCacheService::generateCacheKey('topic_access', [

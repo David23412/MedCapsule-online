@@ -61,6 +61,7 @@ class Question extends Model
         parent::boot();
 
         static::saved(function ($question) {
+            $question->clearCourseSearchCache();
             // Clear question count cache for current topic
             Cache::forget("topic:{$question->topic_id}:questions_count");
             
@@ -71,9 +72,19 @@ class Question extends Model
         });
 
         static::deleted(function ($question) {
+            $question->clearCourseSearchCache();
             // Clear cache for current topic
             Cache::forget("topic:{$question->topic_id}:questions_count");
         });
+    }
+
+    private function clearCourseSearchCache(): void
+    {
+        $topicIds = array_filter([$this->topic_id, $this->getOriginal('topic_id')]);
+        foreach (DB::table('topics')->whereIn('id', $topicIds)->distinct()->pluck('course_id') as $courseId) {
+            Cache::forget("course_{$courseId}_questions_search_payload_v10");
+            Cache::forget("course_{$courseId}_questions_search_payload_v11");
+        }
     }
 
     // Define topics relationship: Consolidates main topic and extra_topic string into a single collection

@@ -396,6 +396,10 @@ class Topic extends Model
             }
         });
 
+        static::saved(function ($topic) {
+            $topic->clearCourseSearchCache();
+        });
+
         // Clear the cache whenever a topic is updated or deleted
         static::updated(function ($topic) {
             Cache::forget("topic:{$topic->id}:questions_count");
@@ -404,10 +408,19 @@ class Topic extends Model
         });
 
         static::deleted(function ($topic) {
+            $topic->clearCourseSearchCache();
             Cache::forget("topic:{$topic->id}:questions_count");
             Cache::forget("topic:{$topic->id}:all_questions");
             Cache::forget("topic:{$topic->id}:all_sources");
         });
+    }
+
+    private function clearCourseSearchCache(): void
+    {
+        foreach (array_unique(array_filter([$this->course_id, $this->getOriginal('course_id')])) as $courseId) {
+            Cache::forget("course_{$courseId}_questions_search_payload_v10");
+            Cache::forget("course_{$courseId}_questions_search_payload_v11");
+        }
     }
 
     public function getCacheKey($userId, $suffix = '')
