@@ -111,6 +111,7 @@ async function loadLearnFilterInPlace(url, options = {}) {
         replaceLearnSection('.sidebar', nextDocument);
         replaceLearnSection('.main-content', nextDocument);
         replaceLearnSection('#popup-overlay', nextDocument);
+        replaceLearnSection('.encouragement-message', nextDocument);
         replaceLearnSection('#mistakes-learn-config', nextDocument);
 
         if (pushState) {
@@ -152,6 +153,7 @@ function initializeMistakesLearnPage() {
             disposeLearnSession = () => {
                 lifecycle.dispose();
                 closeMobileSidebar();
+                sidebarBackdrop?.remove();
             };
             const difficultyOptions = document.querySelectorAll('.difficulty-option');
             const startButton = document.querySelector('.start-button');
@@ -1472,6 +1474,8 @@ function initializeMistakesLearnPage() {
                     q.totalAnswerChanges = 0;
                     q.totalConfidenceChanges = 0;
                     q.finalized = false;
+                    q.pendingFinalization = false;
+                    q.checkedOutcome = null;
                     q.isActive = true;
                     q.inCurrentSpacedSession = false;
                     q.confidenceLevel = null;

@@ -18,7 +18,7 @@ function harness(fetch = async () => {}) {
     });
     function page(settings, current = false) {
         const map = new Map();
-        for (const selector of ['.sidebar', '.main-content', '#popup-overlay', '#course-filter']) {
+        for (const selector of ['.sidebar', '.main-content', '#popup-overlay', '#course-filter', '.encouragement-message']) {
             map.set(selector, element(selector));
         }
         map.set('#mistakes-learn-config', element('#mistakes-learn-config', { textContent: JSON.stringify(settings) }));
@@ -51,10 +51,12 @@ const response = (settings, url) => ({ ok: true, url, text: async () => JSON.str
 test('filter changes read fresh JSON settings without eval and replace the completion popup', async () => {
     const h = harness(async () => response(config({ currentMode: 'spaced', currentDeckMode: 'spaced', selectedQuestionType: 'written' }), '/review/learn?mode=spaced'));
     const oldPopup = h.nodes.get('#popup-overlay');
+    const oldEncouragement = h.nodes.get('.encouragement-message');
     await h.load('/review/learn?mode=spaced');
     assert.equal(h.initialized[0].currentDeckMode, 'spaced');
     assert.equal(h.initialized[0].selectedQuestionType, 'written');
     assert.equal(oldPopup.isConnected, false);
+    assert.equal(oldEncouragement.isConnected, false);
     assert.notEqual(oldPopup, h.nodes.get('#popup-overlay'));
     assert.equal(h.nodes.get('#course-filter').disabled, false);
     assert.equal(h.timers.size, 0);
