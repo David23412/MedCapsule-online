@@ -1,21 +1,59 @@
-const mistakesLearnPageConfig = window.MistakesLearnPageConfig || {};
 let activeLearnFilterController = null;
+let disposeLearnSession = () => {};
 
 function replaceLearnSection(selector, nextDocument) {
     const current = document.querySelector(selector);
     const next = nextDocument.querySelector(selector);
-
-    if (!current || !next) return;
-    current.replaceWith(next);
+    if (current && next) current.replaceWith(next);
 }
 
-function hydrateLearnPageConfig(nextDocument) {
-    const configScript = Array.from(nextDocument.querySelectorAll('script')).find((script) =>
-        script.textContent.includes('window.MistakesLearnPageConfig')
-    );
+function readLearnPageConfig(page) {
+    const config = JSON.parse(page.getElementById('mistakes-learn-config').textContent);
+    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+        throw new Error('Invalid learning page settings');
+    }
+    return config;
+}
 
-    if (!configScript) return;
-    Function(configScript.textContent)();
+let currentLearnPageConfig = readLearnPageConfig(document);
+
+function createLearnSessionLifecycle() {
+    const controller = new AbortController();
+    const timers = new Set();
+    return {
+        get active() { return !controller.signal.aborted; },
+        listen(target, name, callback, options = {}) {
+            target?.addEventListener(name, callback, { ...options, signal: controller.signal });
+        },
+        schedule(callback, delay) {
+            if (controller.signal.aborted) return null;
+            const timer = window.setTimeout(() => {
+                timers.delete(timer);
+                if (!controller.signal.aborted) callback();
+            }, delay);
+            timers.add(timer);
+            return timer;
+        },
+        dispose() {
+            controller.abort();
+            timers.forEach(timer => window.clearTimeout(timer));
+            timers.clear();
+        },
+    };
+}
+
+function createStudyTimeSave(url, seconds) {
+    const requestKey = crypto.randomUUID();
+    let saved = false;
+    let pending = null;
+    return function save() {
+        if (saved) return Promise.resolve();
+        if (pending) return pending;
+        pending = window.StudyRequests.post(url, { study_time: seconds }, { requestKey })
+            .then(() => { saved = true; })
+            .finally(() => { pending = null; });
+        return pending;
+    };
 }
 
 async function loadLearnFilterInPlace(url, options = {}) {
@@ -27,11 +65,14 @@ async function loadLearnFilterInPlace(url, options = {}) {
         activeLearnFilterController.abort();
     }
 
-    activeLearnFilterController = new AbortController();
+    const controller = new AbortController();
+    activeLearnFilterController = controller;
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     const courseFilter = document.getElementById('course-filter');
     const sidebar = document.querySelector('.sidebar');
     const mainContent = document.querySelector('.main-content');
+    const popupOverlay = document.getElementById('popup-overlay');
 
     if (courseFilter) {
         courseFilter.disabled = true;
@@ -39,7 +80,7 @@ async function loadLearnFilterInPlace(url, options = {}) {
         courseFilter.style.cursor = 'wait';
     }
 
-    [sidebar, mainContent].forEach((element) => {
+    [sidebar, mainContent, popupOverlay].forEach((element) => {
         if (!element) return;
         element.style.opacity = '0.65';
         element.style.pointerEvents = 'none';
@@ -50,7 +91,7 @@ async function loadLearnFilterInPlace(url, options = {}) {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
             },
-            signal: activeLearnFilterController.signal,
+            signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -58,28 +99,60 @@ async function loadLearnFilterInPlace(url, options = {}) {
         }
 
         const html = await response.text();
+        if (activeLearnFilterController !== controller) return;
         const nextDocument = new DOMParser().parseFromString(html, 'text/html');
-
-        hydrateLearnPageConfig(nextDocument);
+        if (!nextDocument.getElementById('mistakes-learn-config')) {
+            window.location.href = response.url || url;
+            return;
+        }
+        const config = readLearnPageConfig(nextDocument);
+        disposeLearnSession();
+        currentLearnPageConfig = config;
         replaceLearnSection('.sidebar', nextDocument);
         replaceLearnSection('.main-content', nextDocument);
+        replaceLearnSection('#popup-overlay', nextDocument);
+        replaceLearnSection('#mistakes-learn-config', nextDocument);
 
         if (pushState) {
-            window.history.pushState({}, '', url);
+            window.history.pushState({}, '', response.url || url);
+        } else if (response.redirected) {
+            window.history.replaceState({}, '', response.url || url);
         }
 
         if (typeof window.initializeMistakesLearnPage === 'function') {
             window.initializeMistakesLearnPage();
         }
     } catch (error) {
-        if (error.name === 'AbortError') return;
+        if (activeLearnFilterController !== controller) return;
         window.location.href = url;
     } finally {
-        activeLearnFilterController = null;
+        clearTimeout(timeout);
+        if (activeLearnFilterController === controller) {
+            activeLearnFilterController = null;
+            if (courseFilter?.isConnected) {
+                courseFilter.disabled = false;
+                courseFilter.style.opacity = '';
+                courseFilter.style.cursor = '';
+            }
+            [sidebar, mainContent, popupOverlay].forEach(element => {
+                if (element?.isConnected) {
+                    element.style.opacity = '';
+                    element.style.pointerEvents = '';
+                }
+            });
+        }
     }
 }
 
 function initializeMistakesLearnPage() {
+            disposeLearnSession();
+            const lifecycle = createLearnSessionLifecycle();
+            const { listen, schedule } = lifecycle;
+            const mistakesLearnPageConfig = currentLearnPageConfig;
+            disposeLearnSession = () => {
+                lifecycle.dispose();
+                closeMobileSidebar();
+            };
             const difficultyOptions = document.querySelectorAll('.difficulty-option');
             const startButton = document.querySelector('.start-button');
             const difficultySelector = document.querySelector('.difficulty-selector');
@@ -183,7 +256,7 @@ function initializeMistakesLearnPage() {
                 sidebarBackdrop = document.createElement('div');
                 sidebarBackdrop.className = 'sidebar-backdrop';
                 document.body.appendChild(sidebarBackdrop);
-                sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+                listen(sidebarBackdrop, 'click', closeMobileSidebar);
             }
 
             function openMobileSidebar() {
@@ -261,7 +334,7 @@ function initializeMistakesLearnPage() {
                                 audioElement.currentTime = 0;
                                 audioElement.play().catch(() => {
                                     // Final fallback: try again after micro delay
-                                    setTimeout(() => {
+                                    schedule(() => {
                                         audioElement.play().catch(() => {});
                                     }, 5);
                                 });
@@ -269,7 +342,7 @@ function initializeMistakesLearnPage() {
                         }
                         
                         // Clean up clone after playback
-                        clone.addEventListener('ended', () => {
+                        listen(clone, 'ended', () => {
                             clone.remove();
                         });
                     } catch (e) {
@@ -329,7 +402,7 @@ function initializeMistakesLearnPage() {
                                         fallbackElement.play().catch(() => {});
                                     }
                                 });
-                                readyAudio.addEventListener('ended', () => {
+                                listen(readyAudio, 'ended', () => {
                                     fallbackPool.push(readyAudio);
                                 }, { once: true });
                             }
@@ -351,7 +424,7 @@ function initializeMistakesLearnPage() {
                     sound.preload = 'auto';
                     
                     // Add error handling for 404s
-                    sound.addEventListener('error', function(e) {
+                    listen(sound, 'error', function(e) {
 
                     });
                     
@@ -364,7 +437,7 @@ function initializeMistakesLearnPage() {
             
             // 💀 SILENT FALLBACK FOR MISSING AUDIO FILES 💀
             // Create silent audio elements if the original ones fail to load
-            setTimeout(() => {
+            schedule(() => {
                 audioElements.forEach((sound, index) => {
                     if (sound && sound.error) {
 
@@ -669,7 +742,7 @@ function initializeMistakesLearnPage() {
             };
 
             const syncAdaptiveState = (question, payload) => {
-                if (!question || !payload) {
+                if (!lifecycle.active || !question || !payload) {
                     return;
                 }
 
@@ -815,7 +888,7 @@ function initializeMistakesLearnPage() {
             };
 
             const applySessionOutcome = (question, isCorrect) => {
-                if (!question) {
+                if (!lifecycle.active || !question) {
                     return;
                 }
 
@@ -845,7 +918,7 @@ function initializeMistakesLearnPage() {
 
                             encouragementMessage.classList.add('show');
                             if (encouragementHideTimeout) clearTimeout(encouragementHideTimeout);
-                            encouragementHideTimeout = setTimeout(() => {
+                            encouragementHideTimeout = schedule(() => {
                                 encouragementMessage.classList.remove('show');
                             }, 1500);
                         }
@@ -936,7 +1009,7 @@ function initializeMistakesLearnPage() {
             };
 
             const applySpacedOutcome = (question, isCorrect, payload = null) => {
-                if (question.pendingFinalization) return;
+                if (!lifecycle.active || question.pendingFinalization) return;
                 totalAttempts++;
 
                 const confidence = question.confidenceLevel;
@@ -1243,7 +1316,7 @@ function initializeMistakesLearnPage() {
             }
 
             if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', function (event) {
+                listen(sidebarToggle, 'click', function (event) {
                     event.preventDefault();
                     event.stopPropagation();
                     if (isMobile()) {
@@ -1263,7 +1336,7 @@ function initializeMistakesLearnPage() {
             }
 
             // Close mobile sidebar on resize to desktop
-            window.addEventListener('resize', function() {
+            listen(window, 'resize', function() {
                 if (!isMobile()) {
                     closeMobileSidebar();
                 }
@@ -1333,7 +1406,7 @@ function initializeMistakesLearnPage() {
                             window.clearTimeout(encouragementHideTimeout);
                         }
 
-                        encouragementHideTimeout = window.setTimeout(() => {
+                        encouragementHideTimeout = schedule(() => {
                             encouragementMessage.classList.remove('show');
                         }, 2200);
                     }
@@ -1369,13 +1442,13 @@ function initializeMistakesLearnPage() {
 
 
             // Setup continue learning button
-            document.getElementById('continue-learning').addEventListener('click', function() {
+            listen(document.getElementById('continue-learning'), 'click', function() {
                 // Hide popup
                 const popupOverlay = document.getElementById('popup-overlay');
                 const popup = document.getElementById('popup');
                 
                 popup.classList.remove('show');
-                setTimeout(() => {
+                schedule(() => {
                     popupOverlay.classList.remove('show');
                 }, 300);
                 
@@ -1440,11 +1513,34 @@ function initializeMistakesLearnPage() {
             });
 
             let currentQuestionSaving = false;
+            let completionShown = false;
+            let completedStudyTimeSave = null;
+            function saveCompletedStudyTime() {
+                const save = completedStudyTimeSave;
+                if (!save) return;
+                const status = document.getElementById('study-time-save-status');
+                const retry = document.getElementById('retry-study-time-save');
+                retry.disabled = true;
+                save().then(() => {
+                    if (!lifecycle.active || completedStudyTimeSave !== save) return;
+                    status.hidden = true;
+                    retry.hidden = true;
+                }).catch(() => {
+                    if (!lifecycle.active || completedStudyTimeSave !== save) return;
+                    status.textContent = 'Your answers are saved. Study time could not be saved yet.';
+                    status.hidden = false;
+                    retry.hidden = false;
+                }).finally(() => {
+                    if (lifecycle.active && completedStudyTimeSave === save) retry.disabled = false;
+                });
+            }
+            listen(document.getElementById('retry-study-time-save'), 'click', saveCompletedStudyTime);
+            listen(window, 'online', saveCompletedStudyTime);
 
             // Setup submit button for written answers
             document.querySelectorAll('.submit-written-answer').forEach(button => {
-                button.addEventListener('click', function() {
-                    if (this.disabled || currentQuestionSaving) return;
+                listen(button, 'click', function() {
+                    if (!quizStarted || completionShown || this.disabled || currentQuestionSaving) return;
                     const container = this.closest('.written-answer-container');
                     const textarea = container.querySelector('.written-answer');
                     const feedbackElement = container.querySelector('.written-answer-feedback');
@@ -1489,6 +1585,7 @@ function initializeMistakesLearnPage() {
 
                     answerRequest
                     .then(data => {
+                        if (!lifecycle.active) return;
                         if (data.success) {
                             // Use the is_correct flag from the server response instead of parsing the message
                             const isCorrect = data.is_correct === true;
@@ -1537,7 +1634,7 @@ function initializeMistakesLearnPage() {
                             // Correct: cycle at the same speed as normal MC questions (600ms)
                             // Incorrect: 2500ms so the user can read the correct answer
                             const cycleDelay = isCorrect ? 600 : 2500;
-                            return finalizePromise.then(() => setTimeout(() => {
+                            return finalizePromise.then(() => schedule(() => {
                                 // Reset the form
                                 textarea.value = '';
                                 textarea.disabled = false;
@@ -1633,7 +1730,7 @@ function initializeMistakesLearnPage() {
 
             // Handle difficulty selection
             difficultyOptions.forEach(option => {
-                option.addEventListener('click', function() {
+                listen(option, 'click', function() {
                     if (this.classList.contains('sidebar-coming-soon')) return;
                     selectDifficulty(this.dataset.mode);
                 });
@@ -1660,6 +1757,10 @@ function initializeMistakesLearnPage() {
                 quizStarted = true;
 
                 // Initialize start time when learning begins
+                completionShown = false;
+                completedStudyTimeSave = null;
+                document.getElementById('study-time-save-status').hidden = true;
+                document.getElementById('retry-study-time-save').hidden = true;
                 startTime = Date.now();
 
                 // Create patches for patch cycling system
@@ -1692,8 +1793,8 @@ function initializeMistakesLearnPage() {
 
             // 💀 LETHAL INSTANT SOUND SYSTEM - F16 RAPTOR SPEED 💀
             document.querySelectorAll('.option').forEach(option => {
-                option.addEventListener('click', function(e) {
-                    if (!currentQuestionSaving && !this.parentElement.classList.contains('answered')) {
+                listen(option, 'click', function(e) {
+                    if (!completionShown && !currentQuestionSaving && !this.parentElement.classList.contains('answered')) {
                         const currentQuestion = questionsData[currentQuestionIndex];
 
                         if (!requireSpacedConfidence(currentQuestion)) {
@@ -1734,12 +1835,13 @@ function initializeMistakesLearnPage() {
                         if (selectedMode === 'spaced') {
                             submitSpacedCheckAnswer(currentQuestion, selectedOption, timeSpentSeconds)
                                 .then((data) => {
+                                    if (!lifecycle.active) return;
                                     applySpacedOutcome(currentQuestion, data.is_correct === true, data);
                                     const finalizePromise = currentQuestion.sessionResolved
                                         ? finalizeSpacedQuestion(currentQuestion, timeSpentSeconds)
                                         : Promise.resolve(null);
 
-                                    return finalizePromise.then(() => setTimeout(() => {
+                                    return finalizePromise.then(() => schedule(() => {
                                         currentQuestionSaving = false;
                                         this.parentElement.classList.remove('answered');
                                         this.classList.remove('correct', 'incorrect');
@@ -1758,9 +1860,10 @@ function initializeMistakesLearnPage() {
 
                         submitReviewAnswer(currentQuestion.id, selectedOption, timeSpentSeconds, currentQuestion.confidenceLevel)
                             .then((data) => {
+                                if (!lifecycle.active) return;
                                 syncAdaptiveState(currentQuestion, data);
                                 applySessionOutcome(currentQuestion, data.is_correct === true);
-                                setTimeout(() => {
+                                schedule(() => {
                                     currentQuestionSaving = false;
                                     this.parentElement.classList.remove('answered');
                                     this.classList.remove('correct', 'incorrect');
@@ -1782,8 +1885,8 @@ function initializeMistakesLearnPage() {
 
             // Simple skip button handler
             document.querySelectorAll('.skip-question-btn').forEach(button => {
-                button.addEventListener('click', async function() {
-                    if (this.disabled || currentQuestionSaving) return;
+                listen(button, 'click', async function() {
+                    if (!quizStarted || completionShown || this.disabled || currentQuestionSaving) return;
                     const questionId = this.dataset.questionId;
                     const currentQuestion = questionsData[currentQuestionIndex];
                     this.disabled = true;
@@ -1824,7 +1927,7 @@ function initializeMistakesLearnPage() {
             });
 
             document.querySelectorAll('.spaced-confidence-option').forEach(button => {
-                button.addEventListener('click', function() {
+                listen(button, 'click', function() {
                     const card = this.closest('.card');
                     const question = questionsData.find(item => item.id === card?.dataset.questionId);
 
@@ -1847,6 +1950,7 @@ function initializeMistakesLearnPage() {
             });
 
             function showNextQuestion() {
+                if (!lifecycle.active) return;
                 if (questionsData.length === 0) return;
 
                 if (selectedMode === 'spaced') {
@@ -1974,6 +2078,8 @@ function initializeMistakesLearnPage() {
             }
 
             function showCompletion() {
+                if (!lifecycle.active || completionShown) return;
+                completionShown = true;
                 // 💀 NUCLEAR INSTANT GRADING SOUND - PLAYS IMMEDIATELY BEFORE ANYTHING ELSE 💀
                 const soundStart = performance.now();
                 
@@ -2051,35 +2157,12 @@ function initializeMistakesLearnPage() {
                 gradeIcon.innerHTML = '🎉';
                 popupMessage.textContent = 'Great work! You\'re making excellent progress!';
                 
-                // Save the study time to the database
-                fetch(String(mistakesLearnPageConfig.saveTimeUrl || ''), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        study_time: timeSpentValue
-                    })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (!data.success) {
-                        console.error('Failed to save study time:', data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error saving study time:', error);
-                });
-                
+                completedStudyTimeSave = createStudyTimeSave(String(mistakesLearnPageConfig.saveTimeUrl || ''), timeSpentValue);
+                saveCompletedStudyTime();
+
                 // Show popup with animation
                 popupOverlay.classList.add('show');
-                setTimeout(() => {
+                schedule(() => {
                     popup.classList.add('show');
                     
                     // PERFECT CENTER CONFETTI - SAFARI-CORRECTED POSITIONING
@@ -2186,36 +2269,34 @@ function initializeMistakesLearnPage() {
                     button.style.display = 'inline-block';
                     button.style.margin = '0 0.5rem';
                     
-                    button.addEventListener('mouseover', () => {
+                    listen(button, 'mouseover', () => {
                         button.style.background = '#0056b3';
                         button.style.transform = 'translateY(-1px)';
                     });
                     
-                    button.addEventListener('mouseout', () => {
+                    listen(button, 'mouseout', () => {
                         button.style.background = '#007bff';
                         button.style.transform = 'translateY(0)';
                     });
                 });
             }
 
-            // BULLETPROOF SMOOTH FILTER - WORKS EVERY FUCKING TIME
+            // Keep the selected difficulty and topic when refreshing the deck.
             if (courseFilter || topicFilter || questionTypeRadios.length) {
                 const handleFilterChange = function() {
-                    const baseUrl = String(window.MistakesLearnPageConfig?.reviewLearnUrl || '');
+                    const baseUrl = String(mistakesLearnPageConfig.reviewLearnUrl || '');
                     const url = new URL(baseUrl, window.location.origin);
 
                     appendCurrentLearnFilters(url);
 
-                    if (currentMode) {
-                        url.searchParams.set('mode', currentMode);
-                    }
+                    url.searchParams.set('mode', selectedMode || currentMode || 'quiz');
 
                     loadLearnFilterInPlace(url.toString());
                 };
 
                 [courseFilter, topicFilter].filter(Boolean).forEach((filterElement) => {
-                    filterElement.addEventListener('change', handleFilterChange);
-                    filterElement.addEventListener('keydown', function(e) {
+                    listen(filterElement, 'change', handleFilterChange);
+                    listen(filterElement, 'keydown', function(e) {
                         if (e.key === 'Enter') {
                             e.preventDefault();
                             handleFilterChange.call(this);
@@ -2225,48 +2306,15 @@ function initializeMistakesLearnPage() {
 
                 // Radio buttons fire change on selection
                 questionTypeRadios.forEach((radio) => {
-                    radio.addEventListener('change', handleFilterChange);
+                    listen(radio, 'change', handleFilterChange);
                 });
             } else {
                 console.error('❌ LEARN FILTERS NOT FOUND');
             }
 
-            function removeMistake(questionId) {
-                if (!confirm('Are you sure you want to remove this question from your mistakes list?')) {
-                    return;
-                }
+            // Start only after all answer and confidence handlers are attached.
+            if (autoStartMode) startButton.click();
 
-                fetch(`/review/remove/${questionId}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Remove the question card from the UI
-                        const card = document.querySelector(`[data-question-id="${questionId}"]`);
-                        if (card) {
-                            card.remove();
-                            // Update the total questions count
-                            const totalQuestions = document.querySelectorAll('.question-card').length;
-                            if (totalQuestions === 0) {
-                                // If no questions left, show completion message
-                                document.querySelector('.completion-message').style.display = 'block';
-                                document.querySelector('.questions-container').style.display = 'none';
-                            }
-                        }
-                    } else {
-                        alert(data.message || 'Error removing question');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error removing question');
-                });
-            }
 }
 
 document.addEventListener('DOMContentLoaded', initializeMistakesLearnPage);

@@ -116,7 +116,7 @@ Route::group([], function () {
     Route::post('/learn/review/{question_id}', [LearnController::class, 'reviewMistake'])
         ->middleware(\App\Http\Middleware\IdempotentStudySubmission::class)->name('learn.review');
     Route::post('/learn/save-time', [LearnController::class, 'saveStudyTime'])
-        ->name('learn.save-time');
+        ->middleware(\App\Http\Middleware\IdempotentStudySubmission::class)->name('learn.save-time');
     
     // Admin routes - Protected with admin middleware
     Route::middleware('admin')->group(function () {

@@ -3,11 +3,11 @@
     'use strict';
     const pending = new Map();
     window.StudyRequests = {
-        post(url, body) {
-            const identity = JSON.stringify([body.selected_answer, body.mode, body.confidence]);
+        post(url, body, { requestKey = null } = {}) {
+            const identity = JSON.stringify([body.selected_answer, body.mode, body.confidence, requestKey]);
             let entry = pending.get(url);
             if (!entry || entry.identity !== identity) {
-                entry = { identity, body: JSON.stringify(body), key: crypto.randomUUID(), promise: null };
+                entry = { identity, body: JSON.stringify(body), key: requestKey || crypto.randomUUID(), promise: null };
                 pending.set(url, entry);
             }
             if (entry.promise) return entry.promise;

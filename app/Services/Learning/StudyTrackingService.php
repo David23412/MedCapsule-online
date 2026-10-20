@@ -2,55 +2,43 @@
 
 namespace App\Services\Learning;
 
+use App\Models\QuizAttempt;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class StudyTrackingService
 {
-    /**
-     * Save study time for analytics and create quiz attempt record
-     */
+    /** Record the analytics row and counter together, so failed saves can safely retry. */
     public function saveStudyTime(int $userId, int $studyTime): array
     {
         try {
-            $user = auth()->user();
-            $user->increment('study_time_seconds', $studyTime);
-
-            // Create quiz attempt record for mistake review session
-            \App\Models\QuizAttempt::create([
-                'user_id' => $userId,
-                'quiz_type' => 'mistake_review',
-                'study_mode' => 'mistake_review',
-                'topic_id' => null, // Mistake review can span multiple topics
-                'score' => 0, // Required field - not applicable for study time tracking
-                'total_questions' => 1, // Required field - minimum value for validation
-                'correct_answers' => 0, // Not applicable for study time tracking
-                'percentage_grade' => 0.0, // Not applicable for study time tracking
-                'duration_seconds' => $studyTime,
-                'question_data' => [
-                    ['question_id' => 0, 'user_answer' => null, 'is_correct' => false, 'type' => 'study_time']
-                ], // Required field - placeholder for study time tracking
-                'source' => 'mistake_review_session',
-                'completed_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-
-
-            return [
-                'success' => true,
-                'message' => 'Study time recorded'
-            ];
-
+            DB::transaction(function () use ($userId, $studyTime) {
+                User::findOrFail($userId)->increment('study_time_seconds', $studyTime);
+                $attempt = QuizAttempt::create([
+                    'user_id' => $userId,
+                    'quiz_type' => 'mistake_review',
+                    'study_mode' => 'mistake_review',
+                    'topic_id' => null,
+                    'score' => 0,
+                    'total_questions' => 1,
+                    'correct_answers' => 0,
+                    'percentage_grade' => 0.0,
+                    'duration_seconds' => $studyTime,
+                    'question_data' => [
+                        ['question_id' => 0, 'user_answer' => null, 'is_correct' => false, 'type' => 'study_time'],
+                    ],
+                    'source' => 'mistake_review_session',
+                    'completed_at' => now(),
+                ]);
+                if (!$attempt->exists) {
+                    throw new \RuntimeException('Study-time record was not saved.');
+                }
+            });
+            return ['success' => true, 'message' => 'Study time recorded'];
         } catch (\Exception $e) {
-            Log::error('Error saving study time:', [
-                'user_id' => $userId,
-                'error' => $e->getMessage()
-            ]);
-
-            return [
-                'success' => false,
-                'message' => 'Failed to record study time'
-            ];
+            Log::error('Error saving study time', ['user_id' => $userId, 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Failed to record study time'];
         }
     }
 }

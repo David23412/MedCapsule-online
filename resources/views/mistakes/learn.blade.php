@@ -490,7 +490,9 @@
                 <div class="time-details">Study Time</div>
             </div>
             <p class="popup-message" id="popup-message">Great work! You're making excellent progress!</p>
+            <p id="study-time-save-status" role="status" aria-live="polite" hidden></p>
             <div class="popup-buttons">
+                <button type="button" class="popup-btn retry-btn" id="retry-study-time-save" hidden>Retry saving study time</button>
                 <a href="{{ route('review.index') }}" class="popup-btn review-btn">
                     <i class="fas fa-arrow-left"></i>
                     Back to Review
@@ -505,18 +507,19 @@
 
     <!-- 💀 AUDIO ELEMENTS MOVED TO HEAD FOR NUCLEAR PRELOADING 💀 -->
 
-    <script>
-        window.MistakesLearnPageConfig = {
-            reviewLearnUrl: @json(route('review.learn')),
-            saveTimeUrl: @json(route('learn.save-time', [], false)),
-            autoSelectEasy: @json(!empty($selectedTopicIds ?? [])),
-            selectedTopicIds: @json(array_values($selectedTopicIds ?? [])),
-            selectedQuestionType: @json($selectedQuestionType ?? 'all'),
-            currentMode: @json($currentLearnMode ?? 'quiz'),
-            currentDeckMode: @json(($currentLearnMode ?? 'quiz') === 'spaced' ? 'spaced' : 'classic'),
-            autoStartMode: @json($autoStartLearnMode ?? null)
-        };
-    </script>
+    @php
+        $learnClientConfig = [
+            'reviewLearnUrl' => route('review.learn', [], false),
+            'saveTimeUrl' => route('learn.save-time', [], false),
+            'autoSelectEasy' => !empty($selectedTopicIds ?? []),
+            'selectedTopicIds' => array_values($selectedTopicIds ?? []),
+            'selectedQuestionType' => $selectedQuestionType ?? 'all',
+            'currentMode' => $currentLearnMode ?? 'quiz',
+            'currentDeckMode' => ($currentLearnMode ?? 'quiz') === 'spaced' ? 'spaced' : 'classic',
+            'autoStartMode' => $autoStartLearnMode ?? null,
+        ];
+    @endphp
+    <script type="application/json" id="mistakes-learn-config">@json($learnClientConfig)</script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/study-requests.js') }}" defer></script>

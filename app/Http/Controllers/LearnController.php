@@ -8,6 +8,7 @@ use App\Services\Learning\MistakeManagementService;
 use App\Services\Learning\StudyTrackingService;
 use App\Services\StudentViewDataService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 
 class LearnController extends Controller
@@ -146,6 +147,8 @@ class LearnController extends Controller
                 'learnPageView' => $learnPageView,
                 'currentUserView' => $this->studentViewDataService->buildCurrentUserView(auth()->user()),
             ]);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('Error in learnMistakes', [
@@ -178,6 +181,8 @@ class LearnController extends Controller
             $executionTime = (microtime(true) - $startTime) * 1000;
 
             return response()->json($result);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('Error getting updated mistakes', [
@@ -237,6 +242,8 @@ class LearnController extends Controller
             );
 
             return response()->json($result, $result['success'] ? 200 : 404);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Error in checkMistake:', [
                 'request_id' => $requestId,
@@ -279,6 +286,8 @@ class LearnController extends Controller
             );
 
             return response()->json($result, $result['success'] ? 200 : 404);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Error in finalizeMistake:', [
                 'request_id' => $requestId,
@@ -344,6 +353,8 @@ class LearnController extends Controller
 
             return response()->json($result, $result['success'] ? 200 : 404);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('Error in reviewMistake:', [
@@ -386,6 +397,8 @@ class LearnController extends Controller
 
             return view('mistakes.review', compact('mistakes', 'mode'));
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('Error starting review session:', [
@@ -416,6 +429,8 @@ class LearnController extends Controller
 
             return response()->json($result, $result['success'] ? 200 : 404);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             $executionTime = (microtime(true) - $startTime) * 1000;
             Log::error('Error removing mistake:', [
