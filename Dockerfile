@@ -1,5 +1,7 @@
 FROM php:8.4-apache AS app-base
 
+COPY docker/install-pecl-extensions.sh /usr/local/bin/install-pecl-extensions
+
 RUN apt-get update && apt-get install -y \
     cron \
     curl \
@@ -16,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" pdo_pgsql pdo_mysql mbstring exif pcntl bcmath xml zip gd opcache \
-    && pecl install igbinary redis \
+    && sh /usr/local/bin/install-pecl-extensions igbinary redis \
     && docker-php-ext-enable igbinary redis \
     && cp /usr/local/etc/php/php.ini-production /usr/local/etc/php/php.ini \
     && a2enmod rewrite deflate expires headers \
