@@ -133,7 +133,7 @@
                     @else
                         <li class="nav-item dropdown me-1">
                             <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                {{ $currentUserView['name'] }}
+                                <span class="account-name">{{ $currentUserView['name'] }}</span>
                                 @if($currentUserView['is_admin'])
                                     <span class="badge bg-warning ms-1">Admin</span>
                                 @elseif($currentUserView['is_tutor'])

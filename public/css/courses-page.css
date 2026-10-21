@@ -2949,12 +2949,22 @@
     .navbar .clean-notification-bell { width: 44px; height: 44px; }
 
     #navbarDropdown {
+        padding-inline: 8px;
+        gap: 4px;
         max-width: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         font-size: 14px;
     }
+
+    #navbarDropdown .account-name {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #navbarDropdown .badge { display: none; }
 
     .navbar .dropdown-menu {
         position: fixed !important;
