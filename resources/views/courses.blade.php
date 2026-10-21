@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
 
@@ -77,6 +77,7 @@
 
     <link rel="stylesheet" href="{{ $bladeAsset->url('css/courses-page.css') }}">
     <link rel="stylesheet" href="{{ $bladeAsset->url('css/free-course-survey.css') }}">
+    @include('partials.phone-accessibility')
 </head>
 <body>
     <!-- 🔥 SCROLL PROGRESS BAR -->
@@ -87,7 +88,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="/" aria-label="MedCapsule home">
                 <span class="brand-pill-logo" aria-hidden="true">
                     <svg width="52" height="26" viewBox="0 0 52 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="MedCapsule">
                         <defs>
@@ -117,7 +118,7 @@
                     </svg>
                 </span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Open account navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -252,7 +253,7 @@
                         </li>
                         
                         <li class="nav-item me-5">
-                            <a href="{{ route('profile') }}" class="profile-circle">
+                            <a href="{{ route('profile') }}" class="profile-circle" aria-label="My profile">
                                 <img src="{{ $currentUserView['profile_image_url'] }}"
                                      alt="Profile Picture"
                                      class="profile-image"

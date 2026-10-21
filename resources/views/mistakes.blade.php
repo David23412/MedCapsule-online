@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ $bladeAsset->url('css/mistakes-page.css') }}">
     
     {{-- Desktop styles only --}}
+    @include('partials.phone-accessibility')
 </head>
 <body>
     {{-- Mobile-only sticky top bar --}}

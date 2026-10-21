@@ -94,6 +94,7 @@
             margin-bottom: 1.5rem;
         }
     </style>
+    @include('partials.phone-accessibility')
 </head>
 <body class="bg-light">
     <div class="container py-4">

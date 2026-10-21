@@ -22,6 +22,7 @@
     
     @include('partials.admin-dark-mode-head')
     <link rel="stylesheet" href="{{ asset('css/random-quiz-page.css') }}">
+    @include('partials.phone-accessibility')
 </head>
 <body>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->

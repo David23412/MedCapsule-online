@@ -91,6 +91,7 @@
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
     <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
+    @include('partials.phone-accessibility')
 </head>
 
 <body>

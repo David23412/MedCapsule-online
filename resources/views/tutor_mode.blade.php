@@ -2815,6 +2815,7 @@
             }
         }
     </style>
+    @include('partials.phone-accessibility')
 </head>
 
 <body>
@@ -2894,10 +2895,10 @@
     <!-- Question Navigation Sidebar -->
     <div class="question-sidebar" id="question-sidebar">
         @foreach($questions as $index => $question)
-            <div class="question-circle {{ $index === 0 ? 'active' : '' }}" data-question="{{ $index + 1 }}"
+            <button type="button" class="question-circle {{ $index === 0 ? 'active' : '' }}" data-question="{{ $index + 1 }}" aria-label="Go to question {{ $index + 1 }}" aria-current="{{ $index === 0 ? 'true' : 'false' }}"
                 onclick="jumpToQuestion({{ $index + 1 }})">
                 {{ $index + 1 }}
-            </div>
+            </button>
         @endforeach
     </div>
 
@@ -2999,16 +3000,16 @@
                                     @foreach($visibleLetters as $idx => $displayLetter)
                                         @php $dbLetter = $shuffledDb[$idx]; $cleanOption = $cleanedOptions[$dbLetter]; @endphp
                                         @if($cleanOption !== '' && $cleanOption !== '-')
-                                            <div class="option-card" data-option="{{ $dbLetter }}">
+                                            <button type="button" class="option-card" aria-pressed="false" data-option="{{ $dbLetter }}">
                                                 <span class="option-letter">{{ $displayLetter }}</span>
-                                                <div class="option-content">{{ $cleanOption }}</div>
-                                            </div>
+                                                <span class="option-content">{{ $cleanOption }}</span>
+                                            </button>
                                         @endif
                                     @endforeach
                                 @else
                                     <div class="written-answer-container">
                                         <textarea class="form-control written-answer" rows="4"
-                                            placeholder="Type your answer here..."></textarea>
+                                            aria-label="Your written answer for question {{ $index + 1 }}" placeholder="Type your answer here..."></textarea>
                                     </div>
                                 @endif
                             </div>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.75, maximum-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>MedCapsule</title>
     <!-- Favicon -->
@@ -28,7 +28,7 @@
 
         @media (max-width: 768px) {
             :root {
-                font-size: 13px;
+                font-size: 16px;
             }
             body {
                 zoom: 1 !important;
@@ -78,7 +78,7 @@
         }
         .form-control {
             border-radius: 5px;
-            font-size: 1rem; /* Minimum 16px to prevent iOS auto-zoom */
+            font-size: 16px; /* Keep form text readable without triggering iOS auto-zoom. */
         }
         .form-control:focus {
             border-color: #007bff;
@@ -109,6 +109,7 @@
             color: #007bff;
         }
     </style>
+    @include('partials.phone-accessibility')
 </head>
 <body>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->

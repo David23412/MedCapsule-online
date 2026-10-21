@@ -139,6 +139,7 @@ function applyTutorPendingInputs(pendingInputs) {
 
         questionCard.querySelectorAll('.option-card').forEach((optionCard) => {
             optionCard.classList.toggle('selected', optionCard.getAttribute('data-option') === normalizedAnswer);
+            optionCard.setAttribute('aria-pressed', String(optionCard.getAttribute('data-option') === normalizedAnswer));
         });
     });
 }
@@ -177,6 +178,7 @@ function renderDontKnowResult(questionNumber, questionId, questionResult) {
         if (optionLetter === correctAnswerKey) {
             opt.classList.add('correct');
         }
+        opt.disabled = true;
         opt.style.pointerEvents = 'none';
         opt.style.opacity = '0.6';
     });
@@ -351,6 +353,7 @@ function updateCorrectAnswerStreak(isCorrect) {
 function updateSidebarActiveState(questionNumber) {
     document.querySelectorAll('.question-circle').forEach(circle => {
         circle.classList.remove('active');
+        circle.setAttribute('aria-current', String(parseInt(circle.dataset.question) === questionNumber));
         if (parseInt(circle.dataset.question) === questionNumber) {
             circle.classList.add('active');
         }
@@ -1249,10 +1252,14 @@ function selectOption(element) {
 
         // OPTIMIZED: Remove selected from siblings only
         const siblings = container.querySelectorAll('.option-card');
-        siblings.forEach(opt => opt.classList.remove('selected'));
+        siblings.forEach(opt => {
+            opt.classList.remove('selected');
+            opt.setAttribute('aria-pressed', 'false');
+        });
 
         // CLEAN SELECTION FEEDBACK
         element.classList.add('selected');
+        element.setAttribute('aria-pressed', 'true');
 
     } catch (error) {
         console.error('selectOption error:', error);
@@ -1936,6 +1943,7 @@ function updateQuestionUI(questionNumber, data) {
         const options = questionCard.querySelectorAll('.option-card');
         options.forEach(option => {
             option.classList.remove('selected', 'correct', 'incorrect');
+            option.setAttribute('aria-pressed', 'false');
             if (option === selectedOption) {
                 option.classList.add(data.correct ? 'correct' : 'incorrect');
             } else if (!data.correct && option.getAttribute('data-option') === data.correctAnswer) {
@@ -2177,6 +2185,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         document.querySelectorAll('.option-card').forEach((optionCard) => {
+            optionCard.disabled = true;
             optionCard.style.pointerEvents = 'none';
             optionCard.style.cursor = 'default';
             optionCard.setAttribute('tabindex', '-1');
@@ -2229,6 +2238,7 @@ document.addEventListener('DOMContentLoaded', function () {
             optionCards.forEach((optionCard) => {
                 const optionLetter = optionCard.getAttribute('data-option');
                 optionCard.classList.remove('selected', 'correct', 'incorrect');
+                optionCard.setAttribute('aria-pressed', 'false');
 
                 if (optionLetter === qData.correct_answer) {
                     optionCard.classList.add('correct');

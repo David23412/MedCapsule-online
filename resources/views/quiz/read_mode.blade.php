@@ -458,6 +458,7 @@
             }
         }
     </style>
+    @include('partials.phone-accessibility')
 </head>
 <body>
     @php

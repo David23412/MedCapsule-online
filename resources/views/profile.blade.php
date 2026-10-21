@@ -121,6 +121,7 @@
             gap: 10px;
         }
     </style>
+    @include('partials.phone-accessibility')
 </head>
 <body>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->

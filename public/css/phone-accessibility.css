@@ -1,0 +1,118 @@
+/* Shared phone ergonomics; desktop spacing and the existing visual design stay intact. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #2563eb !important;
+    outline-offset: 3px;
+}
+
+/* Native buttons keep the tutor option cards' existing appearance. */
+button.option-card {
+    width: 100%;
+    font: inherit;
+    text-align: start;
+    color: inherit;
+}
+
+@media (max-width: 850px) {
+    #lightningPreloader { width: 100vw; max-width: 100%; }
+    input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    select,
+    textarea {
+        font-size: 16px !important;
+        min-height: 44px;
+    }
+
+    .btn,
+    .popup-btn,
+    .back-button,
+    .back-link,
+    .nav-arrow-btn,
+    .dropdown-item,
+    .navbar .nav-link,
+    .navbar-brand,
+    .info-icon,
+    .toggle-password,
+    .admin-theme-icon-button,
+    .btn-close {
+        min-height: 44px;
+    }
+
+    .toggle-password,
+    .admin-theme-icon-button,
+    .info-icon,
+    .btn-close {
+        min-width: 44px;
+    }
+
+    .password-wrapper .toggle-password { right: 2px; }
+    .password-wrapper .form-control { padding-right: 48px; }
+    [data-auth-form] .form-check { display: flex; align-items: center; gap: 8px; padding-left: 0; }
+    [data-auth-form] .form-check-input { flex-shrink: 0; float: none; margin: 0; width: 20px; height: 20px; }
+    [data-auth-form] .form-check-label { padding-block: 12px; }
+    .login-container { margin-top: 24px; margin-bottom: 24px; }
+
+    .question-text,
+    .option-content,
+    .explanation-content,
+    .panel-body,
+    .read-header h1,
+    .topic-title {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .question-sidebar .question-circle {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        max-width: 44px !important;
+        max-height: 44px !important;
+        flex: 0 0 44px !important;
+    }
+
+    .question-sidebar {
+        padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        height: calc(58px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .privacy-control .privacy-control-label { min-width: 0; white-space: normal; }
+    .privacy-control .privacy-switch { width: 44px; height: 44px; }
+    .privacy-switch .privacy-slider { top: 12px; bottom: 12px; left: 4px; right: 4px; }
+    .privacy-switch:focus-within .privacy-slider { outline: 3px solid #2563eb; outline-offset: 3px; }
+
+    .written-answer { min-height: 128px; resize: vertical; }
+    .popup { max-height: calc(100dvh - 24px); overflow-y: auto; }
+    .modal-dialog { max-width: calc(100% - 16px); margin: 8px auto; }
+    .modal-content { max-height: calc(100dvh - 16px); }
+    .modal-body { overflow-y: auto; min-height: 0; }
+    .modal-footer { flex-wrap: wrap; gap: 8px; }
+    .modal-footer .btn { margin: 0; }
+    .read-shell { padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* The tutor strip is only horizontal at the phone breakpoint. */
+@media (min-width: 768.01px) and (max-width: 850px) {
+    .question-sidebar { height: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto !important; }
+    .question-circle, .option-card, .popup, .course-card { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 768px) {
+    /* Keep the secondary answer action beside the main action, above navigation. */
+    body .actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 44px;
+        align-items: center;
+    }
+
+    body .actions-left { min-width: 0; }
+    body .btn-dont-know { align-self: center; }
+    .question-sidebar { padding-right: 64px; }
+    .annot-toggle-btn {
+        bottom: calc(6px + env(safe-area-inset-bottom, 0px)) !important;
+        right: 8px !important;
+    }
+}

@@ -83,3 +83,26 @@ test('invalid saved highlights are ignored; failed writes retain highlights in m
     assert.doesNotThrow(() => vm.runInContext('persistQuestionHighlights("question-42", {}, [])', h.context));
     assert.equal(vm.runInContext('highlights["question-42"][0].end', h.context), 3);
 });
+
+test('switching tutor choices exposes exactly one pressed answer to assistive technology', () => {
+    const h = harness();
+    const choices = ['A', 'B'].map(() => {
+        const classes = new Set();
+        return { attributes: {}, classList: { add: name => classes.add(name), remove: name => classes.delete(name) },
+            setAttribute(name, value) { this.attributes[name] = value; },
+            closest: () => ({ querySelectorAll: () => choices }) };
+    });
+    h.context.selectOption(choices[0]);
+    assert.deepEqual(choices.map(choice => choice.attributes['aria-pressed']), ['true', 'false']);
+    h.context.selectOption(choices[1]);
+    assert.deepEqual(choices.map(choice => choice.attributes['aria-pressed']), ['false', 'true']);
+});
+
+test('question navigation exposes the current question without relying on its color', () => {
+    const h = harness();
+    const circles = [1, 2].map(number => ({ dataset: { question: String(number) }, attributes: {},
+        classList: { add() {}, remove() {} }, setAttribute(name, value) { this.attributes[name] = value; } }));
+    h.context.document.querySelectorAll = () => circles;
+    h.context.updateSidebarActiveState(2);
+    assert.deepEqual(circles.map(circle => circle.attributes['aria-current']), ['false', 'true']);
+});
