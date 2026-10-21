@@ -189,44 +189,71 @@
             color: #1e5f9f;
         }
 
-        .footer {
-            position: fixed;
-            bottom: 15px;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 10px;
-            color: #111827;
-        }
-
-        .marketing-line {
-            position: fixed;
-            bottom: 46px;
-            left: 70px;
-            right: 70px;
-            text-align: center;
-            color: #1e5f9f;
-            font-size: 15px;
-            font-weight: 900;
-            line-height: 1.2;
-        }
-
         .topic-break {
             page-break-before: always;
         }
+
+        .explanations h2 {
+            color: #1e5f9f;
+            font-size: 21px;
+            margin: 26px 0 6px;
+            page-break-after: avoid;
+        }
+
+        .explanations-intro {
+            color: #64748b;
+            font-size: 10px;
+            margin: 0 0 22px;
+            page-break-after: avoid;
+        }
+
+        .explanation-heading {
+            color: #1e5f9f;
+            font-size: 12px;
+            font-weight: 800;
+            border-top: 1px solid #dbe5f5;
+            padding-top: 12px;
+            margin: 18px 0 6px;
+            page-break-after: avoid;
+        }
+
+        .explanation-body {
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-line;
+            overflow-wrap: break-word;
+            orphans: 3;
+            widows: 3;
+        }
+        @if ($includeExplanations ?? false)
+        /* Reserve footer space on every page, including long review continuations. */
+        @page { margin-top: 58px; margin-bottom: 120px; }
+        .page-shell { border: 0; padding: 7px 45px 34px; min-height: 0; }
+        .page-shell:before { display: none; }
+        .page-frame, .page-frame-inner {
+            position: fixed;
+            top: -24px;
+            left: 0;
+            right: 0;
+            bottom: -70px;
+            border: 3px solid #12a9db;
+        }
+        .page-frame-inner {
+            top: -16px;
+            left: 8px;
+            right: 8px;
+            bottom: -62px;
+            border: 2px solid #168bc5;
+        }
+        @endif
     </style>
 </head>
 <body>
+    @if ($includeExplanations ?? false)
+        <div class="page-frame"></div>
+        <div class="page-frame-inner"></div>
+    @endif
     <div class="watermark">MedCapsule</div>
-    <div class="marketing-line">medcapsule.online</div>
-    <div class="footer">
-        <script type="text/php">
-            if (isset($pdf)) {
-                $pdf->page_text(297, 812, "{PAGE_NUM}", "DejaVu Sans", 10, [0, 0, 0]);
-            }
-        </script>
-    </div>
-
     @php
         $globalNumber = 1;
         $printedTopicCount = 0;
@@ -241,6 +268,7 @@
             @php
                 $topicAnswerRows = [];
                 $topicWrittenRows = [];
+                $topicExplanationRows = [];
             @endphp
             <div class="page-shell {{ $printedTopicCount > 0 ? 'topic-break' : '' }}">
                 <img class="top-logo" src="data:image/svg+xml;base64,{{ $logoSvg }}" alt="MedCapsule">
@@ -265,6 +293,14 @@
                             });
                             $hasLongOption = $options->contains(fn ($value) => mb_strlen((string) $value) > 42);
                             $isWrittenQuestion = $options->isEmpty() || $question->question_type === \App\Models\Question::TYPE_WRITTEN;
+
+                            if (($includeExplanations ?? false) && trim((string) $question->explanation) !== '') {
+                                $topicExplanationRows[] = [
+                                    'number' => $globalNumber,
+                                    'source' => $question->source,
+                                    'explanation' => trim((string) $question->explanation),
+                                ];
+                            }
 
                             if ($isWrittenQuestion) {
                                 $topicWrittenRows[] = [
@@ -368,6 +404,19 @@
                     @endif
                 </div>
             </div>
+            @if (count($topicExplanationRows) > 0)
+                <div class="page-shell topic-break">
+                    <img class="top-logo" src="data:image/svg+xml;base64,{{ $logoSvg }}" alt="MedCapsule">
+                    <div class="content explanations">
+                        <h2>{{ $topic->name }} - Explanations</h2>
+                        <p class="explanations-intro">Review notes matched to the question numbers in this topic.</p>
+                        @foreach ($topicExplanationRows as $row)
+                            <h3 class="explanation-heading">Q{{ $row['number'] }}@if($row['source']) <span class="source-label">{{ $row['source'] }}</span>@endif</h3>
+                            <div class="explanation-body">{{ $row['explanation'] }}</div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             @php $printedTopicCount++; @endphp
         @endif
     @endforeach

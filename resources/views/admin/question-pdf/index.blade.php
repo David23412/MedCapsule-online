@@ -155,12 +155,20 @@
                 </div>
 
                 <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-3 pt-2">
-                    <div class="form-check">
-                        <input type="hidden" name="include_answer_key" value="0">
-                        <input class="form-check-input" type="checkbox" value="1" id="include_answer_key" name="include_answer_key">
-                        <label class="form-check-label fw-semibold" for="include_answer_key">
-                            Include answer key at the end
-                        </label>
+                    <div class="d-flex flex-column gap-3">
+                        <div class="form-check">
+                            <input type="hidden" name="include_answer_key" value="0">
+                            <input class="form-check-input" type="checkbox" value="1" id="include_answer_key" name="include_answer_key">
+                            <label class="form-check-label fw-semibold" for="include_answer_key">
+                                Include answer key after each topic
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input type="hidden" name="include_explanations" value="0">
+                            <input class="form-check-input" type="checkbox" value="1" id="include_explanations" name="include_explanations" aria-describedby="explanations-help">
+                            <label class="form-check-label fw-semibold" for="include_explanations">Include explanations</label>
+                            <div id="explanations-help" class="small text-muted">Separate review pages after each topic, matched by question number. Questions without explanations are skipped.</div>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary btn-lg" id="exportPdfButton" disabled>
                         <i class="fas fa-download me-2"></i>Download PDF

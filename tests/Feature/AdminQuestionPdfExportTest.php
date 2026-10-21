@@ -158,4 +158,45 @@ class AdminQuestionPdfExportTest extends TestCase
 
         $this->assertCount(0, $unsafeTopicSubjectQueries, $unsafeTopicSubjectQueries->implode("\n"));
     }
+
+    public function test_explanations_are_optional_numbered_and_separate_from_questions(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $course = Course::factory()->create();
+        $first = Topic::factory()->forCourse($course)->create(['display_order' => 1]);
+        $second = Topic::factory()->forCourse($course)->create(['display_order' => 2]);
+        Question::factory()->multipleChoice()->forTopic($first)->create(['source' => 'Review', 'explanation' => "Clinical note <script>unsafe</script>\nSecond paragraph."]);
+        Question::factory()->multipleChoice()->forTopic($first)->create(['source' => 'Review', 'explanation' => "   \n"]);
+        Question::factory()->essay()->forTopic($second)->create(['source' => 'Review', 'explanation' => 'Written explanation.']);
+        $data = [];
+        \Illuminate\Support\Facades\View::composer('admin.question-pdf.pdf', function ($view) use (&$data) {
+            $data = $view->getData();
+        });
+        $payload = ['course_id' => $course->id, 'topic_ids' => [$first->id, $second->id], 'sources' => ['Review']];
+        $this->actingAs($admin)->get(route('admin.question-pdf.index'))->assertOk()->assertSee('Include explanations');
+        foreach ([null, false, true] as $enabled) {
+            $request = $payload;
+            if ($enabled !== null) $request['include_explanations'] = $enabled;
+            $this->post(route('admin.question-pdf.export'), $request)->assertOk()->assertHeader('content-type', 'application/pdf');
+            $html = view('admin.question-pdf.pdf', $data)->render();
+            $this->assertSame($enabled === true, $data['includeExplanations']);
+            if ($enabled === true) {
+                $this->assertSame(2, substr_count($html, '<div class="content explanations">'));
+                $this->assertStringContainsString('Clinical note &lt;script&gt;unsafe&lt;/script&gt;', $html);
+                $this->assertStringContainsString('<h3 class="explanation-heading">Q3', $html);
+                $this->assertStringNotContainsString('<h3 class="explanation-heading">Q2', $html);
+                $this->assertStringNotContainsString('<div class="answer-key">', $html);
+            } else {
+                $this->assertStringNotContainsString('<div class="content explanations">', $html);
+                $this->assertStringNotContainsString('Clinical note', $html);
+            }
+        }
+        $this->post(route('admin.question-pdf.export'), $payload + ['include_explanations' => true, 'include_answer_key' => true])->assertOk();
+        $html = view('admin.question-pdf.pdf', $data)->render();
+        $this->assertStringContainsString('MCQ Answer Key', $html);
+        $this->assertStringContainsString('Written Answer Key', $html);
+        $this->assertStringContainsString('<div class="content explanations">', $html);
+        $this->postJson(route('admin.question-pdf.export'), $payload + ['include_explanations' => 'invalid'])->assertUnprocessable()->assertJsonValidationErrors('include_explanations');
+    }
+
 }

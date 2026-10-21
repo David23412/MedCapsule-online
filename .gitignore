@@ -34,3 +34,5 @@ Thumbs.db
 /public/storage
 
 /output/playwright/
+
+/output/pdf/

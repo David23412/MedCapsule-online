@@ -104,6 +104,7 @@ class QuestionPdfController extends Controller
             'sources' => ['required', 'array', 'min:1'],
             'sources.*' => ['string', 'max:255'],
             'include_answer_key' => ['nullable', 'boolean'],
+            'include_explanations' => ['nullable', 'boolean'],
         ]);
 
         $course = Course::query()->findOrFail($validated['course_id']);
@@ -156,6 +157,7 @@ class QuestionPdfController extends Controller
             'sources' => $sources,
             'questionsByTopic' => $questionsByTopic,
             'includeAnswerKey' => (bool) ($validated['include_answer_key'] ?? false),
+            'includeExplanations' => (bool) ($validated['include_explanations'] ?? false),
             'generatedAt' => now(),
             'logoSvg' => $this->logoSvg(),
         ])->render();
@@ -164,18 +166,29 @@ class QuestionPdfController extends Controller
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isRemoteEnabled', false);
         $options->set('isHtml5ParserEnabled', true);
-        $options->set('isPhpEnabled', true);
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html);
         $dompdf->setPaper('a4', 'portrait');
         $dompdf->render();
+        $this->drawFooters($dompdf);
 
         $fileName = Str::slug($course->name) . '-question-pack-' . now()->format('Y-m-d') . '.pdf';
 
         return response($dompdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+    }
+
+    private function drawFooters(Dompdf $dompdf): void
+    {
+        $canvas = $dompdf->getCanvas();
+        $metrics = $dompdf->getFontMetrics();
+        $font = $metrics->getFont('DejaVu Sans', 'bold');
+        $label = 'medcapsule.online';
+        $labelWidth = $metrics->getTextWidth($label, $font, 11.25);
+        $canvas->page_text(($canvas->get_width() - $labelWidth) / 2, 764, $label, $font, 11.25, [0.118, 0.373, 0.624]);
+        $canvas->page_text(297, 812, '{PAGE_NUM}', $metrics->getFont('DejaVu Sans'), 10, [0, 0, 0]);
     }
 
     private function validTopicIdsForCourse(int $courseId, array $topicIds): Collection
