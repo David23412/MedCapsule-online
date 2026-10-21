@@ -218,7 +218,7 @@
 </head>
 <body>
     <div class="watermark">MedCapsule</div>
-    <div class="marketing-line">medcapsule.xyz</div>
+    <div class="marketing-line">medcapsule.online</div>
     <div class="footer">
         <script type="text/php">
             if (isset($pdf)) {
