@@ -190,7 +190,7 @@
                                         <a href="{{ route('student.assignments.show', $assignment) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye me-1"></i>Details
                                         </a>
-                                        @if($assignment->canBeCompleted())
+                                        @if($assignment->canUserStart(auth()->user()))
                                             <button type="button" class="btn btn-start btn-sm" onclick="startAssignment({{ $assignment->id }})">
                                                 <i class="fas fa-play me-1"></i>Start Now
                                             </button>
@@ -251,7 +251,7 @@
                                         <a href="{{ route('student.assignments.show', $assignment) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye me-1"></i>Details
                                         </a>
-                                        @if($assignment->canBeCompleted())
+                                        @if($assignment->canUserStart(auth()->user()))
                                             <button type="button" class="btn btn-start btn-sm" onclick="startAssignment({{ $assignment->id }})">
                                                 <i class="fas fa-play me-1"></i>Start
                                             </button>
@@ -358,7 +358,7 @@
                                             <i class="fas fa-check me-1"></i>
                                             Completed {{ $assignment->completed_at->diffForHumans() }}
                                         </div>
-                                        @if($assignment->score_percentage)
+                                        @if($assignment->score_percentage !== null)
                                             <div class="text-success">
                                                 <i class="fas fa-star me-1"></i>Score: {{ $assignment->score_percentage }}%
                                             </div>

@@ -22,6 +22,11 @@
         #app {
             opacity: 1 !important;
         }
+
+        /* Keep the shared header in flow so it cannot cover page content. */
+        #app > .navbar {
+            position: sticky;
+        }
     </style>
 
     <!-- Styles - CRITICAL FIRST -->

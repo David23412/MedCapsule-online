@@ -116,8 +116,8 @@
             </div>
             <div class="col-md-3">
                 <div class="stat-card text-center">
-                    <div class="stat-number text-success">{{ $stats['active_assignments'] }}</div>
-                    <div class="text-muted">Active Assignments</div>
+                    <div class="stat-number text-success">{{ $stats['active_relationships'] }}</div>
+                    <div class="text-muted">Student Assignments</div>
                 </div>
             </div>
         </div>

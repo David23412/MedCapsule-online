@@ -93,7 +93,7 @@ Route::group([], function () {
     Route::post('/free-courses/unlock/submit', [FreeCourseSurveyController::class, 'submit'])->name('free-course-survey.submit');
     
     // Course routes
-    Route::get('/courses/create', [CourseController::class, 'create'])->name('courses.create');
+    Route::get('/courses/create', [CourseController::class, 'showAddCourseForm'])->middleware('admin')->name('courses.create');
     Route::get('/courses/{course}', [CourseController::class, 'show'])->name('courses.show');
 
     // Review routes with CSRF and rate limiting

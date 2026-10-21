@@ -119,7 +119,7 @@ class AdminCleanupFlowTest extends TestCase
         $this->assertGreaterThan(1, Cache::get("quiz_questions_version:topic_{$linked->id}"));
         $version = Cache::get("quiz_questions_version:topic_{$linked->id}");
         Cache::put("topic:{$linked->id}:all_questions", ['stale'], 3600);
-        $question->update(['correct_answer' => 'B']);
+        $question->update(['correct_answer' => $question->correct_answer === 'B' ? 'A' : 'B']);
         $this->assertFalse(Cache::has("topic:{$linked->id}:all_questions"));
         $this->assertGreaterThan($version, Cache::get("quiz_questions_version:topic_{$linked->id}"));
         $version = Cache::get("quiz_questions_version:topic_{$linked->id}");

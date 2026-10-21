@@ -66,14 +66,14 @@ class AssignmentController extends Controller
     public function show(Assignment $assignment)
     {
         // LETHAL LOADING - Only essential data
-        $assignment->load(['user:id,name,email', 'course:id,name', 'topic:id,name']);
+        $assignment->load(['assignedUsers:users.id,name,email', 'course:id,name', 'topic:id,name']);
         return view('assignments.show', compact('assignment'));
     }
 
     public function edit(Assignment $assignment)
     {
         // LETHAL LOADING - Only essential data
-        $assignment->load(['assignedUsers:id,name,email', 'course:id,name', 'topic:id,name']);
+        $assignment->load(['assignedUsers:users.id,name,email', 'course:id,name', 'topic:id,name']);
         
         // Check if this is an AJAX request (modal)
         if (request()->ajax()) {

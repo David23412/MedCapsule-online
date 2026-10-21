@@ -23,7 +23,7 @@ class CourseController extends Controller
      */
     public function index()
     {
-        $courses = Course::with(['topics:id,course_id,name', 'users:id,name'])
+        $courses = Course::with(['topics:id,course_id,name', 'users:users.id,name'])
             ->withCount(['topics', 'users', 'questions'])
             ->orderBy('name')
             ->get();
@@ -39,7 +39,7 @@ class CourseController extends Controller
     {
         try {
 
-        return view('admin.courses.create');
+        return redirect()->route('add-course.form');
     
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);
@@ -99,7 +99,7 @@ class CourseController extends Controller
         try {
 
         $course = Course::findOrFail($id);
-        return view('admin.courses.show', compact('course'));
+        return redirect()->route('topics.forCourse', $course->id);
     
         } catch (\Exception $e) {
             \Log::error('Method execution failed', ['error' => $e->getMessage()]);

@@ -23,7 +23,7 @@ class TutorManagementController extends Controller
     {
         // Eager load assignedStudents + withCount to avoid N+1 in view
         $recentTutors = User::where('role', User::ROLE_TUTOR)
-            ->with(['assignedStudents:id,name,email'])
+            ->with(['assignedStudents:users.id,name,email'])
             ->withCount('assignedStudents')
             ->latest()
             ->take(10)
@@ -209,7 +209,7 @@ class TutorManagementController extends Controller
     {
         abort_if($tutor->role !== User::ROLE_TUTOR, 404, 'User is not a tutor.');
 
-        $tutor->load(['assignedStudents:id,name,email', 'tutorCourses:id,name']);
+        $tutor->load(['assignedStudents:users.id,name,email', 'tutorCourses:id,name']);
 
         return response()->json([
             'id'               => $tutor->id,
