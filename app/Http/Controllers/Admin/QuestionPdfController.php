@@ -171,7 +171,7 @@ class QuestionPdfController extends Controller
         $dompdf->loadHtml($html);
         $dompdf->setPaper('a4', 'portrait');
         $dompdf->render();
-        $this->drawFooters($dompdf);
+        $this->drawFooters($dompdf, (bool) ($validated['include_explanations'] ?? false));
 
         $fileName = Str::slug($course->name) . '-question-pack-' . now()->format('Y-m-d') . '.pdf';
 
@@ -180,9 +180,15 @@ class QuestionPdfController extends Controller
             ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
     }
 
-    private function drawFooters(Dompdf $dompdf): void
+    private function drawFooters(Dompdf $dompdf, bool $drawFrames = false): void
     {
         $canvas = $dompdf->getCanvas();
+        if ($drawFrames) {
+            $canvas->page_script(function ($pageNumber, $pageCount, $page) {
+                $page->rectangle(27, 25.5, $page->get_width() - 54, 778.5, [0.071, 0.663, 0.859], 2.25);
+                $page->rectangle(33, 31.5, $page->get_width() - 66, 766.5, [0.086, 0.545, 0.773], 1.5);
+            });
+        }
         $metrics = $dompdf->getFontMetrics();
         $font = $metrics->getFont('DejaVu Sans', 'bold');
         $label = 'medcapsule.online';

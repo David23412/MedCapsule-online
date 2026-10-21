@@ -230,29 +230,10 @@
         @page { margin-top: 58px; margin-bottom: 120px; }
         .page-shell { border: 0; padding: 7px 45px 34px; min-height: 0; }
         .page-shell:before { display: none; }
-        .page-frame, .page-frame-inner {
-            position: fixed;
-            top: -24px;
-            left: 0;
-            right: 0;
-            bottom: -70px;
-            border: 3px solid #12a9db;
-        }
-        .page-frame-inner {
-            top: -16px;
-            left: 8px;
-            right: 8px;
-            bottom: -62px;
-            border: 2px solid #168bc5;
-        }
         @endif
     </style>
 </head>
 <body>
-    @if ($includeExplanations ?? false)
-        <div class="page-frame"></div>
-        <div class="page-frame-inner"></div>
-    @endif
     <div class="watermark">MedCapsule</div>
     @php
         $globalNumber = 1;
