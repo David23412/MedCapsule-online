@@ -104,11 +104,11 @@ class TutorQuizExperienceTest extends TestCase
         $admin = User::factory()->admin()->create();
         $course = Course::factory()->premium()->create();
         $topic = Topic::factory()->forCourse($course)->quiz()->create(['is_exam' => true]);
-        Question::factory()->forTopic($topic)->create(['source' => 'Sample']);
+        $question = Question::factory()->forTopic($topic)->create(['source' => 'Sample']);
         $url = route('quiz.tutor', [$course, $topic]);
         $this->actingAs($admin)->get($url)->assertOk();
         $key = session('tutor_session_key');
-        \Illuminate\Support\Facades\Cache::put("quiz_questions_version:topic_{$topic->id}", 2);
+        $question->update(['question' => 'Updated sample question']);
         $this->get($url)->assertOk();
         $this->assertNotSame($key, session('tutor_session_key'));
     }

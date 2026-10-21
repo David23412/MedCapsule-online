@@ -29,7 +29,7 @@
                             </thead>
                             <tbody>
                                 @foreach($payments as $payment)
-                                <tr>
+                                <tr data-payment-id="{{ $payment->id }}">
                                     <td>
                                         <strong>{{ $payment->user->name }}</strong><br>
                                         <small class="text-muted">{{ $payment->user->email }}</small>
@@ -86,7 +86,7 @@
                     </div>
 
                     <div class="d-flex justify-content-center mt-4">
-                        {{ $payments->links() }}
+                        {{ $payments->links('pagination::bootstrap-5') }}
                     </div>
                 </div>
             </div>
@@ -94,79 +94,21 @@
     </div>
 </div>
 
+@endsection
+
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Accept payment
-    document.querySelectorAll('.accept-payment').forEach(button => {
-        button.addEventListener('click', function() {
-            const paymentId = this.getAttribute('data-payment-id');
-            if (confirm('Are you sure you want to accept this payment? The user will be enrolled in the course.')) {
-                acceptPayment(paymentId);
-            }
-        });
+    window.MANAGE_ACCESS_CONFIG = {csrfToken: @json(csrf_token())};
+    window.loadPayments = () => window.location.reload();
+    window.showNotification = (type, title, message) => alert(title + ': ' + (message || ''));
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.accept-payment').forEach(button => button.addEventListener('click', () => {
+            if (confirm('Are you sure you want to accept this payment? The user will be enrolled in the course.')) acceptPayment(button.dataset.paymentId);
+        }));
+        document.querySelectorAll('.reject-payment').forEach(button => button.addEventListener('click', () => {
+            if (confirm('Are you sure you want to reject this payment?')) rejectPayment(button.dataset.paymentId);
+        }));
     });
-
-    // Reject payment
-    document.querySelectorAll('.reject-payment').forEach(button => {
-        button.addEventListener('click', function() {
-            const paymentId = this.getAttribute('data-payment-id');
-            if (confirm('Are you sure you want to reject this payment?')) {
-                rejectPayment(paymentId);
-            }
-        });
-    });
-
-    // Initialize tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
-
-function acceptPayment(paymentId) {
-    fetch(`/admin/payments/accept/${paymentId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Payment accepted successfully!');
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while processing the request.');
-    });
-}
-
-function rejectPayment(paymentId) {
-    fetch(`/admin/payments/reject/${paymentId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            'Accept': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Payment rejected successfully!');
-            location.reload();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while processing the request.');
-    });
-}
+</script>
+<script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-actions.js') }}" defer></script>
+@endpush

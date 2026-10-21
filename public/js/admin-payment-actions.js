@@ -2,7 +2,7 @@
     'use strict';
     const pending = new Set();
 
-    async function decidePayment(paymentId, approve) {
+    async function decidePayment(paymentId, approve, payload) {
         const id = String(paymentId);
         if (!/^\d+$/.test(id) || pending.has(id)) return;
         pending.add(id);
@@ -15,8 +15,10 @@
                 method: 'POST', credentials: 'same-origin', signal: controller.signal,
                 headers: {
                     'X-CSRF-TOKEN': window.MANAGE_ACCESS_CONFIG.csrfToken,
+                    'Content-Type': 'application/json',
                     'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
                 },
+                body: JSON.stringify(payload),
             });
             if (response.status === 419 || response.status === 401) {
                 throw new Error('Your session expired. Refresh the page and sign in again.');
@@ -37,6 +39,6 @@
         }
     }
 
-    window.acceptPayment = paymentId => decidePayment(paymentId, true);
-    window.rejectPayment = paymentId => decidePayment(paymentId, false);
+    window.acceptPayment = (paymentId, payload = {}) => decidePayment(paymentId, true, payload);
+    window.rejectPayment = (paymentId, payload = {}) => decidePayment(paymentId, false, payload);
 })();

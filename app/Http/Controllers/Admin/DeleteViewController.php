@@ -19,41 +19,10 @@ class DeleteViewController extends Controller
      */
     public function index()
     {
-        try {
-            $cacheKey = \App\Services\QuizUltraConsolidatedCacheService::generateCacheKey('delete_index', ['user_id' => auth()->id() ?? 'guest']);
-            
-            $data = Cache::remember($cacheKey, 600, function () {
-                $stats = [
-                    'courses' => Course::count(),
-                    'topics' => Topic::count(),
-                    'questions' => Question::count(),
-                    'users' => User::count(),
-                    'quiz_attempts' => QuizAttempt::count(),
-                    'mistakes' => Mistake::count()];
-
-                return compact('stats');
-            });
-
-            return view('admin.delete-management', $data);
-            
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Delete dashboard failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id()
-            ]);
-            
-            return view('admin.delete-management', [
-                'stats' => [
-                    'courses' => 0,
-                    'topics' => 0,
-                    'questions' => 0,
-                    'users' => 0,
-                    'quiz_attempts' => 0,
-                    'mistakes' => 0],
-                'error' => 'Failed to load dashboard statistics'
-            ]);
-        }
+        return view('admin.delete-management', ['stats' => [
+            'courses' => Course::count(), 'topics' => Topic::count(), 'questions' => Question::count(),
+            'users' => User::count(), 'quiz_attempts' => QuizAttempt::count(), 'mistakes' => Mistake::count(),
+        ]]);
     }
 
     /**
@@ -90,7 +59,7 @@ class DeleteViewController extends Controller
         $topics = Topic::with(['course'])
             ->withCount(['questions', 'quizAttempts'])
             ->orderBy('name')
-            ->get();
+            ->paginate(50);
 
         return view('admin.delete-topics', compact('topics'));
     }
@@ -125,8 +94,10 @@ class DeleteViewController extends Controller
         }
 
         $questions = $query->orderBy('id', 'desc')->paginate(20);
-        $courses = Course::orderBy('name')->get();
-        $topics = Topic::orderBy('name')->get();
+        $courses = Course::orderBy('name')->get(['id', 'name']);
+        $topics = !empty($validated['course_id'])
+            ? Topic::where('course_id', $validated['course_id'])->orderBy('name')->get(['id', 'name'])
+            : collect();
 
         return view('admin.delete-questions', compact('questions', 'courses', 'topics'));
     }
@@ -136,17 +107,18 @@ class DeleteViewController extends Controller
      */
     public function showUsers(Request $request)
     {
+        $validated = $request->validate(['search' => 'nullable|string|max:255', 'is_admin' => 'nullable|boolean']);
         $query = User::withCount(['quizAttempts', 'mistakes', 'payments']);
 
-        if ($request->search) {
-            $validatedSearch = $request->validate(['search' => 'string|max:255'])['search'] ?? '';
+        if (!empty($validated['search'])) {
+            $validatedSearch = $validated['search'];
             $query->where(function($q) use ($validatedSearch) {
                 $q->where('name', 'like', '%' . $validatedSearch . '%')
                   ->orWhere('email', 'like', '%' . $validatedSearch . '%');
             });
         }
 
-        if ($request->has('is_admin')) {
+        if (isset($validated['is_admin'])) {
             $request->boolean('is_admin')
                 ? $query->where('role', User::ROLE_ADMIN)
                 : $query->where('role', '!=', User::ROLE_ADMIN);

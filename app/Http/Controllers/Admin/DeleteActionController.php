@@ -29,8 +29,8 @@ class DeleteActionController extends Controller
             $course = Course::select('id', 'name')
                 ->with([
                     'topics:id,course_id',
-                    'questions:id,topic_id', 
-                    'users:id',
+                    'questions:questions.id,topic_id,extra_topic',
+                    'users:users.id',
                     'payments:id,course_id'
                 ])
                 ->findOrFail($id);
@@ -62,8 +62,9 @@ class DeleteActionController extends Controller
             }
 
             if ($questionIds->isNotEmpty()) {
-                Mistake::whereIn('question_id', $questionIds)->delete();
-                Question::whereIn('id', $questionIds)->delete();
+                foreach ($course->questions as $question) {
+                    $question->delete();
+                }
             }
             $course->topics()->delete();
             $course->users()->detach();
@@ -122,11 +123,10 @@ class DeleteActionController extends Controller
 
             QuizAttempt::where('topic_id', $id)->delete();
 
-            $questionIds = $topic->questions()->pluck('id');
-            Mistake::whereIn('question_id', $questionIds)->delete();
-
             UserTopicProgress::where('topic_id', $id)->delete();
-            $topic->questions()->delete();
+            foreach ($topic->questions()->get() as $question) {
+                $question->delete();
+            }
             $topic->delete();
 
             DB::commit();
@@ -156,7 +156,7 @@ class DeleteActionController extends Controller
         try {
             DB::beginTransaction();
 
-            $question = Question::select('id', 'question', 'topic_id')->with(['topic:id,name,course_id', 'topic.course:id,name'])->findOrFail($id);
+            $question = Question::select('id', 'question', 'topic_id', 'extra_topic')->with(['topic:id,name,course_id', 'topic.course:id,name'])->findOrFail($id);
             $questionText = substr($question->question, 0, 100) . '...';
             $topicName = $question->topic->name;
             $courseName = $question->topic->course->name;
@@ -171,20 +171,17 @@ class DeleteActionController extends Controller
                 'timestamp' => Carbon::now()
             ]);
 
-            $mistakeCount = $question->mistakes()->count();
-
-            $question->update(['deleted' => true]);
+            $question->delete();
 
             $cacheService = app(UltraConsolidatedCacheService::class);
             $cacheService->clearQuestionCaches($question->id, $question->topic_id);
-            
-            session()->flush();
+
 
             DB::commit();
 
 
             return redirect()->route('admin.delete.questions')
-                ->with('success', "Question from '{$topicName}' ({$courseName}) has been marked as deleted successfully.");
+                ->with('success', "Question from '{$topicName}' ({$courseName}) has been deleted successfully.");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -286,43 +283,28 @@ class DeleteActionController extends Controller
     public function bulkDeleteQuestions(Request $request)
     {
         $validated = $request->validate([
-            'question_ids' => 'required|array',
-            'question_ids.*' => 'integer|exists:questions,id'
+            'question_ids' => 'required|array|min:1|max:500',
+            'question_ids.*' => 'required|integer|distinct|exists:questions,id'
         ]);
-        
+
         $questionIds = $validated['question_ids'];
         $deletedCount = 0;
 
         try {
             DB::beginTransaction();
 
-            // LETHAL FIX: Batch load all questions to eliminate N+1 queries
-            $questions = Question::with(['topic.course'])
-                ->whereIn('id', $questionIds)
-                ->get()
-                ->keyBy('id');
-
-            $cacheService = app(UltraConsolidatedCacheService::class);
-            
-            // Batch update all questions at once
-            Question::whereIn('id', $questionIds)->update(['deleted' => true]);
-            
-            // Clear caches for all questions
-            foreach ($questionIds as $questionId) {
-                $question = $questions[$questionId] ?? null;
-                if ($question) {
-                    $cacheService->clearQuestionCaches($question->id, $question->topic_id);
-                    $deletedCount++;
-                }
+            $questions = Question::whereIn('id', $questionIds)->lockForUpdate()->get();
+            // Model deletion runs the same cache invalidation as the inline question editor.
+            foreach ($questions as $question) {
+                $question->delete();
+                $deletedCount++;
             }
-
-            session()->flush();
 
             DB::commit();
 
 
             return redirect()->route('admin.delete.questions')
-                ->with('success', "Successfully marked {$deletedCount} questions as deleted.");
+                ->with('success', "Successfully deleted {$deletedCount} questions.");
 
         } catch (\Exception $e) {
             DB::rollBack();

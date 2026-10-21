@@ -17,6 +17,12 @@ class DeleteRequest extends FormRequest
         return auth()->check() && auth()->user()->hasRole('admin');
     }
 
+    protected function prepareForValidation(): void
+    {
+        // The route identifies the resource; existing forms do not duplicate it in the body.
+        $this->merge(['id' => $this->route('id')]);
+    }
+
     /**
      * Get the validation rules that apply to the request.
      */

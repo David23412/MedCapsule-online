@@ -4,13 +4,14 @@
 
 @section('content')
 <div class="container-fluid py-4">
+    <div id="payment-action-status" class="alert" role="status" hidden></div>
     <div class="row">
         <div class="col-12">
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center pb-0">
                     <h5 class="mb-0">Payment Details</h5>
-                    <div>
-                        <a href="{{ route('admin.payment-history') }}" class="btn btn-sm btn-outline-secondary">
+                    <div data-payment-id="{{ $payment->id }}">
+                        <a href="{{ route('admin.payments.history') }}" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-arrow-left me-1"></i> Back to Payments
                         </a>
                         
@@ -78,6 +79,8 @@
                                             <td>
                                                 @if(isset($payment->payment_data['transaction_id']))
                                                 <code class="bg-light px-2 py-1">{{ $payment->payment_data['transaction_id'] }}</code>
+                                                @elseif($payment->transaction_id || $payment->reference_number)
+                                                <code class="bg-light px-2 py-1">{{ $payment->transaction_id ?: $payment->reference_number }}</code>
                                                 @else
                                                 <span class="text-muted">Not submitted yet</span>
                                                 @endif
@@ -130,7 +133,7 @@
                                         <h6 class="mb-1">User</h6>
                                         <p class="mb-0">
                                             @if($payment->user)
-                                            <a href="{{ route('admin.users.show', $payment->user_id) }}" class="fw-bold text-decoration-none">
+                                            <a href="{{ route('tutor.student.profile', ['student_id' => $payment->user_id]) }}" class="fw-bold text-decoration-none">
                                                 {{ $payment->user->name }} ({{ $payment->user->email }})
                                             </a>
                                             @else
@@ -148,7 +151,7 @@
                                     <h6 class="mb-0 fw-bold">Payment Proof</h6>
                                 </div>
                                 <div class="card-body">
-                                    @if($hasProofImage)
+                                    @if($hasProofImage ?? false)
                                     <div class="text-center mb-3">
                                         <img src="{{ $proofUrl }}" class="img-fluid img-thumbnail" style="max-height: 400px;" alt="Payment Proof">
                                     </div>
@@ -366,7 +369,7 @@
 <!-- Verification Modal -->
 <div class="modal fade" id="verifyPaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content" data-payment-id="{{ $payment->id }}">
             <div class="modal-header">
                 <h5 class="modal-title">Verify Payment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -394,7 +397,7 @@
 <!-- Rejection Modal -->
 <div class="modal fade" id="rejectPaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content" data-payment-id="{{ $payment->id }}">
             <div class="modal-header">
                 <h5 class="modal-title">Reject Payment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -435,87 +438,34 @@
 
 @section('scripts')
 <script>
-    $(document).ready(function() {
-        // Verify payment button
-        $('#verify-payment-btn').on('click', function() {
-            $('#verifyPaymentModal').modal('show');
-        });
-        
-        // Confirm verification
-        $('#confirm-verify-btn').on('click', function() {
-            const adminNotes = $('#admin_notes').val();
-            
-            $.ajax({
-                url: '{{ route("admin.payments.verify", $payment->id) }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    admin_notes: adminNotes
-                },
-                beforeSend: function() {
-                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Processing...');
-                },
-                success: function(response) {
-                    if (response.success) {
-                        toastr.success('Payment verified successfully');
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        toastr.error(response.message || 'An error occurred');
-                        $(this).prop('disabled', false).html('Verify Payment');
-                    }
-                },
-                error: function() {
-                    toastr.error('An error occurred while verifying the payment');
-                    $(this).prop('disabled', false).html('Verify Payment');
-                }
-            });
-        });
-        
-        // Reject payment button
-        $('#reject-payment-btn').on('click', function() {
-            $('#rejectPaymentModal').modal('show');
-        });
-        
-        // Confirm rejection
-        $('#confirm-reject-btn').on('click', function() {
-            const reason = $('#rejection_reason').val();
-            const adminNotes = $('#rejection_notes').val();
-            
-            if (!reason) {
-                toastr.error('Please select a rejection reason');
-                return;
-            }
-            
-            $.ajax({
-                url: '{{ route("admin.payments.reject", $payment->id) }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    reason: reason,
-                    admin_notes: adminNotes
-                },
-                beforeSend: function() {
-                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Processing...');
-                },
-                success: function(response) {
-                    if (response.success) {
-                        toastr.success('Payment rejected successfully');
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        toastr.error(response.message || 'An error occurred');
-                        $(this).prop('disabled', false).html('Reject Payment');
-                    }
-                },
-                error: function() {
-                    toastr.error('An error occurred while rejecting the payment');
-                    $(this).prop('disabled', false).html('Reject Payment');
-                }
-            });
+    window.MANAGE_ACCESS_CONFIG = {csrfToken: @json(csrf_token())};
+    window.loadPayments = () => window.location.reload();
+    window.showNotification = (type, title, message) => {
+        ['verifyPaymentModal', 'rejectPaymentModal'].forEach(id => bootstrap.Modal.getInstance(document.getElementById(id))?.hide());
+        const status = document.getElementById('payment-action-status');
+        status.className = 'alert ' + (type === 'error' ? 'alert-danger' : 'alert-success');
+        status.textContent = title + ': ' + (message || '');
+        status.hidden = false;
+    };
+</script>
+<script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-actions.js') }}"></script>
+<script>
+    document.getElementById('verify-payment-btn')?.addEventListener('click', () => {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('verifyPaymentModal')).show();
+    });
+    document.getElementById('reject-payment-btn')?.addEventListener('click', () => {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('rejectPaymentModal')).show();
+    });
+    document.getElementById('confirm-verify-btn').addEventListener('click', () => {
+        acceptPayment(@json($payment->id), {admin_notes: document.getElementById('admin_notes').value});
+    });
+    document.getElementById('confirm-reject-btn').addEventListener('click', () => {
+        const form = document.getElementById('reject-payment-form');
+        if (!form.reportValidity()) return;
+        rejectPayment(@json($payment->id), {
+            reason: document.getElementById('rejection_reason').value,
+            admin_notes: document.getElementById('rejection_notes').value,
         });
     });
 </script>
-@endsection 
+@endsection

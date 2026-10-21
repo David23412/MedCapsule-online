@@ -17,6 +17,12 @@ class QuestionObserver
         $this->cacheService = $cacheService;
     }
 
+    public function deleting(Question $question): void
+    {
+        // Read affected students before the database cascades away their mistake records.
+        $this->invalidateMistakeCachesForQuestion($question->id);
+    }
+
     /**
      * Handle the Question "deleted" event.
      */
@@ -31,11 +37,7 @@ class QuestionObserver
             $this->cacheService->clearRandomQuizCaches();
 
             // Bump quiz question cache version for this topic so quiz pages reflect changes immediately
-            Cache::increment("quiz_questions_version:topic_{$question->topic_id}");
-
-            // Invalidate topic-level caches that depend on question data
-            $this->clearTopicQuestionCaches($question->topic_id);
-            $this->invalidateMistakeCachesForQuestion($question->id);
+            $this->clearAssociatedTopicQuestionCaches($question);
 
         } catch (\Exception $e) {
             Log::error('Error clearing caches after question deletion', [
@@ -65,29 +67,13 @@ class QuestionObserver
                 'explanation',
                 'image_url',
                 'source',
+                'topic_id',
+                'extra_topic',
             ])) {
-                Cache::increment("quiz_questions_version:topic_{$question->topic_id}");
+                $this->clearAssociatedTopicQuestionCaches($question);
                 $this->invalidateMistakeCachesForQuestion($question->id);
             }
 
-            // If source or topic_id changed, invalidate topic-level caches
-            if ($question->wasChanged(['source', 'topic_id', 'extra_topic'])) {
-                $this->clearTopicQuestionCaches($question->topic_id);
-
-                // Also clear the old topic's caches if topic_id was changed
-                if ($question->wasChanged('topic_id') && $question->getOriginal('topic_id')) {
-                    $this->clearTopicQuestionCaches($question->getOriginal('topic_id'));
-                }
-            }
-
-            // If the question was marked as deleted, clear caches
-            if ($question->wasChanged('deleted') && $question->deleted) {
-
-                $this->cacheService->clearQuestionCaches($question->id, $question->topic_id);
-                $this->cacheService->clearRandomQuizCaches();
-                $this->clearTopicQuestionCaches($question->topic_id);
-                $this->invalidateMistakeCachesForQuestion($question->id);
-            }
         } catch (\Exception $e) {
             Log::error('Error clearing caches after question update', [
                 'question_id' => $question->id,
@@ -102,13 +88,29 @@ class QuestionObserver
     public function created(Question $question): void
     {
         try {
-            Cache::increment("quiz_questions_version:topic_{$question->topic_id}");
-            $this->clearTopicQuestionCaches($question->topic_id);
+            $this->clearAssociatedTopicQuestionCaches($question);
         } catch (\Exception $e) {
             Log::error('Error bumping quiz cache version after question creation', [
                 'question_id' => $question->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    private function clearAssociatedTopicQuestionCaches(Question $question): void
+    {
+        $topicIds = array_merge(
+            [$question->topic_id, $question->getOriginal('topic_id')],
+            explode(',', (string) $question->extra_topic),
+            explode(',', (string) $question->getOriginal('extra_topic'))
+        );
+        $topicIds = array_unique(array_filter(array_map(static fn ($id) => (int) $id, $topicIds), static fn ($id) => $id > 0));
+        foreach ($topicIds as $topicId) {
+            $key = "quiz_questions_version:topic_{$topicId}";
+            // Initialize before incrementing so an absent key advances beyond the default version 1.
+            Cache::add($key, 1, 86400);
+            Cache::increment($key);
+            $this->clearTopicQuestionCaches($topicId);
         }
     }
 

@@ -90,7 +90,8 @@
                                             <td>
                                                 <button type="button" 
                                                         class="btn btn-danger btn-sm"
-                                                        onclick="showDeleteConfirmation({{ $course->id }}, '{{ addslashes($course->name) }}', {{ $course->topics_count }}, {{ $course->questions_count }}, {{ $course->users_count }})">
+                                                        data-delete-course="{{ $course->id }}" data-course-name="{{ $course->name }}"
+                                                        data-topics-count="{{ $course->topics_count }}" data-questions-count="{{ $course->questions_count }}" data-users-count="{{ $course->users_count }}">
                                                     <i class="fas fa-trash me-1"></i>Delete
                                                 </button>
                                             </td>
@@ -196,6 +197,13 @@ function showDeleteConfirmation(courseId, courseName, topicsCount, questionsCoun
     // Show modal
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
+
+document.querySelectorAll('[data-delete-course]').forEach(button => {
+    button.addEventListener('click', () => showDeleteConfirmation(
+        button.dataset.deleteCourse, button.dataset.courseName,
+        button.dataset.topicsCount, button.dataset.questionsCount, button.dataset.usersCount
+    ));
+});
 
 // Enable delete button when checkbox is checked
 document.getElementById('confirmCheck').addEventListener('change', function() {

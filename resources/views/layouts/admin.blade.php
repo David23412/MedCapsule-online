@@ -231,8 +231,8 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('admin.user-course') && request()->query('tab') == 'payment-settings' ? 'active' : '' }}" 
-                   href="{{ route('admin.user-course', ['tab' => 'payment-settings']) }}">
+                <a class="nav-link {{ request()->routeIs('admin.user-course') && request()->query('tab') == 'settings' ? 'active' : '' }}" 
+                   href="{{ route('admin.user-course', ['tab' => 'settings']) }}">
                     <i class="fas fa-cog fa-fw mr-2"></i>
                     <span>Payment Settings</span>
                 </a>

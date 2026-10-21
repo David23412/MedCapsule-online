@@ -27,15 +27,12 @@ class DeleteApiController extends Controller
         $type = $validated['type'];
         $id = $validated['id'];
 
-        // LETHAL CACHING: Ultra-aggressive caching for deletion preview
-        $cacheKey = "deletion_preview_{$type}_{$id}_" . now()->format('Y-m-d-H');
-        
-        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($type, $id) {
+        // Deletion previews must reflect the records that exist now.
             switch ($type) {
                 case 'course':
                     $course = Course::select('id', 'name', 'description')
                         ->withCount(['topics', 'questions', 'users', 'payments'])
-                        ->find($id);
+                        ->findOrFail($id);
                     return response()->json([
                         'name' => $course->name,
                         'stats' => [
@@ -50,7 +47,7 @@ class DeleteApiController extends Controller
                     $topic = Topic::select('id', 'name', 'course_id')
                         ->withCount(['questions', 'quizAttempts'])
                         ->with('course:id,name')
-                        ->find($id);
+                        ->findOrFail($id);
                     return response()->json([
                         'name' => $topic->name,
                         'course' => $topic->course->name,
@@ -61,22 +58,22 @@ class DeleteApiController extends Controller
                     ]);
 
                 case 'question':
-                    $question = Question::select('id', 'question_text', 'topic_id')
-                        ->withCount(['mistakes', 'quizAttempts'])
+                    $question = Question::select('id', 'question', 'topic_id')
+                        ->withCount('mistakes')
                         ->with(['topic.course:id,name'])
-                        ->find($id);
+                        ->findOrFail($id);
                     return response()->json([
                     'text' => substr($question->question, 0, 100) . '...',
                     'topic' => $question->topic->name,
                     'course' => $question->topic->course->name,
                     'stats' => [
                         'mistakes' => $question->mistakes_count,
-                        'quiz_attempts' => $question->quiz_attempts_count
+                        'topic_quiz_attempts' => $question->topic->quizAttempts()->count()
                     ]
                 ]);
 
             case 'user':
-                $user = User::withCount(['quizAttempts', 'mistakes', 'payments'])->find($id);
+                $user = User::withCount(['quizAttempts', 'mistakes', 'payments'])->findOrFail($id);
                 return response()->json([
                     'name' => $user->name,
                     'email' => $user->email,
@@ -90,6 +87,5 @@ class DeleteApiController extends Controller
             default:
                 return response()->json(['error' => 'Invalid type'], 400);
         }
-        });
     }
 }

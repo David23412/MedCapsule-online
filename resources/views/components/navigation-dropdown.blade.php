@@ -48,7 +48,7 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('quiz.random') }}">
+                        <a class="dropdown-item" href="{{ route('quiz.random.show') }}">
                             <i class="fas fa-random me-2"></i>Random Quiz
                         </a>
                     </li>
@@ -59,7 +59,7 @@
                     </li>
                     
                     <!-- Student-specific Actions -->
-                    @if($user->role === 'student')
+                    @if($user->isStudent())
                         <li><hr class="dropdown-divider"></li>
                         <li class="dropdown-header">
                             <i class="fas fa-graduation-cap me-2 text-primary"></i>Student Tools
@@ -111,7 +111,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{{ route('admin.payment-history') }}">
+                            <a class="dropdown-item" href="{{ route('admin.payments.history') }}">
                                 <i class="fas fa-credit-card me-2"></i>Payment Management
                             </a>
                         </li>
@@ -157,7 +157,7 @@
             </a>
         </li>
         <li>
-            <a class="dropdown-item" href="{{ route('quiz.random') }}">
+            <a class="dropdown-item" href="{{ route('quiz.random.show') }}">
                 <i class="fas fa-random me-2"></i>Random Quiz
             </a>
         </li>

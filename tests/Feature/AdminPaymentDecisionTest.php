@@ -72,6 +72,15 @@ class AdminPaymentDecisionTest extends TestCase
             ->assertJsonPath('stats.rejected_count', 1);
     }
 
+    public function test_payment_history_and_details_render_with_current_routes(): void
+    {
+        $payment = $this->payment();
+        $history = $this->get(route('admin.payments.history'))->assertOk()->assertSee('Payment Management');
+        $this->assertStringContainsString('</script>', $history->getContent());
+        $this->get(route('admin.payments.details', $payment))->assertOk()
+            ->assertSee($payment->reference_number)->assertDontSee('Not submitted yet')->assertSee('No payment proof image has been submitted yet.');
+    }
+
     public function test_students_cannot_approve_or_reject_payments(): void
     {
         $payment = $this->payment();

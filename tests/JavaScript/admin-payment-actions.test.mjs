@@ -54,3 +54,10 @@ test('expired sessions show an actionable message and allow a retry', async () =
     h.requests[1].resolve({success:true}); await retry;
     assert.equal(h.refreshes(), 1);
 });
+test('detail-page notes and rejection reason use the same guarded request', async () => {
+    const h = harness();
+    const pending = h.context.rejectPayment(3, {reason:'Amount mismatch', admin_notes:'Sample review note'});
+    assert.deepEqual(JSON.parse(h.requests[0].options.body), {reason:'Amount mismatch', admin_notes:'Sample review note'});
+    assert.equal(h.requests[0].options.headers['Content-Type'], 'application/json');
+    h.requests[0].resolve({success:true}); await pending;
+});
