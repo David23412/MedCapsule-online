@@ -1,5 +1,6 @@
 @php
     $activeTab = match (request()->query('tab')) {
+        'question-quality' => 'question-quality',
         'mentorship' => 'mentorship',
         'payments' => 'payment-history',
         'survey-results' => 'survey-results',
@@ -11,6 +12,7 @@
         default => 'access',
     };
     $tabDescriptions = [
+        'question-quality' => 'Find invalid answers and explanations that only repeat the correct answer.',
         'access' => 'Choose a user and course to review access. Account permissions are managed separately.',
         'preview-topics' => 'Choose which topics students can open with preview access.',
         'payment-history' => 'Find payments and review their status.',
@@ -1952,6 +1954,11 @@
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs" id="manageTabs" role="tablist">
             <li class="nav-item" role="presentation">
+                <button class="nav-link {{ $activeTab === 'question-quality' ? 'active' : '' }}" id="question-quality-tab" data-bs-toggle="tab" data-bs-target="#question-quality" type="button" role="tab" aria-controls="question-quality" aria-selected="{{ $activeTab === 'question-quality' ? 'true' : 'false' }}">
+                    <i class="fas fa-check-double" aria-hidden="true"></i> Question Quality
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $activeTab === 'access' ? 'active' : '' }}" id="access-tab" data-bs-toggle="tab" data-bs-target="#access" type="button" role="tab">
                     <i class="fas fa-users me-2"></i>User Access
                 </button>
@@ -3187,6 +3194,7 @@
                 </div>
             </div>
 
+            @include('admin.partials.question-quality')
             @include('admin.partials.survey-results', ['surveyInsights' => $surveyInsights ?? [], 'activeTab' => $activeTab])
             @include('admin.partials.scheduler-calibration', ['schedulerCalibration' => $schedulerCalibration ?? [], 'activeTab' => $activeTab])
         </div>
@@ -3208,6 +3216,7 @@
             studentProfileBaseUrl: '{{ url('/tutor/student') }}',
             deleteUserBaseUrl: '{{ url('/admin/delete/user') }}',
             routes: {
+                questionQuality: '{{ route('admin.question-quality') }}',
                 adminVideosIndex: '{{ route('admin.videos.index') }}',
                 adminVideosStore: '{{ route('admin.videos.store') }}',
                 adminVideosDestroyBase: '{{ url('/admin/videos') }}',
@@ -3233,6 +3242,7 @@
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-list.js') }}"></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-manage-access.js') }}"></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-actions.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-question-quality.js') }}"></script>
 
     <script>
         $(document).ready(function() {

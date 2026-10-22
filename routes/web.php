@@ -137,6 +137,8 @@ Route::group([], function () {
     // Manage Access Routes - Admin only
     Route::middleware('admin')->group(function () {
 
+        Route::get('/manage-access/question-quality', [\App\Http\Controllers\Admin\QuestionQualityController::class, 'index'])->name('admin.question-quality');
+
         // Video Management Routes
         Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');
         Route::post('/admin/videos', [App\Http\Controllers\VideoController::class, 'store'])->name('admin.videos.store');
