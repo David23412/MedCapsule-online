@@ -49,3 +49,14 @@ test('refresh and pagination preserve the current search and page without embedd
     assert.equal(h.requests[2].options.data.search,search);
     assert.equal(h.requests[2].options.timeout,12000);
 });
+
+test('revenue card displays the combined total and the two amounts without implying manual grants are payment records', () => {
+    const h=harness();h.context.loadPayments();
+    const data=response();data.stats={total_revenue:325.5,confirmed_payment_revenue:200.5,manual_enrollment_revenue:125,manual_enrollment_count:1,completed_count:2,pending_count:3,rejected_count:4};
+    h.requests[0].options.success(data);
+    assert.equal(h.elements.get('#total-revenue').value,'325.50 EGP');
+    assert.equal(h.elements.get('#confirmed-payment-revenue').value,'200.50 EGP');
+    assert.equal(h.elements.get('#manual-enrollment-revenue').value,'125.00 EGP');
+    assert.equal(h.elements.get('#manual-enrollment-count').value,1);
+    assert.equal(h.elements.get('#completed-count').value,2);
+});

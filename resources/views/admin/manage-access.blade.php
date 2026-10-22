@@ -2671,7 +2671,7 @@
                     <div class="col-md-3">
                         <div class="stat-card">
                             <div class="stat-number text-success" id="completed-count">0</div>
-                            <div class="stat-label">Completed</div>
+                            <div class="stat-label">Completed Payments</div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -2686,6 +2686,14 @@
                             <div class="stat-label">Rejected</div>
                         </div>
                     </div>
+                </div>
+
+                <div class="small text-muted mb-3">
+                    <div class="d-flex flex-wrap gap-3 mb-1">
+                        <span>Confirmed payments: <strong id="confirmed-payment-revenue">0.00 EGP</strong></span>
+                        <span>Manual enrollments (<span id="manual-enrollment-count">0</span>): <strong id="manual-enrollment-revenue">0.00 EGP</strong></span>
+                    </div>
+                    Manual paid enrollments use current course prices; confirmed payments use recorded amounts. No double-counting.
                 </div>
 
                 <!-- Payment History Table -->

@@ -44,6 +44,9 @@
                         const rejectedCount = parseInt(response.stats.rejected_count || 0);
                         
                         $('#total-revenue').text(totalRevenue.toFixed(2) + ' EGP');
+                        $('#confirmed-payment-revenue').text(Number(response.stats.confirmed_payment_revenue || 0).toFixed(2) + ' EGP');
+                        $('#manual-enrollment-revenue').text(Number(response.stats.manual_enrollment_revenue || 0).toFixed(2) + ' EGP');
+                        $('#manual-enrollment-count').text(Number(response.stats.manual_enrollment_count || 0));
                         $('#completed-count').text(completedCount);
                         $('#pending-count').text(pendingCount);
                         $('#rejected-count').text(rejectedCount);

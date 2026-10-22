@@ -358,6 +358,7 @@ $.ajaxSetup({timeout: 15000});
                         }
                         showNotification(grant ? 'success' : 'warning', grant ? 'Access Granted' : 'Access Revoked', response.message);
                         refreshEnrollmentData();
+                        if (typeof window.loadPayments === 'function') window.loadPayments();
                     },
                     error: function(xhr) {
                         showNotification('error', 'Access Not Updated', xhr.responseJSON?.message || 'Please try again.');

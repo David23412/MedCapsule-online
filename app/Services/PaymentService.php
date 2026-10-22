@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\Course;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class PaymentService
 {
@@ -188,14 +189,45 @@ class PaymentService
                              ->paginate($perPage, ['*'], 'page', $page);
 
             // Count settled revenue separately from requests awaiting review, in one query.
-            $totals = Payment::query()->selectRaw("
+            $paymentTotals = Payment::query()->selectRaw("
                 COALESCE(SUM(CASE WHEN status = 'completed' THEN amount ELSE 0 END), 0) AS total_revenue,
                 COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed_count,
                 COALESCE(SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END), 0) AS pending_count,
                 COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) AS rejected_count
-            ")->first();
+            ");
+            // Manual grants have no payment row. Count their course value only when
+            // this student/course pair has no completed payment already in the total.
+            $manualEnrollments = DB::table('course_user as enrollments')
+                ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+                ->join('users', 'users.id', '=', 'enrollments.user_id')
+                ->where('users.role', User::ROLE_STUDENT)
+                ->where('enrollments.is_enrolled', true)
+                ->whereIn('courses.access_type', Course::PURCHASABLE_ACCESS_TYPES)
+                ->where('courses.price', '>', 0)
+                ->where(function ($query) {
+                    $query->where('enrollments.access_level', User::COURSE_ACCESS_FULL)
+                        ->orWhere(function ($legacy) {
+                            $legacy->whereNull('enrollments.access_level')
+                                ->where('courses.access_type', Course::ACCESS_TYPE_PAID);
+                        });
+                })
+                ->whereNotExists(function ($payments) {
+                    $payments->selectRaw('1')->from('payments')
+                        ->whereColumn('payments.user_id', 'enrollments.user_id')
+                        ->whereColumn('payments.course_id', 'enrollments.course_id')
+                        ->where('payments.status', 'completed');
+                })
+                ->selectRaw('COALESCE(SUM(courses.price), 0) AS revenue, COUNT(*) AS enrollment_count');
+            // One statement keeps both amounts consistent if a payment is approved mid-request.
+            $totals = DB::query()->fromSub($paymentTotals, 'payment_totals')
+                ->crossJoinSub($manualEnrollments, 'manual_totals')
+                ->select('payment_totals.*', 'manual_totals.revenue as manual_revenue', 'manual_totals.enrollment_count as manual_count')
+                ->first();
             $stats = [
-                'total_revenue' => (float) $totals->total_revenue,
+                'total_revenue' => round((float) $totals->total_revenue + (float) $totals->manual_revenue, 2),
+                'confirmed_payment_revenue' => (float) $totals->total_revenue,
+                'manual_enrollment_revenue' => (float) $totals->manual_revenue,
+                'manual_enrollment_count' => (int) $totals->manual_count,
                 'completed_count' => (int) $totals->completed_count,
                 'pending_count' => (int) $totals->pending_count,
                 'rejected_count' => (int) $totals->rejected_count,
