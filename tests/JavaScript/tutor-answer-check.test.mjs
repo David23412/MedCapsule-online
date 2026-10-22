@@ -7,9 +7,9 @@ const source = readFileSync(new URL('../../public/js/tutor-mode.js', import.meta
 function harness(fetch) {
     const feedbackParts = new Map(['.alert', '.result-text', '.explanation-content'].map(key => [key, {style:{},textContent:'',innerHTML:''}]));
     const feedback = {style:{}, querySelector: key => feedbackParts.get(key)};
-    const input = {value:'kidny',disabled:false};
-    const button = {disabled:false, textContent:'Check Answer', style:{}};
-    const card = {style:{},querySelector: key => ({'.written-answer':input,'.check-answer':button,'.answer-feedback':feedback}[key] || null), querySelectorAll:()=>[], dataset:{}};
+    const input = {value:'kidny',disabled:false,focus(){},setSelectionRange(){}};
+    const button = {disabled:false, textContent:'Check Answer', style:{},attributes:{},setAttribute(key,value){this.attributes[key]=value;}};
+    const card = {style:{},focus(){},querySelector: key => ({'.written-answer':input,'.check-answer':button,'.answer-feedback':feedback}[key] || null), querySelectorAll:()=>[], dataset:{}};
     const timeouts = new Map();
     const context = vm.createContext({
         console:{log(){},warn(){},error(){}}, Date, performance, AbortController,
@@ -41,7 +41,7 @@ test('a failed check preserves the answer, score and ability to retry', async()=
     assert.equal(h.input.value,'kidny');
     assert.equal(h.input.disabled,false);
     assert.equal(h.button.disabled,false);
-    assert.match(h.feedbackParts.get('.result-text').textContent,/retry|try again|check/i);
+    assert.match(h.feedbackParts.get('.explanation-content').textContent,/retry|try again|check/i);
     await h.check();
     assert.equal(h.state().totalAnswers,1);
     assert.equal(h.state().correctAnswers,1);
@@ -114,4 +114,41 @@ test('timed out and invalid responses remain ungraded and retryable',async()=>{
     const invalid=harness(async()=>({ok:true,json:async()=>({success:false})}));
     await invalid.check();
     assert.equal(invalid.state().totalAnswers,0);
+});
+
+test('failed written checks restore the cursor and announce a retry without duplicating the message',async()=>{
+    const h=harness(async()=>{
+        h.context.document.activeElement=h.context.document.body;
+        throw new Error('Offline');
+    });
+    const status={textContent:''};
+    const original=h.context.document.getElementById;
+    h.context.document.getElementById=id=>id==='tutor-keyboard-status'?status:original(id);
+    h.context.document.body={};
+    h.context.document.activeElement=h.input;
+    h.input.selectionStart=2;h.input.selectionEnd=4;
+    h.input.focus=()=>{h.context.document.activeElement=h.input;};
+    h.input.setSelectionRange=(start,end)=>{h.cursor=[start,end];};
+    await h.check();
+    assert.equal(h.context.document.activeElement,h.input);
+    assert.deepEqual(h.cursor,[2,4]);
+    assert.equal(h.button.attributes['aria-busy'],'false');
+    assert.equal(status.textContent,'');
+    assert.match(h.feedbackParts.get('.explanation-content').textContent,/try again/);
+    assert.equal(h.feedbackParts.get('.result-text').textContent,'');
+});
+
+test('a late written check never steals focus after moving to another question',async()=>{
+    const h=harness(async()=>{
+        h.context.document.activeElement=h.context.document.body;
+        vm.runInContext('currentQuestionIndex=2',h.context);
+        throw new Error('Offline');
+    });
+    h.context.document.body={};
+    h.context.document.activeElement=h.input;
+    let refocused=false;
+    h.input.focus=()=>{refocused=true;};
+    await h.check();
+    assert.equal(refocused,false);
+    assert.equal(h.input.disabled,false);
 });

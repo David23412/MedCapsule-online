@@ -205,3 +205,27 @@ test('keyboard question navigation hides only the previous card and restores foc
     h.context.jumpToQuestion(999,{keyboard:true});
     assert.equal(target.style.display,'block');
 });
+
+test('letter selection follows displayed letters rather than shuffled stored answer keys', () => {
+    const h = keyboardChoices();
+    ['E','D','C','B','A'].forEach((label,index) => {
+        h.choices[index].querySelector=selector=>selector==='.option-letter'?{textContent:label}:null;
+    });
+    const event=h.key({key:'a',target:h.choices[0]});
+    assert.equal(event.defaultPrevented,true);
+    assert.equal(h.selected(),4);
+    assert.equal(h.focused.getAttribute('data-option'),'E');
+    h.key({key:'b',target:{tagName:'TEXTAREA'}});
+    h.key({key:'c',target:{tagName:'INPUT'}});
+    h.key({key:'d',target:{tagName:'BODY'}});
+    assert.equal(h.selected(),4);
+    vm.runInContext('questionStates[1]=true',h.context);
+    h.key({key:'b',target:h.focused});
+    assert.equal(h.selected(),4);
+});
+
+test('shortcut help keeps native Enter behavior instead of checking an answer', () => {
+    const h=keyboardChoices();
+    assert.equal(h.key({target:{tagName:'SUMMARY'}}).defaultPrevented,false);
+    assert.equal(h.context.checks,0);
+});

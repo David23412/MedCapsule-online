@@ -1272,6 +1272,26 @@ function selectOption(element) {
 
 // Track first attempt answers and question states
 
+// Keep keyboard selection and scrolling identical for arrows and displayed letters.
+function chooseTutorOptionFromKeyboard(option) {
+    selectOption(option);
+    option.focus({ preventScroll: true });
+    const rect = option.getBoundingClientRect();
+    const headerBottom = document.querySelector('.navbar')?.getBoundingClientRect().bottom || 0;
+    if (rect.top < headerBottom + 12 || rect.bottom > window.innerHeight - 24) {
+        const top = rect.top < headerBottom + 12
+            ? window.scrollY + rect.top - headerBottom - 12
+            : window.scrollY + rect.bottom - window.innerHeight + 24;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+    }
+    queueTutorKeyboardDraft();
+}
+
+function announceTutorStatus(message) {
+    const status = document.getElementById('tutor-keyboard-status');
+    if (status) status.textContent = message;
+}
+
 // Jump to specific question from sidebar
 window.jumpToQuestion = function (questionNumber, { keyboard = false } = {}) {
     const targetQuestion = document.getElementById(`question-${questionNumber}`);
@@ -1303,6 +1323,7 @@ window.jumpToQuestion = function (questionNumber, { keyboard = false } = {}) {
 
         saveTutorDraft();
         if (keyboard) {
+            announceTutorStatus(`Question ${questionNumber} of ${totalQuestions}`);
             targetQuestion.focus({ preventScroll: true });
         }
         const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -1786,11 +1807,16 @@ window.checkAnswer = async function checkAnswer(questionNumber, questionId) {
         if (!feedback) return;
         feedback.style.display = 'block';
         feedback.querySelector('.alert').className = 'alert alert-warning';
-        feedback.querySelector('.result-text').textContent = message;
+        const result = feedback.querySelector('.result-text');
+        result.textContent = '';
         feedback.querySelector('.explanation-content').textContent = message;
+        // The feedback alert announces errors; clear the pending status to avoid speaking twice.
+        if (questionNumber === currentQuestionIndex) announceTutorStatus('');
     }
     if (!answer) {
         showCheckMessage('Choose an answer or write a response before checking.');
+        const answerInput = writtenAnswer || questionCard.querySelector('.option-card:not(:disabled)');
+        answerInput?.focus({ preventScroll: true });
         return;
     }
 
@@ -1800,6 +1826,9 @@ window.checkAnswer = async function checkAnswer(questionNumber, questionId) {
     const cacheKey = JSON.stringify([questionId, qData?.correct_answer, answer]);
     let timeoutId;
     const inputWasDisabled = writtenAnswer?.disabled;
+    const writtenInputHadFocus = writtenAnswer && document.activeElement === writtenAnswer;
+    const selectionStart = writtenAnswer?.selectionStart;
+    const selectionEnd = writtenAnswer?.selectionEnd;
     try {
         let data;
         if (qData && qData.question_type !== 'written') {
@@ -1815,6 +1844,8 @@ window.checkAnswer = async function checkAnswer(questionNumber, questionId) {
                 checkBtn.textContent = 'Checking...';
             }
             if (writtenAnswer) writtenAnswer.disabled = true;
+            checkBtn?.setAttribute('aria-busy', 'true');
+            announceTutorStatus('Checking your answer…');
             const controller = new AbortController();
             // Slow connections must remain retryable and must never count as a wrong answer.
             timeoutId = setTimeout(() => controller.abort(), 12000);
@@ -1836,14 +1867,28 @@ window.checkAnswer = async function checkAnswer(questionNumber, questionId) {
         totalAnswers++;
         if (data.is_correct) correctAnswers++;
         processAnswerResult(questionNumber, questionId, data, checkBtn);
+        if (questionNumber === currentQuestionIndex) {
+            announceTutorStatus(data.is_correct ? 'Correct. Press Enter to continue.' : 'Answer checked. Review the explanation, then press Enter to continue.');
+            if (writtenInputHadFocus && (document.activeElement === document.body || document.activeElement === writtenAnswer)) {
+                questionCard.focus({ preventScroll: true });
+            }
+        }
     } catch (error) {
         showCheckMessage('We could not check your answer. Your response is kept — try again.');
         saveTutorDraft();
     } finally {
         clearTimeout(timeoutId);
+        checkBtn?.setAttribute('aria-busy', 'false');
         delete checkAnswer[processingKey];
         if (!questionStates[questionNumber]) {
-            if (writtenAnswer) writtenAnswer.disabled = inputWasDisabled;
+            if (writtenAnswer) {
+                writtenAnswer.disabled = inputWasDisabled;
+                if (writtenInputHadFocus && questionNumber === currentQuestionIndex
+                    && (document.activeElement === document.body || document.activeElement === writtenAnswer)) {
+                    writtenAnswer.focus({ preventScroll: true });
+                    if (typeof selectionStart === 'number') writtenAnswer.setSelectionRange(selectionStart, selectionEnd);
+                }
+            }
             if (checkBtn) {
                 checkBtn.disabled = false;
                 checkBtn.textContent = 'Check Answer';
@@ -2311,6 +2356,7 @@ document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.isComposing || e.keyCode === 229 || e.ctrlKey || e.metaKey || e.altKey) return;
     // Don't intercept when typing in inputs/selects or when edit modal is open
     const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'summary' || e.target.closest?.('summary')) return;
     if (e.target.isContentEditable || e.target.closest?.('[contenteditable="true"]')) return;
     const focusedControl = e.target.closest?.('button, a');
     const quizControl = e.target.closest?.('.option-card, .question-circle, .nav-arrow-btn, .check-answer, .next-question, .view-results, .btn-dont-know');
@@ -2383,6 +2429,22 @@ document.addEventListener('keydown', function (e) {
         }
     }
 
+    // Letter shortcuts apply only inside the focused question, never while typing.
+    if (/^[a-e]$/i.test(e.key) && !e.shiftKey && activeQuestionCard
+        && tag !== 'input' && tag !== 'textarea' && tag !== 'select'
+        && (e.target === activeQuestionCard || e.target.closest?.('.option-card'))) {
+        const number = getQuestionNumberFromCard(activeQuestionCard);
+        if (questionStates[number] || window.checkAnswer?.[`processing_${number}`]
+            || document.body?.classList.contains('tutor-review-mode')) return;
+        const option = Array.from(activeQuestionCard.querySelectorAll('.option-card')).find(card =>
+            !card.disabled && card.querySelector('.option-letter')?.textContent.trim().toUpperCase() === e.key.toUpperCase());
+        if (option) {
+            e.preventDefault();
+            if (!e.repeat) chooseTutorOptionFromKeyboard(option);
+        }
+        return;
+    }
+
     if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && activeQuestionCard) {
         const isTypingInTextField = tag === 'input' || tag === 'textarea' || tag === 'select';
         if (isTypingInTextField) {
@@ -2404,18 +2466,7 @@ document.addEventListener('keydown', function (e) {
                 ? (direction === 1 ? 0 : optionCards.length - 1)
                 : (currentIndex + direction + optionCards.length) % optionCards.length;
 
-            const option = optionCards[nextIndex];
-            selectOption(option);
-            option.focus({ preventScroll: true });
-            const rect = option.getBoundingClientRect();
-            const headerBottom = document.querySelector('.navbar')?.getBoundingClientRect().bottom || 0;
-            if (rect.top < headerBottom + 12 || rect.bottom > window.innerHeight - 24) {
-                const top = rect.top < headerBottom + 12
-                    ? window.scrollY + rect.top - headerBottom - 12
-                    : window.scrollY + rect.bottom - window.innerHeight + 24;
-                window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
-            }
-            queueTutorKeyboardDraft();
+            chooseTutorOptionFromKeyboard(optionCards[nextIndex]);
             return;
         }
     }
