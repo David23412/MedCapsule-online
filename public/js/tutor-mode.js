@@ -1247,6 +1247,10 @@ function getElementTextStartOffset(container, element) {
 // LIGHTNING FAST FUNCTION DEFINITIONS 🚀
 function selectOption(element) {
     try {
+        if (!element || element.disabled || document.body?.classList.contains('tutor-review-mode')) return;
+        const card = element.closest('.question-card');
+        const number = getQuestionNumberFromCard(card);
+        if (number && (questionStates[number] || window.checkAnswer?.[`processing_${number}`])) return;
         const container = element.closest('.options-container');
         if (!container) return;
 
@@ -1269,14 +1273,13 @@ function selectOption(element) {
 // Track first attempt answers and question states
 
 // Jump to specific question from sidebar
-window.jumpToQuestion = function (questionNumber) {
-    console.log(`🎯 Jumping to question ${questionNumber}`);
-
-    document.querySelectorAll('.question-card').forEach(card => {
-        card.style.display = 'none';
-    });
-
+window.jumpToQuestion = function (questionNumber, { keyboard = false } = {}) {
     const targetQuestion = document.getElementById(`question-${questionNumber}`);
+    if (!targetQuestion || questionNumber === currentQuestionIndex) return;
+
+    const previousQuestion = document.getElementById(`question-${currentQuestionIndex}`);
+    if (previousQuestion) previousQuestion.style.display = 'none';
+
     if (targetQuestion) {
         targetQuestion.style.display = 'block';
         currentQuestionIndex = questionNumber;
@@ -1299,21 +1302,25 @@ window.jumpToQuestion = function (questionNumber) {
         }
 
         saveTutorDraft();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (keyboard) {
+            targetQuestion.focus({ preventScroll: true });
+        }
+        const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: 0, behavior: keyboard || reducedMotion ? 'instant' : 'smooth' });
     }
 };
 
 // Navigate to previous question
-window.navigatePrevious = function (currentNumber) {
+window.navigatePrevious = function (currentNumber, options) {
     if (currentNumber > 1) {
-        jumpToQuestion(currentNumber - 1);
+        jumpToQuestion(currentNumber - 1, options);
     }
 };
 
 // Navigate to next question
-window.navigateNext = function (currentNumber) {
+window.navigateNext = function (currentNumber, options) {
     if (currentNumber < totalQuestions) {
-        jumpToQuestion(currentNumber + 1);
+        jumpToQuestion(currentNumber + 1, options);
     }
 };
 
@@ -1846,10 +1853,10 @@ window.checkAnswer = async function checkAnswer(questionNumber, questionId) {
 };
 
 // Function to show next question
-function showNextQuestion(currentNumber) {
+function showNextQuestion(currentNumber, options) {
     if (document.getElementById(`question-${currentNumber + 1}`)) {
         // Keep header, sidebar, saved position, and navigation in sync.
-        window.jumpToQuestion(currentNumber + 1);
+        window.jumpToQuestion(currentNumber + 1, options);
     } else {
         showFinalResults();
     }
@@ -2288,18 +2295,36 @@ document.addEventListener('visibilitychange', function () {
 });
 
 // ============================================================
-// KEYBOARD ARROW NAVIGATION (Left / Right to switch questions)
+// KEYBOARD NAVIGATION (Up / Down: choices; Left / Right: questions)
 // ============================================================
+let lastTutorKeyboardMove = -Infinity;
+let tutorKeyboardDraftFrame = null;
+function queueTutorKeyboardDraft() {
+    if (tutorKeyboardDraftFrame !== null) return;
+    tutorKeyboardDraftFrame = requestAnimationFrame(() => {
+        tutorKeyboardDraftFrame = null;
+        saveTutorDraft();
+    });
+}
+
 document.addEventListener('keydown', function (e) {
     if (e.defaultPrevented || e.isComposing || e.keyCode === 229 || e.ctrlKey || e.metaKey || e.altKey) return;
     // Don't intercept when typing in inputs/selects or when edit modal is open
     const tag = (e.target.tagName || '').toLowerCase();
-    if (e.target.isContentEditable || tag === 'button' || tag === 'a' || e.target.closest?.('button, a')) return;
+    if (e.target.isContentEditable || e.target.closest?.('[contenteditable="true"]')) return;
+    const focusedControl = e.target.closest?.('button, a');
+    const quizControl = e.target.closest?.('.option-card, .question-circle, .nav-arrow-btn, .check-answer, .next-question, .view-results, .btn-dont-know');
+    if ((tag === 'button' || tag === 'a' || focusedControl) && !quizControl) return;
     if (tag === 'textarea' && e.shiftKey && e.key === 'Enter') return;
-    if (document.getElementById('edit-question-overlay')?.classList.contains('show')) return;
+    if (document.getElementById('edit-question-overlay')?.classList.contains('show')
+        || document.getElementById('popup-overlay')?.classList.contains('show')
+        || document.querySelector('.modal.show, [role="dialog"][aria-modal="true"]')) return;
     const activeQuestionCard = document.getElementById(`question-${currentQuestionIndex}`);
 
     if (e.key === 'Enter') {
+        // Keep native activation for action buttons; option focus uses the quiz action.
+        if (e.repeat) { e.preventDefault(); return; }
+        if (quizControl && !e.target.closest?.('.option-card')) return;
         const isTypingInTextarea = tag === 'textarea';
         const isTypingInInput = tag === 'input' || tag === 'select';
 
@@ -2338,7 +2363,7 @@ document.addEventListener('keydown', function (e) {
 
                 const questionNumber = getQuestionNumberFromCard(activeQuestionCard);
                 if (questionNumber && typeof window.showNextQuestion === 'function') {
-                    window.showNextQuestion(questionNumber);
+                    window.showNextQuestion(questionNumber, { keyboard: true });
                 }
                 return;
             }
@@ -2364,9 +2389,14 @@ document.addEventListener('keydown', function (e) {
             return;
         }
 
-        const optionCards = Array.from(activeQuestionCard.querySelectorAll('.option-card'));
+        const questionNumber = getQuestionNumberFromCard(activeQuestionCard);
+        if (questionStates[questionNumber] || window.checkAnswer?.[`processing_${questionNumber}`]
+            || document.body?.classList.contains('tutor-review-mode')) return;
+        const optionCards = Array.from(activeQuestionCard.querySelectorAll('.option-card')).filter(option => !option.disabled);
         if (optionCards.length > 0) {
             e.preventDefault();
+            if (e.repeat && performance.now() - lastTutorKeyboardMove < 110) return;
+            lastTutorKeyboardMove = performance.now();
 
             const currentIndex = optionCards.findIndex((optionCard) => optionCard.classList.contains('selected'));
             const direction = e.key === 'ArrowDown' ? 1 : -1;
@@ -2374,23 +2404,38 @@ document.addEventListener('keydown', function (e) {
                 ? (direction === 1 ? 0 : optionCards.length - 1)
                 : (currentIndex + direction + optionCards.length) % optionCards.length;
 
-            selectOption(optionCards[nextIndex]);
-            requestAnimationFrame(saveTutorDraft);
+            const option = optionCards[nextIndex];
+            selectOption(option);
+            option.focus({ preventScroll: true });
+            const rect = option.getBoundingClientRect();
+            const headerBottom = document.querySelector('.navbar')?.getBoundingClientRect().bottom || 0;
+            if (rect.top < headerBottom + 12 || rect.bottom > window.innerHeight - 24) {
+                const top = rect.top < headerBottom + 12
+                    ? window.scrollY + rect.top - headerBottom - 12
+                    : window.scrollY + rect.bottom - window.innerHeight + 24;
+                window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+            }
+            queueTutorKeyboardDraft();
             return;
         }
     }
 
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
 
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (e.repeat && performance.now() - lastTutorKeyboardMove < 180) return;
+        lastTutorKeyboardMove = performance.now();
+    }
     if (e.key === 'ArrowLeft') {
         e.preventDefault();
         if (typeof window.navigatePrevious === 'function' && currentQuestionIndex > 1) {
-            window.navigatePrevious(currentQuestionIndex);
+            window.navigatePrevious(currentQuestionIndex, { keyboard: true });
         }
     } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         if (typeof window.navigateNext === 'function' && currentQuestionIndex < totalQuestions) {
-            window.navigateNext(currentQuestionIndex);
+            window.navigateNext(currentQuestionIndex, { keyboard: true });
         }
     }
 });

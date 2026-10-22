@@ -18,7 +18,7 @@ function harness(storage = {}) {
                 listeners.get(name).push(handler);
             },
             getElementById: id => id === 'question-1' ? card : null,
-            querySelectorAll: () => [],
+            querySelectorAll: () => [], querySelector: () => null,
         },
         addEventListener() {},
     });
@@ -105,4 +105,103 @@ test('question navigation exposes the current question without relying on its co
     h.context.document.querySelectorAll = () => circles;
     h.context.updateSidebarActiveState(2);
     assert.deepEqual(circles.map(circle => circle.attributes['aria-current']), ['false', 'true']);
+});
+
+function keyboardChoices() {
+    const h = harness();
+    let now = 0;
+    h.context.performance = {now: () => now};
+    h.tick = ms => {now += ms;};
+    h.context.requestAnimationFrame = () => 1;
+    h.context.innerHeight = 900;
+    h.context.scrollY = 0;
+    h.context.scrollTo = value => {h.scroll = value;};
+    const card = h.context.document.getElementById('question-1');
+    const choices = ['A','B','C','D','E'].map(letter => {
+        const classes = new Set();
+        const option = {tagName:'BUTTON',disabled:false,style:{},attributes:{},
+            classList:{add:key=>classes.add(key),remove:key=>classes.delete(key),contains:key=>classes.has(key)},
+            setAttribute(key,value){this.attributes[key]=value;},
+            focus(){h.focused=option;}, getBoundingClientRect:()=>({top:200,bottom:250}),
+            getAttribute:key=>key==='data-option'?letter:null,
+            closest: selector => selector === '.question-card' ? card
+                : selector === '.options-container' ? {querySelectorAll:()=>choices}
+                : selector.includes('.option-card') || selector === 'button, a' ? option : null,
+        };
+        return option;
+    });
+    card.querySelectorAll = () => choices;
+    h.context.document.body = {classList:{contains:()=>false}};
+    h.choices = choices;
+    h.card = card;
+    h.selected = () => choices.findIndex(choice=>choice.classList.contains('selected'));
+    return h;
+}
+
+test('Up/Down work from focused option buttons, wrap choices, and keep one selected answer', () => {
+    const h = keyboardChoices();
+    assert.equal(h.key({key:'ArrowDown',target:h.choices[0]}).defaultPrevented,true);
+    assert.equal(h.selected(),0);
+    h.key({key:'ArrowDown',target:h.focused});
+    assert.equal(h.selected(),1);
+    assert.equal(h.focused,h.choices[1]);
+    h.key({key:'ArrowUp',target:h.focused});
+    h.key({key:'ArrowUp',target:h.focused});
+    assert.equal(h.selected(),4);
+    assert.deepEqual(h.choices.map(choice=>choice.attributes['aria-pressed']),['false','false','false','false','true']);
+    h.key({target:h.focused});
+    assert.equal(h.context.checks,1);
+});
+
+test('holding arrows has a controlled repeat rate while separate presses respond immediately', () => {
+    const h = keyboardChoices();
+    h.key({key:'ArrowDown',target:h.choices[0]});
+    h.key({key:'ArrowDown',repeat:true,target:h.focused});
+    assert.equal(h.selected(),0);
+    h.tick(120);
+    h.key({key:'ArrowDown',repeat:true,target:h.focused});
+    assert.equal(h.selected(),1);
+    h.key({key:'ArrowDown',target:h.focused});
+    assert.equal(h.selected(),2);
+    h.key({key:'ArrowRight',target:h.focused});
+    h.key({key:'ArrowRight',repeat:true,target:h.focused});
+    assert.equal(h.context.moves,1);
+});
+
+test('held Enter cannot repeatedly check or advance, and open dialogs keep their own keys', () => {
+    const h = keyboardChoices();
+    h.key({target:h.choices[0],repeat:true});
+    assert.equal(h.context.checks,0);
+    h.context.document.querySelector=()=>({});
+    assert.equal(h.key({key:'ArrowDown',target:h.choices[0]}).defaultPrevented,false);
+    assert.equal(h.selected(),-1);
+});
+
+test('graded, pending, disabled and review-mode choices cannot be changed by keyboard or clicks', () => {
+    for (const state of ['graded','pending','disabled','review']) {
+        const h = keyboardChoices();
+        h.context.selectOption(h.choices[0]);
+        if(state==='graded') vm.runInContext('questionStates[1] = true',h.context);
+        if(state==='pending') h.context.checkAnswer.processing_1=true;
+        if(state==='disabled') h.choices.forEach(choice=>choice.disabled=true);
+        if(state==='review') h.context.document.body.classList.contains=()=>true;
+        h.key({key:'ArrowDown',target:h.choices[0]});
+        h.context.selectOption(h.choices[1]);
+        assert.equal(h.selected(),0,state);
+    }
+});
+
+test('keyboard question navigation hides only the previous card and restores focus without scroll animation', () => {
+    const h = keyboardChoices();
+    const target={style:{display:'none'},querySelector:()=>null,focus:options=>{h.targetFocus=options;}};
+    h.card.style={};
+    const original=h.context.document.getElementById;
+    h.context.document.getElementById=id=>id==='question-2'?target:original(id);
+    h.context.jumpToQuestion(2,{keyboard:true});
+    assert.equal(h.card.style.display,'none');
+    assert.equal(target.style.display,'block');
+    assert.equal(h.targetFocus.preventScroll,true);
+    assert.equal(h.scroll.behavior,'instant');
+    h.context.jumpToQuestion(999,{keyboard:true});
+    assert.equal(target.style.display,'block');
 });

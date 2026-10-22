@@ -661,7 +661,7 @@
             display: flex;
             align-items: flex-start;
             gap: 1rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease, box-shadow 0.1s ease, transform 0.12s ease;
             outline: 1.5px solid transparent;
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
         }
@@ -2911,7 +2911,7 @@
 
             <!-- Questions Container -->
             @foreach($questions as $index => $question)
-                <div class="question-card" id="question-{{ $index + 1 }}"
+                <div class="question-card" id="question-{{ $index + 1 }}" tabindex="-1"
                     style="{{ $index === 0 ? '' : 'display: none;' }}">
                     @php
                         $qObj = is_array($question) ? $question['question'] : $question;
@@ -3053,10 +3053,10 @@
 
                     <!-- Navigation Arrows -->
                     <div class="question-nav-arrows">
-                        <button class="nav-arrow-btn" onclick="navigatePrevious({{ $index + 1 }})" {{ $index === 0 ? 'disabled' : '' }} title="Previous">
+                        <button class="nav-arrow-btn" onclick="navigatePrevious({{ $index + 1 }})" {{ $index === 0 ? 'disabled' : '' }} title="Previous question (←)" aria-label="Previous question">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <button class="nav-arrow-btn" onclick="navigateNext({{ $index + 1 }})" {{ $index === count($questions) - 1 ? 'disabled' : '' }} title="Next">
+                        <button class="nav-arrow-btn" onclick="navigateNext({{ $index + 1 }})" {{ $index === count($questions) - 1 ? 'disabled' : '' }} title="Next question (→)" aria-label="Next question">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>

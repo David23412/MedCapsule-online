@@ -9,7 +9,7 @@ function harness(fetch) {
     const feedback = {style:{}, querySelector: key => feedbackParts.get(key)};
     const input = {value:'kidny',disabled:false};
     const button = {disabled:false, textContent:'Check Answer', style:{}};
-    const card = {querySelector: key => ({'.written-answer':input,'.check-answer':button,'.answer-feedback':feedback}[key] || null), querySelectorAll:()=>[], dataset:{}};
+    const card = {style:{},querySelector: key => ({'.written-answer':input,'.check-answer':button,'.answer-feedback':feedback}[key] || null), querySelectorAll:()=>[], dataset:{}};
     const timeouts = new Map();
     const context = vm.createContext({
         console:{log(){},warn(){},error(){}}, Date, performance, AbortController,
