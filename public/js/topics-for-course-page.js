@@ -12,6 +12,8 @@
         const sourceCourseId = document.getElementById('source_course_id');
         const csrfToken = document.querySelector('meta[name="csrf-token"]');
         const sourceSelectionForm = document.getElementById('sourceSelectionForm');
+        const startSourceQuizBtn = document.getElementById('startSourceQuizBtn');
+        let sourceSelectionReady = false;
         const tutorScopeSection = document.getElementById('tutorScopeSection');
         const tutorScopeHint = document.getElementById('tutorScopeHint');
         const mobileHamburger = document.getElementById('topicsMobileHamburger');
@@ -451,11 +453,9 @@
                 ? detail.availableSources
                 : Object.keys(progress);
 
-            if (sourceModal && sourceModal.classList.contains('show') && progress && Object.keys(progress).length > 0) {
-                updateSourcesContainer({
-                    progress,
-                    availableSources
-                });
+            if (isCurrentModalTopic && sourceModal?.classList.contains('show')) {
+                // Reload the chosen topic/mode; another topic's progress must never replace its sources.
+                loadTopicSources();
             }
 
             updateTopicCardProgress({
@@ -951,6 +951,7 @@
                 return;
             }
 
+            startSourceQuizBtn.disabled = !sourceSelectionReady || !sourcesContainer.querySelector('input[name="sources[]"]:checked');
             const selectedModeInput = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked');
             const selectedMode = selectedModeInput ? selectedModeInput.value : 'quiz';
             const tutorScope = sourceSelectionForm.querySelector('input[name="tutor_scope"]:checked')?.value || 'remaining';
@@ -979,33 +980,76 @@
             startSourceQuizBtn.innerHTML = '<i class="fas fa-play me-2"></i>Start Tutor Mode';
         }
 
+        let sourcePickerTopic = '';
+        let sourcePickerSelection = null;
+        const sourceLoader = window.TopicSourceSelection.createLoader({
+            async load(topicId, mode, signal) {
+                const response = await fetch(`/topics/${encodeURIComponent(topicId)}/source-progress?mode=${encodeURIComponent(mode)}`, {
+                    headers: {'Accept': 'application/json'}, credentials: 'same-origin', signal
+                });
+                if (!response.ok) throw new Error('Unable to load sources');
+                return response.json();
+            },
+            onLoading() {
+                sourceSelectionReady = false;
+                sourcesContainer.setAttribute('aria-busy', 'true');
+                sourcesContainer.innerHTML = '<p class="text-muted" role="status">Loading question sources…</p>';
+                tutorScopeSection?.classList.add('d-none');
+                updateTutorSourceCtaState();
+            },
+            onLoaded(data) {
+                sourceSelectionReady = true;
+                sourcesContainer.setAttribute('aria-busy', 'false');
+                updateSourcesContainer(data);
+                if (sourcePickerSelection) {
+                    const cards = Array.from(sourcesContainer.querySelectorAll('.source-card'));
+                    if (cards.some(card => sourcePickerSelection.has(card.dataset.source))) {
+                        cards.forEach(card => {
+                            const checkbox = card.querySelector('input[type="checkbox"]');
+                            checkbox.checked = sourcePickerSelection.has(card.dataset.source);
+                            card.classList.toggle('selected', checkbox.checked);
+                        });
+                        syncTutorScopeState();
+                    }
+                }
+                updateTutorSourceCtaState();
+            },
+            onError() {
+                sourceSelectionReady = false;
+                sourcesContainer.setAttribute('aria-busy', 'false');
+                sourcesContainer.innerHTML = '<p class="text-danger" role="alert">Could not load this topic’s sources. Please retry.</p>';
+                const retry = document.createElement('button');
+                retry.type = 'button';
+                retry.className = 'btn btn-outline-primary';
+                retry.textContent = 'Retry loading sources';
+                retry.addEventListener('click', loadTopicSources);
+                sourcesContainer.appendChild(retry);
+                updateTutorSourceCtaState();
+            }
+        });
+
+        function loadTopicSources() {
+            const topicId = sourceTopicId.value;
+            if (sourcePickerTopic !== topicId) {
+                sourcePickerTopic = topicId;
+                sourcePickerSelection = null;
+            } else if (sourceSelectionReady) {
+                sourcePickerSelection = new Set(Array.from(sourcesContainer.querySelectorAll('input[name="sources[]"]:checked')).map(input => input.value));
+            }
+            const mode = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
+            return sourceLoader.request(sourceTopicId.value, mode);
+        }
+        sourceModal?.addEventListener('hidden.bs.modal', () => sourceLoader.cancel());
+        window.addEventListener('pagehide', () => sourceLoader.cancel());
+        window.addEventListener('pageshow', () => {
+            if (sourceModal?.classList.contains('show') && sourceTopicId.value) loadTopicSources();
+        });
+        sourceSelectionForm.querySelectorAll('input[name="tutor_scope"]').forEach(radio => {
+            radio.addEventListener('change', updateTutorSourceCtaState);
+        });
         document.querySelectorAll('input[name="quiz_mode"]').forEach(radio => {
-            radio.addEventListener('change', async function() {
-                const topicId = sourceTopicId.value;
-                if (!topicId) {
-                    return;
-                }
-
-                sourcesContainer.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
-
-                try {
-                    const mode = this.value;
-                    const progressMode = mode === 'read' ? 'quiz' : mode;
-                    const data = await cachedFetchJson(`/topics/${topicId}/source-progress?mode=${progressMode}`, {
-                        method: 'GET',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfToken.content,
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        credentials: 'same-origin'
-                    }, 15000, `source-progress:${topicId}:${progressMode}`);
-
-                    updateSourcesContainer(data);
-                } catch (error) {
-                    sourcesContainer.innerHTML = '<div class="alert alert-danger">Error loading sources. Please try again.</div>';
-                    updateTutorSourceCtaState();
-                }
+            radio.addEventListener('change', () => {
+                if (sourceTopicId.value) loadTopicSources();
             });
         });
 
@@ -1044,6 +1088,7 @@
 
             if (!data.availableSources || data.availableSources.length === 0) {
                 sourcesContainer.innerHTML = '<div class="alert alert-info">No questions available for this topic.</div>';
+                syncTutorScopeState();
                 return;
             }
 
@@ -1104,21 +1149,22 @@
                     statusIcon = 'fas fa-circle';
                 }
 
+                const escapedSource = String(source).replace(/[&<>"']/g, char => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char]));
                 card.innerHTML = `
                     <div class="source-status ${statusClass}"></div>
                     <div class="source-content">
                         <div class="source-info-wrapper">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center">
-                                    <input type="checkbox" name="sources[]" value="${source}" class="form-check-input" ${progress.total_questions_available > 0 ? 'checked' : ''}>
-                                    <span class="ms-2 source-name">${source}</span>
+                                    <input type="checkbox" name="sources[]" value="${escapedSource}" class="form-check-input" aria-label="Include ${escapedSource}" ${totalAvailable > 0 ? 'checked' : ''}>
+                                    <span class="ms-2 source-name">${escapedSource}</span>
                                 </div>
                                 <div class="source-status-text ${statusClass}">
                                     <i class="${statusIcon} me-1"></i>${statusText}
                                 </div>
                             </div>
                             <div class="source-progress-bar">
-                                <div class="source-progress-value ${statusClass}" style="width: ${Number(progress.percentage || 0)}%;">
+                                <div class="source-progress-value ${statusClass}" style="width: ${Math.max(0, Math.min(100, Number(progress.percentage) || 0))}%;">
                                 </div>
                             </div>
                             <div class="source-stats">
@@ -1295,24 +1341,8 @@
             sourceCourseId.value = courseId;
             sourceSelectionForm.action = originalHref;
 
-            const selectedMode = sourceSelectionForm.querySelector('input[name="quiz_mode"]:checked')?.value || 'quiz';
-            const progressMode = selectedMode === 'read' ? 'quiz' : selectedMode;
-
-            cachedFetchJson(`/topics/${topicId}/source-progress?mode=${progressMode}`, {
-                method: 'GET',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken.content,
-                    'Accept': 'application/json'
-                }
-            }, 15000, `source-progress:${topicId}:${progressMode}`)
-                .then(data => {
-                    updateSourcesContainer(data);
-                    modal.show();
-                })
-                .catch(() => {
-                    updateTutorSourceCtaState();
-                    modal.show();
-                });
+            loadTopicSources();
+            modal.show();
         });
 
         document.addEventListener('mouseover', function(e) {
@@ -1332,6 +1362,7 @@
         sourceSelectionForm.addEventListener('submit', function(e) {
             e.preventDefault();
 
+            if (!sourceSelectionReady || startSourceQuizBtn.disabled) return;
             const checkedSources = this.querySelectorAll('input[name="sources[]"]:checked');
             if (checkedSources.length === 0) {
                 alert('Please select at least one source to start the quiz.');
@@ -1342,16 +1373,10 @@
             const courseId = this.querySelector('#source_course_id').value;
             const topicId = this.querySelector('#source_topic_id').value;
             const selectedSources = Array.from(checkedSources).map(cb => cb.value);
-            const sourceParams = selectedSources.map(s => `sources[]=${s}`).join('&');
-            const baseUrl = selectedMode === 'tutor'
-                ? `/quiz/${courseId}/${topicId}/tutor`
-                : (selectedMode === 'read'
-                    ? `/quiz/${courseId}/${topicId}/read`
-                    : `/quiz/${courseId}/${topicId}`);
-            let extraParams = '';
+            let tutorScope = 'full';
 
             if (selectedMode === 'tutor') {
-                const tutorScope = this.querySelector('input[name="tutor_scope"]:checked')?.value || 'full';
+                tutorScope = this.querySelector('input[name="tutor_scope"]:checked')?.value || 'full';
                 const totalRemaining = getSelectedSourceCards().reduce((sum, card) => {
                     return sum + Number(card.dataset.remainingQuestions || 0);
                 }, 0);
@@ -1361,10 +1386,9 @@
                     return;
                 }
 
-                extraParams = `&tutor_scope=${encodeURIComponent(tutorScope)}`;
             }
 
-            window.location.href = `${baseUrl}?${sourceParams}${extraParams}`;
+            window.location.href = window.TopicSourceSelection.quizUrl({courseId, topicId, mode: selectedMode, sources: selectedSources, tutorScope});
         });
 
         if (randomQuizModal) {

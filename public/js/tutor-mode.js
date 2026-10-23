@@ -351,13 +351,27 @@ function updateCorrectAnswerStreak(isCorrect) {
 
 // Function to update sidebar active state
 function updateSidebarActiveState(questionNumber) {
+    let activeCircle;
     document.querySelectorAll('.question-circle').forEach(circle => {
         circle.classList.remove('active');
         circle.setAttribute('aria-current', String(parseInt(circle.dataset.question) === questionNumber));
         if (parseInt(circle.dataset.question) === questionNumber) {
             circle.classList.add('active');
+            activeCircle = circle;
         }
     });
+    const sidebar = document.getElementById('question-sidebar');
+    if (activeCircle && sidebar?.clientWidth > 0 && sidebar.scrollWidth > sidebar.clientWidth) {
+        const box = sidebar.getBoundingClientRect();
+        const circleBox = activeCircle.getBoundingClientRect();
+        // Leave room for the annotation button at the right of the phone strip.
+        const visibleRight = box.right - 64;
+        if (circleBox.left < box.left + 8) {
+            sidebar.scrollTo({left: sidebar.scrollLeft + circleBox.left - box.left - 8, behavior: 'instant'});
+        } else if (circleBox.right > visibleRight) {
+            sidebar.scrollTo({left: sidebar.scrollLeft + circleBox.right - visibleRight + 8, behavior: 'instant'});
+        }
+    }
 }
 
 // Update sidebar circle state (correct/incorrect)

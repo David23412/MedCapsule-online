@@ -1003,6 +1003,7 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
+    <script src="{{ $bladeAsset->url('js/topic-source-selection.js') }}" defer></script>
     <script src="{{ $bladeAsset->url('js/topics-for-course-page.js') }}" defer></script>
     @if($hasFullCourseAccess)
         <script src="{{ $bladeAsset->url('js/course-question-search.js') }}" defer></script>

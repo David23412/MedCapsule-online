@@ -229,3 +229,16 @@ test('shortcut help keeps native Enter behavior instead of checking an answer', 
     assert.equal(h.key({target:{tagName:'SUMMARY'}}).defaultPrevented,false);
     assert.equal(h.context.checks,0);
 });
+
+test('mobile question navigation scrolls the number strip without moving the page',()=>{
+    const h=harness();let moved;
+    const circle={dataset:{question:'12'},classList:{add(){},remove(){}},setAttribute(){},getBoundingClientRect:()=>({left:500,right:544})};
+    const sidebar={clientWidth:390,scrollWidth:1600,scrollLeft:0,getBoundingClientRect:()=>({left:0,right:390}),scrollTo:options=>{moved=options;}};
+    h.context.document.querySelectorAll=()=>[circle];
+    h.context.document.getElementById=id=>id==='question-sidebar'?sidebar:null;
+    h.context.scrollTo=()=>{throw new Error('The question strip must not scroll the page');};
+    h.context.updateSidebarActiveState(12);
+    assert.equal(moved.left,226);assert.equal(moved.behavior,'instant');
+    moved=null;circle.getBoundingClientRect=()=>({left:80,right:124});
+    h.context.updateSidebarActiveState(12);assert.equal(moved,null);
+});

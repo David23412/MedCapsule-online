@@ -101,7 +101,7 @@ function topicsHarness(fetch, countdowns = []) {
         URL, URLSearchParams, AbortController, Date, console: { error() {}, warn() {}, log() {} },
         document: {
             visibilityState: 'visible', addEventListener: on, querySelector: () => null, querySelectorAll: selector => selector === '.assignment-countdown-minimal' ? countdowns : [],
-            getElementById: id => id === 'sourceSelectionForm' ? { addEventListener() {} } : null, body: { classList: { toggle() {} } },
+            getElementById: id => id === 'sourceSelectionForm' ? { addEventListener() {}, querySelectorAll: () => [] } : null, body: { classList: { toggle() {} } },
         },
         navigator: { onLine: true }, addEventListener: on, innerWidth: 1200,
         location: { origin: 'https://example.test', href: 'https://example.test/topics/1' },
@@ -112,6 +112,7 @@ function topicsHarness(fetch, countdowns = []) {
         setTimeout: (fn, ms) => { timeouts.set(++id, { fn, ms }); return id; }, clearTimeout: id => timeouts.delete(id),
     });
     context.window = context;
+    vm.runInContext(read('topic-source-selection.js'), context);
     vm.runInContext(read('topics-for-course-page.js'), context);
     const emit = (name, event = {}) => { for (const fn of listeners.get(name) || []) fn(event); };
     emit('DOMContentLoaded');
