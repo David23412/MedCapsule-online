@@ -171,16 +171,11 @@ function initializeMistakesLearnPage() {
                 return checked ? checked.value : 'all';
             };
             const sidebarToggle = document.getElementById('sidebarToggle');
+            const mobileNavToggle = document.getElementById('learnMobileNavToggle');
             const sidebarProgressSummary = document.getElementById('sidebarProgressSummary');
-            const sidebarProgressPercent = document.getElementById('sidebarProgressPercent');
-            const sidebarProgressFill = document.getElementById('sidebarProgressFill');
-            const sidebarCompletedCount = document.getElementById('sidebarCompletedCount');
-            const sidebarRemainingCount = document.getElementById('sidebarRemainingCount');
+
             const sidebarModeValue = document.getElementById('sidebarModeValue');
-            const sidebarDueNowCount = document.getElementById('sidebarDueNowCount');
-            const sidebarHighRiskCount = document.getElementById('sidebarHighRiskCount');
-            const sidebarStabilizingCount = document.getElementById('sidebarStabilizingCount');
-            const sidebarSkippedCount = document.getElementById('sidebarSkippedCount');
+
             const queueDueNowCount = document.getElementById('queueDueNowCount');
             const queueHighRiskCount = document.getElementById('queueHighRiskCount');
             const queueAverageInterval = document.getElementById('queueAverageInterval');
@@ -264,7 +259,9 @@ function initializeMistakesLearnPage() {
             function openMobileSidebar() {
                 if (!sidebar) return;
                 createSidebarBackdrop();
+                applySidebarState(false);
                 sidebar.classList.add('mobile-open');
+                mobileNavToggle?.setAttribute('aria-expanded', 'true');
                 if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
                 document.body.style.overflow = 'hidden';
             }
@@ -272,6 +269,8 @@ function initializeMistakesLearnPage() {
             function closeMobileSidebar() {
                 if (!sidebar) return;
                 sidebar.classList.remove('mobile-open');
+                if (isMobile()) applySidebarState(true);
+                mobileNavToggle?.setAttribute('aria-expanded', 'false');
                 if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
                 document.body.style.overflow = '';
             }
@@ -710,8 +709,7 @@ function initializeMistakesLearnPage() {
                 const liveQuestions = questionsData.filter((question) => activeQuestions.has(question.id) && !question.skipped && !question.sessionResolved);
                 const dueCount = liveQuestions.filter((question) => isDueNow(question)).length;
                 const highRiskCount = liveQuestions.filter((question) => question.retrievability <= 0.55).length;
-                const stabilizingCount = liveQuestions.filter((question) => question.stability >= 1.5 && question.retrievability > 0.55).length;
-                const skippedCount = questionsData.filter((question) => question.skipped).length;
+
                 const averageInterval = liveQuestions.length
                     ? liveQuestions.reduce((sum, question) => sum + question.intervalDays, 0) / liveQuestions.length
                     : 0;
@@ -723,10 +721,6 @@ function initializeMistakesLearnPage() {
                     .filter((question) => question.nextReviewAt)
                     .sort((left, right) => left.nextReviewAt.getTime() - right.nextReviewAt.getTime())[0];
 
-                if (sidebarDueNowCount) sidebarDueNowCount.textContent = String(dueCount);
-                if (sidebarHighRiskCount) sidebarHighRiskCount.textContent = String(highRiskCount);
-                if (sidebarStabilizingCount) sidebarStabilizingCount.textContent = String(stabilizingCount);
-                if (sidebarSkippedCount) sidebarSkippedCount.textContent = String(skippedCount);
                 if (queueDueNowCount) queueDueNowCount.textContent = String(dueCount);
                 if (queueHighRiskCount) queueHighRiskCount.textContent = String(highRiskCount);
                 if (queueAverageInterval) queueAverageInterval.textContent = averageInterval > 0 ? `${averageInterval.toFixed(1)}d` : 'Same day';
@@ -1170,57 +1164,14 @@ function initializeMistakesLearnPage() {
             };
 
             const updateSidebarProgress = () => {
-                if (selectedMode === 'spaced') {
-                    const total = initialSpacedDeckCount;
-                    const reviewed = getSpacedReviewedCount();
-                    const remaining = Math.max(total - reviewed, 0);
-                    const percent = total > 0 ? Math.round((reviewed / total) * 100) : 0;
-
-                    if (sidebarProgressSummary) {
-                        sidebarProgressSummary.textContent = `${reviewed} of ${total} reviewed this session`;
-                    }
-
-                    if (sidebarProgressPercent) {
-                        sidebarProgressPercent.textContent = `${percent}%`;
-                    }
-
-                    if (sidebarProgressFill) {
-                        sidebarProgressFill.style.width = `${percent}%`;
-                    }
-
-                    if (sidebarCompletedCount) {
-                        sidebarCompletedCount.textContent = reviewed;
-                    }
-
-                    if (sidebarRemainingCount) {
-                        sidebarRemainingCount.textContent = remaining;
-                    }
-
-                    return;
-                }
-
-                const total = questionsData.length;
-                const completed = total - activeQuestions.size;
-                const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-                if (sidebarProgressSummary) {
-                    sidebarProgressSummary.textContent = `${completed} of ${total} cleared this run`;
-                }
-
-                if (sidebarProgressPercent) {
-                    sidebarProgressPercent.textContent = `${percent}%`;
-                }
-
-                if (sidebarProgressFill) {
-                    sidebarProgressFill.style.width = `${percent}%`;
-                }
-
-                if (sidebarCompletedCount) {
-                    sidebarCompletedCount.textContent = completed;
-                }
-
-                if (sidebarRemainingCount) {
-                    sidebarRemainingCount.textContent = Math.max(total - completed, 0);
+                if (!sidebarProgressSummary) return;
+                if (!selectedMode) {
+                    sidebarProgressSummary.textContent = `${questionsData.length} questions ready`;
+                } else if (selectedMode === 'spaced') {
+                    sidebarProgressSummary.textContent = `${getSpacedReviewedCount()} of ${initialSpacedDeckCount} reviewed this session`;
+                } else {
+                    const total = questionsData.length;
+                    sidebarProgressSummary.textContent = `${total - activeQuestions.size} of ${total} cleared this session`;
                 }
             };
 
@@ -1228,19 +1179,19 @@ function initializeMistakesLearnPage() {
                 if (!sidebarModeValue) return;
 
                 if (!selectedMode) {
-                    sidebarModeValue.textContent = 'Pick mode';
+                    sidebarModeValue.textContent = 'Choose a mode';
                     sidebarModeValue.dataset.mode = 'pending';
                     return;
                 }
 
                 if (selectedMode === 'practice') {
-                    sidebarModeValue.textContent = 'Classic easy';
+                    sidebarModeValue.textContent = 'Easy';
                     sidebarModeValue.dataset.mode = 'practice';
                 } else if (selectedMode === 'quiz') {
-                    sidebarModeValue.textContent = 'Classic hard';
+                    sidebarModeValue.textContent = 'Hard';
                     sidebarModeValue.dataset.mode = 'quiz';
                 } else {
-                    sidebarModeValue.textContent = 'Spaced';
+                    sidebarModeValue.textContent = 'Spaced repetition';
                     sidebarModeValue.dataset.mode = 'spaced';
                 }
             };
@@ -1317,6 +1268,13 @@ function initializeMistakesLearnPage() {
                 applySidebarState(true);
             }
 
+            if (mobileNavToggle) listen(mobileNavToggle, 'click', openMobileSidebar);
+            listen(document, 'keydown', event => {
+                if (event.key === 'Escape' && sidebar?.classList.contains('mobile-open')) {
+                    closeMobileSidebar();
+                    mobileNavToggle?.focus();
+                }
+            });
             if (sidebarToggle) {
                 listen(sidebarToggle, 'click', function (event) {
                     event.preventDefault();

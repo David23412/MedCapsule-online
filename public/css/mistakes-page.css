@@ -1824,50 +1824,6 @@
                 padding-right: 3rem; /* Reduced padding for mobile */
             }
         }
-        /* Coming Soon Blur Styles */
-        .sidebar-coming-soon {
-            position: relative;
-            margin-top: 1.5rem;
-            padding-bottom: 2rem;
-        }
-
-        .sidebar-blur-container {
-            filter: blur(4px);
-            pointer-events: none;
-            user-select: none;
-            opacity: 0.5;
-            transition: filter 0.3s ease;
-        }
-
-        .coming-soon-overlay {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 20;
-            pointer-events: none;
-        }
-
-        .coming-soon-badge {
-            background: #0f172a;
-            color: #ffffff;
-            padding: 0.65rem 1.4rem;
-            border-radius: 99px;
-            font-size: 0.72rem;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            white-space: nowrap;
-            transform: translateY(-20px);
-        }
-
-        body.sidebar-collapsed .coming-soon-overlay {
-            display: none;
-        }
-
 /* ==============================================
    MISTAKES PAGE — MOBILE RESPONSIVE OVERHAUL
    < 768px

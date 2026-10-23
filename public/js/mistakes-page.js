@@ -247,7 +247,7 @@ async function loadFilteredMistakes(url, options = {}) {
         }
         const resolvedUrl = response.url || url;
 
-        replaceSection('.sidebar-coming-soon', nextDocument);
+        replaceSection('.sidebar-study-summary', nextDocument);
         replaceSection('.header-section', nextDocument);
         replaceSection('.filter-section', nextDocument);
         replaceSection('#mistakes-content', nextDocument);

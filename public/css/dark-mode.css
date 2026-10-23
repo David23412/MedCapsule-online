@@ -2181,9 +2181,6 @@ html[data-theme='dark'] .card-back {
 html[data-theme='dark'] .sidebar-coming-soon {
     border-top: 1px solid rgba(255,255,255,0.06) !important;
 }
-html[data-theme='dark'] .sidebar-blur-container {
-    opacity: 0.35 !important;
-}
 html[data-theme='dark'] .coming-soon-overlay {
     background: transparent !important;
 }

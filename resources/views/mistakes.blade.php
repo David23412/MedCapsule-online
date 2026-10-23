@@ -16,6 +16,7 @@
     
     {{-- Desktop styles only --}}
     @include('partials.phone-accessibility')
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/sidebar-study-summary.css') }}">
 </head>
 <body>
     {{-- Mobile-only sticky top bar --}}
@@ -111,78 +112,18 @@
                 <span class="nav-link-label">Profile Settings</span>
             </a>
 
-            <div class="sidebar-coming-soon">
-                <div class="coming-soon-overlay">
-                    <span class="coming-soon-badge">Coming Soon</span>
-                </div>
-                <div class="sidebar-blur-container">
-                    <span class="sidebar-section-label">Review Bank</span>
-
-                    <div class="sidebar-insight-card sidebar-insight-card-primary">
-                        <div class="sidebar-insight-head">
-                            <i class="fas fa-heart-pulse nav-icon"></i>
-                            <span class="nav-link-label">Bank Health</span>
-                        </div>
-                        <p class="sidebar-insight-copy">
-                            {{ $filteredMistakesCount ?? $mistakes->count() }} cards are active in {{ strtolower($mistakeStats['active_review_label']) }}.
-                        </p>
-                        <div class="sidebar-chip-list">
-                            <span class="sidebar-chip">{{ $mistakeStats['active_review_label'] }}</span>
-                            <span class="sidebar-chip">{{ $totalMistakesCount ?? $mistakes->count() }} total</span>
-                        </div>
-                    </div>
-
-                    <div class="sidebar-stat-grid">
-                        <div class="sidebar-stat-card sidebar-stat-card-loaded">
-                            <span class="sidebar-stat-label">Queue</span>
-                            <strong>{{ $filteredMistakesCount ?? $mistakes->count() }}</strong>
-                            <small>In this filter</small>
-                        </div>
-                        <div class="sidebar-stat-card sidebar-stat-card-skipped">
-                            <span class="sidebar-stat-label">Skipped</span>
-                            <strong>{{ $skippedCount ?? 0 }}</strong>
-                            <small>Need another pass</small>
-                        </div>
-                        <div class="sidebar-stat-card sidebar-stat-card-cold">
-                            <span class="sidebar-stat-label">Stale</span>
-                            <strong>{{ $mistakeStats['stale_count'] }}</strong>
-                            <small>7 days+</small>
-                        </div>
-                        <div class="sidebar-stat-card sidebar-stat-card-ready">
-                            <span class="sidebar-stat-label">Close</span>
-                            <strong>{{ $mistakeStats['close_review_count'] }}</strong>
-                            <small>Near clear</small>
-                        </div>
-                    </div>
-
-                    <span class="sidebar-section-label">Priority</span>
-
-                    <div class="sidebar-insight-card sidebar-insight-card-soft">
-                        <div class="sidebar-insight-head">
-                            <i class="fas fa-bullseye nav-icon"></i>
-                            <span class="nav-link-label">Next Focus</span>
-                        </div>
-                        <p class="sidebar-insight-copy">
-                            @if($mistakeStats['top_weak_course'])
-                                {{ $mistakeStats['top_weak_course']->name }} is carrying the biggest review load.
-                            @else
-                                Your review queue is balanced across courses.
-                            @endif
-                        </p>
-                        <div class="sidebar-chip-list">
-                            @if($mistakeStats['top_weak_course'])
-                                <span class="sidebar-chip">{{ $mistakeStats['top_weak_course']->name }}</span>
-                                <span class="sidebar-chip">{{ $mistakeStats['top_weak_course']->mistake_count }} flagged</span>
-                            @endif
-                            <span class="sidebar-chip">{{ $mistakeStats['cold_review_count'] }} cold</span>
-                            <span class="sidebar-chip">{{ $mistakeStats['written_count'] }} written</span>
-                            @if($mistakeStats['oldest_mistake'] && $mistakeStats['oldest_mistake']->last_attempt_date)
-                                <span class="sidebar-chip">Oldest {{ $mistakeStats['oldest_mistake']->last_attempt_date->diffForHumans() }}</span>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <section class="sidebar-study-summary" aria-labelledby="review-summary-title">
+                <h2 id="review-summary-title">Your review</h2>
+                <dl>
+                    <div><dt>Saved mistakes</dt><dd>{{ $totalMistakesCount ?? $mistakes->count() }}</dd></div>
+                    @if(!empty($selectedCourse))
+                        <div><dt>In this course</dt><dd>{{ $filteredMistakesCount ?? $mistakes->count() }}</dd></div>
+                    @endif
+                </dl>
+                @if(!empty($selectedCourse))
+                    <p>{{ $mistakeStats['active_review_label'] }}</p>
+                @endif
+            </section>
         </div>
         @include('partials.student-sidebar-profile', [
             'profileUrl' => route('profile'),

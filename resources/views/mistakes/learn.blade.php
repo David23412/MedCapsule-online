@@ -92,13 +92,15 @@
     <link rel="stylesheet" href="{{ asset('css/mobile-utils.css') }}">
     <link rel="stylesheet" href="{{ asset('css/responsive-navigation.css') }}">
     @include('partials.phone-accessibility')
+    <link rel="stylesheet" href="{{ $bladeAsset->url('css/sidebar-study-summary.css') }}">
 </head>
 
 <body>
+    <button type="button" class="learn-mobile-nav-toggle" id="learnMobileNavToggle" aria-label="Open navigation menu" aria-controls="learnSidebar" aria-expanded="false"><i class="fas fa-bars" aria-hidden="true"></i></button>
     <!-- LIGHTNING-FAST FOUC ELIMINATOR -->
     @include('components.lightning-preloader')
 
-    <div class="sidebar">
+    <div class="sidebar" id="learnSidebar">
         <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Collapse sidebar" aria-expanded="true">
             <i class="fas fa-chevron-left"></i>
         </button>
@@ -162,84 +164,14 @@
                 <span class="nav-link-label">Profile Settings</span>
             </a>
 
-            <div class="sidebar-coming-soon">
-                <div class="coming-soon-overlay">
-                    <span class="coming-soon-badge">Coming Soon</span>
-                </div>
-                <div class="sidebar-blur-container">
-                    <span class="sidebar-section-label">Session</span>
-
-                    <div class="sidebar-insight-card sidebar-insight-card-primary">
-                        <div class="sidebar-insight-head">
-                            <i class="fas fa-crosshairs nav-icon"></i>
-                            <span class="nav-link-label">Session Focus</span>
-                            <span class="sidebar-mode-chip" id="sidebarModeValue" data-mode="pending">Pick mode</span>
-                        </div>
-                        <p class="sidebar-insight-copy">
-                            @if($learnPageView['is_topic_focused_session'])
-                                {{ $learnPageView['topic_session_title'] }}
-                            @else
-                                Adaptive review across your active mistake bank.
-                            @endif
-                        </p>
-                        <div class="sidebar-chip-list">
-                            <span class="sidebar-chip">{{ $learnPageView['active_course_name'] }}</span>
-                            <span class="sidebar-chip">{{ $learnPageView['session_loaded_count'] }} loaded</span>
-                            <span class="sidebar-chip">{{ $learnPageView['coverage_percent'] }}% coverage</span>
-                        </div>
-                    </div>
-
-                    <div class="sidebar-insight-card sidebar-insight-card-soft">
-                        <div class="sidebar-insight-head">
-                            <i class="fas fa-wave-square nav-icon"></i>
-                            <span class="nav-link-label">Session Pulse</span>
-                        </div>
-                        <div class="sidebar-progress-meta">
-                            <span id="sidebarProgressSummary">0 reviewed this run</span>
-                            <span id="sidebarProgressPercent">0%</span>
-                        </div>
-                        <div class="sidebar-progress-track">
-                            <div class="sidebar-progress-fill" id="sidebarProgressFill"></div>
-                        </div>
-                        <div class="sidebar-stat-grid">
-                            <div class="sidebar-stat-card sidebar-stat-card-coverage">
-                                <span class="sidebar-stat-label">Cleared</span>
-                                <strong id="sidebarCompletedCount">0</strong>
-                                <small>Finished this run</small>
-                            </div>
-                            <div class="sidebar-stat-card sidebar-stat-card-cold">
-                                <span class="sidebar-stat-label">Active</span>
-                                <strong id="sidebarRemainingCount">{{ $learnPageView['session_loaded_count'] }}</strong>
-                                <small>Still in rotation</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <span class="sidebar-section-label">Context</span>
-
-                    <div class="sidebar-insight-card sidebar-insight-card-soft">
-                        <div class="sidebar-insight-head">
-                            <i class="fas fa-layer-group nav-icon"></i>
-                            <span class="nav-link-label">Current Target</span>
-                        </div>
-                        <p class="sidebar-insight-copy">
-                            @if($learnPageView['is_topic_focused_session'])
-                                Focused repair on the topic{{ $selectedTopicNames->count() === 1 ? '' : 's' }} you picked.
-                            @else
-                                Balanced review across the mistakes most likely to slow your next quiz.
-                            @endif
-                        </p>
-                        <div class="sidebar-chip-list">
-                            <span class="sidebar-chip">{{ $learnPageView['active_course_name'] }}</span>
-                            @forelse($selectedTopicNames->take(2) as $topicName)
-                                <span class="sidebar-chip">{{ $topicName }}</span>
-                            @empty
-                                <span class="sidebar-chip">All weak topics</span>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <section class="sidebar-study-summary" aria-labelledby="learn-summary-title">
+                <h2 id="learn-summary-title">This session</h2>
+                <p>{{ $learnPageView['active_course_name'] }}</p>
+                <dl>
+                    <div><dt>Mode</dt><dd id="sidebarModeValue" data-mode="pending">Choose a mode</dd></div>
+                </dl>
+                <p id="sidebarProgressSummary" role="status" aria-live="polite" aria-atomic="true">{{ $learnPageView['session_loaded_count'] }} questions ready</p>
+            </section>
         </div>
 
         @include('partials.student-sidebar-profile', [
