@@ -401,6 +401,12 @@
             margin: 0 auto;
         }
 
+        /* This panel receives programmatic focus for navigation, not a control outline. */
+        .question-card[tabindex="-1"]:focus,
+        .question-card[tabindex="-1"]:focus-visible {
+            outline: none !important;
+        }
+
         .question-card {
             background: transparent;
             border-radius: 0;
