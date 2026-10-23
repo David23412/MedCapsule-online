@@ -242,3 +242,48 @@ test('mobile question navigation scrolls the number strip without moving the pag
     moved=null;circle.getBoundingClientRect=()=>({left:80,right:124});
     h.context.updateSidebarActiveState(12);assert.equal(moved,null);
 });
+
+function resultsDialog() {
+    const h=harness(), timers=new Map();let nextTimer=0;
+    const classes=new Set();
+    const controls=Array.from({length:3},(_,index)=>({index,getAttribute:()=>null,getClientRects:()=>[{}],focus(){h.context.document.activeElement=this;}}));
+    const popup={attributes:{},classList:{add:name=>classes.add(name),remove:name=>classes.delete(name)},
+        setAttribute(name,value){this.attributes[name]=value;},querySelectorAll:()=>controls,
+        contains:element=>element===popup||controls.includes(element),focus(){h.context.document.activeElement=popup;}};
+    const overlay={classList:{contains:name=>classes.has('overlay-'+name),add:name=>classes.add('overlay-'+name),remove:name=>classes.delete('overlay-'+name)}};
+    const original=h.context.document.getElementById;
+    h.context.document.getElementById=id=>id==='popup'?popup:id==='popup-overlay'?overlay:original(id);
+    h.context.document.body={style:{overflow:'auto'}};
+    h.context.document.activeElement={};
+    h.context.setTimeout=fn=>{timers.set(++nextTimer,fn);return nextTimer;};
+    h.context.clearTimeout=id=>timers.delete(id);
+    return {...h,popup,overlay,controls,timers,reveal(){for(const fn of timers.values())fn();timers.clear();}};
+}
+
+test('results focus the dialog and keep Tab/Shift+Tab on result actions',()=>{
+    const h=resultsDialog();h.context.openTutorResultsPopup();h.reveal();
+    assert.equal(h.context.document.activeElement,h.popup);
+    assert.equal(h.popup.attributes['aria-modal'],'true');
+    assert.equal(h.context.document.body.style.overflow,'hidden');
+    assert.equal(h.key({key:'Tab'}).defaultPrevented,true);
+    assert.equal(h.context.document.activeElement,h.controls[0]);
+    h.key({key:'Tab',shiftKey:true});assert.equal(h.context.document.activeElement,h.controls[2]);
+    h.key({key:'Tab'});assert.equal(h.context.document.activeElement,h.controls[0]);
+    h.context.document.activeElement=h.controls[1];
+    assert.equal(h.key({key:'Tab'}).defaultPrevented,false);
+});
+
+test('closing results restores scrolling and cancels a pending reveal',()=>{
+    const h=resultsDialog();h.context.openTutorResultsPopup();h.context.closeTutorResultsPopup();
+    assert.equal(h.timers.size,0);
+    assert.equal(h.context.document.body.style.overflow,'auto');
+    assert.equal(h.popup.attributes['aria-modal'],'false');
+    assert.equal(h.overlay.classList.contains('show'),false);
+    assert.equal(h.key({key:'Tab'}).defaultPrevented,false);
+});
+
+test('results animation never steals focus after a user has reached an action',()=>{
+    const h=resultsDialog();h.context.openTutorResultsPopup();
+    h.context.document.activeElement=h.controls[1];h.reveal();
+    assert.equal(h.context.document.activeElement,h.controls[1]);
+});

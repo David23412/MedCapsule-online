@@ -403,7 +403,9 @@
 
         /* This panel receives programmatic focus for navigation, not a control outline. */
         .question-card[tabindex="-1"]:focus,
-        .question-card[tabindex="-1"]:focus-visible {
+        .question-card[tabindex="-1"]:focus-visible,
+        #popup[tabindex="-1"]:focus,
+        #popup[tabindex="-1"]:focus-visible {
             outline: none !important;
         }
 
@@ -3251,7 +3253,7 @@
 
     <!-- Quiz Results Popup - EXACT COPY FROM SOLVE_QUIZ -->
     <div class="popup-overlay" id="popup-overlay">
-        <div class="popup" id="popup">
+        <div class="popup" id="popup" role="dialog" aria-modal="false" aria-labelledby="popup-title" aria-describedby="popup-score popup-message" tabindex="-1">
             <div class="grade-icon" id="grade-icon"></div>
             <h2 class="popup-title" id="popup-title">Quiz Complete!</h2>
             <div class="score-container">

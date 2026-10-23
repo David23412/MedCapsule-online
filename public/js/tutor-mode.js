@@ -1532,8 +1532,7 @@ function submitQuizRandomTutor() {
                 const popupScore = document.getElementById('popup-score');
                 const popupMessage = document.getElementById('popup-message');
                 const popupTitle = document.getElementById('popup-title');
-                const popupOverlay = document.getElementById('popup-overlay');
-                const popup = document.getElementById('popup');
+
                 const gradeIcon = document.getElementById('grade-icon');
 
                 // Update score display and UI immediately
@@ -1562,10 +1561,7 @@ function submitQuizRandomTutor() {
                 playFinalGradingSound(data.score, data.total);
 
                 // Show popup with animation
-                if (popupOverlay) popupOverlay.classList.add('show');
-                if (popup) {
-                    setTimeout(() => popup.classList.add('show'), 100);
-                }
+                openTutorResultsPopup();
             } else {
                 console.error('❌ AUTO-GRADING FAILED:', data.error);
 
@@ -1573,17 +1569,13 @@ function submitQuizRandomTutor() {
                 const popupScore = document.getElementById('popup-score');
                 const popupTitle = document.getElementById('popup-title');
                 const popupMessage = document.getElementById('popup-message');
-                const popupOverlay = document.getElementById('popup-overlay');
-                const popup = document.getElementById('popup');
+
 
                 // Show error message
                 if (popupTitle) popupTitle.textContent = 'Error';
                 if (popupScore) popupScore.textContent = '';
                 if (popupMessage) popupMessage.textContent = 'An error occurred while grading. Please try again.';
-                if (popupOverlay) popupOverlay.classList.add('show');
-                if (popup) {
-                    setTimeout(() => popup.classList.add('show'), 100);
-                }
+                openTutorResultsPopup();
             }
         })
         .catch(error => {
@@ -1593,17 +1585,13 @@ function submitQuizRandomTutor() {
             const popupScore = document.getElementById('popup-score');
             const popupTitle = document.getElementById('popup-title');
             const popupMessage = document.getElementById('popup-message');
-            const popupOverlay = document.getElementById('popup-overlay');
-            const popup = document.getElementById('popup');
+
 
             // Show error popup
             if (popupTitle) popupTitle.textContent = 'Error';
             if (popupScore) popupScore.textContent = '';
             if (popupMessage) popupMessage.textContent = 'Failed to submit quiz. Please check your connection and try again.';
-            if (popupOverlay) popupOverlay.classList.add('show');
-            if (popup) {
-                setTimeout(() => popup.classList.add('show'), 100);
-            }
+            openTutorResultsPopup();
 
             // Re-enable any disabled form elements
             document.querySelectorAll('input, textarea, button').forEach(el => el.disabled = false);
@@ -1921,6 +1909,55 @@ function showNextQuestion(currentNumber, options) {
     }
 }
 
+// Results share one focus/scroll lifecycle, including timed-quiz error states.
+let tutorResultsRevealTimer;
+let tutorResultsPreviousOverflow = null;
+function openTutorResultsPopup() {
+    const overlay = document.getElementById('popup-overlay');
+    const popup = document.getElementById('popup');
+    if (!overlay || !popup) return;
+    clearTimeout(tutorResultsRevealTimer);
+    if (tutorResultsPreviousOverflow === null) {
+        tutorResultsPreviousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+    }
+    popup.setAttribute('aria-modal', 'true');
+    overlay.classList.add('show');
+    tutorResultsRevealTimer = setTimeout(() => {
+        popup.classList.add('show');
+        if (!popup.contains(document.activeElement)) popup.focus({preventScroll: true});
+    }, 100);
+}
+
+function closeTutorResultsPopup() {
+    clearTimeout(tutorResultsRevealTimer);
+    document.getElementById('popup')?.classList.remove('show');
+    document.getElementById('popup')?.setAttribute('aria-modal', 'false');
+    document.getElementById('popup-overlay')?.classList.remove('show');
+    if (tutorResultsPreviousOverflow !== null) {
+        document.body.style.overflow = tutorResultsPreviousOverflow;
+        tutorResultsPreviousOverflow = null;
+    }
+}
+
+document.addEventListener('keydown', function tutorResultsKeyboard(event) {
+    if (event.key !== 'Tab' || event.defaultPrevented) return;
+    const popup = document.getElementById('popup');
+    if (!popup || !document.getElementById('popup-overlay')?.classList.contains('show')) return;
+    const controls = Array.from(popup.querySelectorAll('button:not([disabled]), a[href]'))
+        .filter(control => control.getAttribute('aria-disabled') !== 'true' && control.getClientRects().length > 0);
+    const first = controls[0];
+    const last = controls[controls.length - 1];
+    const active = document.activeElement;
+    if (!first) {
+        event.preventDefault();
+        popup.focus({preventScroll: true});
+    } else if (!controls.includes(active) || (event.shiftKey && active === first) || (!event.shiftKey && active === last)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus({preventScroll: true});
+    }
+});
+
 // Function to show final results when "View Results" button is clicked
 function showFinalResults() {
     console.log('🎯 VIEW RESULTS: User clicked "View Results" button for final question');
@@ -2065,8 +2102,7 @@ function showQuizResults(results) {
     clearTutorDraft();
 
     // ⚡ INSTANT UI RENDERING - SHOW POPUP IMMEDIATELY
-    const popupOverlay = document.getElementById('popup-overlay');
-    const popup = document.getElementById('popup');
+
     const gradeIcon = document.getElementById('grade-icon');
     const popupTitle = document.getElementById('popup-title');
     const popupScore = document.getElementById('popup-score');
@@ -2111,8 +2147,7 @@ function showQuizResults(results) {
     }
 
     // Show success popup with animation IMMEDIATELY
-    popupOverlay.classList.add('show');
-    setTimeout(() => popup.classList.add('show'), 100);
+    openTutorResultsPopup();
 
     // 🎉 FUNCTION COMPLETES INSTANTLY HERE - NO AWAITS OR BLOCKING OPERATIONS
     const uiTime = performance.now() - completionStart;
@@ -2231,11 +2266,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.body.classList.add('tutor-review-mode');
 
-        const popupOverlay = document.getElementById('popup-overlay');
-        const popup = document.getElementById('popup');
         const timerElement = document.getElementById('timer');
-        popup?.classList.remove('show');
-        popupOverlay?.classList.remove('show');
+        closeTutorResultsPopup();
 
         if (timerInterval) {
             clearTimeout(timerInterval);
@@ -2323,7 +2355,9 @@ document.addEventListener('DOMContentLoaded', function () {
             window.jumpToQuestion(1);
         }
 
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.getElementById('question-1')?.focus({preventScroll: true});
+        announceTutorStatus('Review answers. Use Left and Right to move between questions.');
+        window.scrollTo({ top: 0, behavior: 'instant' });
     };
 
     reviewAnswersButton.addEventListener('click', function () {
