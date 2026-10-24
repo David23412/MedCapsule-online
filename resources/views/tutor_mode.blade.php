@@ -655,14 +655,6 @@
             -webkit-user-select: none;
         }
 
-        .tutor-keyboard-help summary {
-            cursor: pointer;
-            color: #475569;
-            font-size: 0.875rem;
-            min-height: 44px;
-            padding: 0.65rem 0;
-        }
-
         .options-container {
             width: 100%;
         }
@@ -2925,11 +2917,6 @@
 
             {{-- Progress bar removed — now lives in the navbar above --}}
 
-            <details class="tutor-keyboard-help mb-3">
-                <summary>Keyboard shortcuts</summary>
-                <p class="small text-muted mt-2 mb-0">↑ / ↓ choose an answer · ← / → change questions · Enter checks or continues.</p>
-                <p class="small text-muted mt-1 mb-0">With a question or answer focused, A–E selects the letter shown on screen. In written answers, arrow keys move the cursor and Shift+Enter adds a line.</p>
-            </details>
             <div id="tutor-keyboard-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
             <!-- Questions Container -->
