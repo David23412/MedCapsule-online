@@ -1829,8 +1829,8 @@
         @endif
 
         <!-- Enhanced Stats Dashboard -->
-        <details class="card mb-3" id="platformOverview">
-            <summary class="p-3 fw-semibold" style="cursor: pointer;">Platform overview <span class="fw-normal text-muted ms-2">User totals and system health</span></summary>
+        <section class="card mb-3" id="platformOverview" aria-labelledby="platformOverviewTitle">
+            <div class="p-3 fw-semibold" id="platformOverviewTitle">Platform overview <span class="fw-normal text-muted ms-2">User totals and system health</span></div>
             <div class="p-3 pt-0">
         <div class="row stats-row g-3">
             <div class="col-xl col-md-6 col-sm-6">
@@ -1949,7 +1949,7 @@
         </div>
 
             </div>
-        </details>
+        </section>
 
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs" id="manageTabs" role="tablist">

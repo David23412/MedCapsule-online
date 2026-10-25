@@ -269,7 +269,7 @@ class Course extends Model
             }
         }
 
-        return (int) config('free_course_survey.preview_topics_count', 5);
+        return $this->isPaidAccess() ? 0 : (int) config('free_course_survey.preview_topics_count', 5);
     }
 
     /** -------------------

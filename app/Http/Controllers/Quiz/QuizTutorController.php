@@ -51,11 +51,7 @@ class QuizTutorController extends Controller
             $user = auth()->user();
             
             
-            // Check access with caching
-            $accessKey = "user_access_{$user->id}_{$course->id}";
-            $hasAccess = Cache::remember($accessKey, 300, function() use ($user, $course) {
-                return $user->isAdmin() || $user->hasAccessToCourse($course->id);
-            });
+            $hasAccess = $user->isAdmin() || $user->hasAccessToCourse($course->id);
 
             if (!$hasAccess) {
                 if ($user->requiresSurveyUnlockForCourse($course)) {

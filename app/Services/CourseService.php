@@ -658,7 +658,11 @@ class CourseService
 
         $completionPercentages = $this->loadCourseCompletionPercentages($courses, $user->id);
 
-        $userCourseData = $this->getUserCourseOptimizationData($user);
+        // Include public previews on paid courses, including students with no enrollment row.
+        $userCourseData = [
+            'is_admin' => $user->isAdmin(),
+            'course_access_levels' => $user->getCourseAccessLevels($courses->modelKeys()),
+        ];
         // Payment status can change independently of cached enrollment metadata.
         $pendingPaymentCourseIds = DB::table('payments')
             ->where('user_id', $user->id)
@@ -858,9 +862,7 @@ class CourseService
         if (!$user) return false;
         if ($user->isAdmin()) return true;
 
-        $userCourseData = $this->getUserCourseOptimizationData($user);
-
-        return ($userCourseData['course_access_levels'][$courseId] ?? null) !== null;
+        return $user->getCourseAccessLevel($courseId) !== null;
     }
 
     /**

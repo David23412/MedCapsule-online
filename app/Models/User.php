@@ -450,15 +450,24 @@ class User extends Authenticatable
             ->flip()
             ->all();
 
+        // Paid courses may expose explicitly selected topics without enrollment or payment.
+        $paidCourseIds = $rows->filter(fn ($row) => Course::normalizeAccessType($row->access_type) === Course::ACCESS_TYPE_PAID)
+            ->pluck('id')->all();
+        $paidPreviewCourseIds = $paidCourseIds === [] ? [] : Topic::query()
+            ->whereIn('course_id', $paidCourseIds)
+            ->where('is_preview_enabled', true)
+            ->distinct()->pluck('course_id')->flip()->all();
+
         foreach ($rows as $row) {
             $courseId = (int) $row->id;
             $accessType = Course::normalizeAccessType($row->access_type ?? null);
             $isEnrolled = (bool) ($row->is_enrolled ?? false);
             $storedLevel = is_string($row->access_level) ? trim($row->access_level) : null;
             $hasCompletedPayment = isset($completedPaymentCourseIds[$courseId]);
+            $hasPaidPreview = isset($paidPreviewCourseIds[$courseId]);
 
             if (!$isEnrolled) {
-                $accessMap[$courseId] = null;
+                $accessMap[$courseId] = $hasPaidPreview ? self::COURSE_ACCESS_PREVIEW : null;
                 continue;
             }
 
@@ -497,7 +506,7 @@ class User extends Authenticatable
                 default:
                     $accessMap[$courseId] = $hasCompletedPayment
                         ? self::COURSE_ACCESS_FULL
-                        : null;
+                        : ($hasPaidPreview ? self::COURSE_ACCESS_PREVIEW : null);
                     break;
             }
         }
@@ -527,7 +536,7 @@ class User extends Authenticatable
             return $course->getPreviewTopicLimit();
         }
 
-        $courseModel = Course::query()->select('id')->find((int) $course);
+        $courseModel = Course::query()->select('id', 'access_type')->find((int) $course);
 
         return $courseModel?->getPreviewTopicLimit() ?? (int) config('free_course_survey.preview_topics_count', 5);
     }

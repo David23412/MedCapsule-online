@@ -94,11 +94,9 @@ class AdminSettingsController extends Controller
      */
     public function getCourseTopics(int $courseId): JsonResponse
     {
-        $courseExists = Course::query()
-            ->whereKey($courseId)
-            ->exists();
+        $course = Course::query()->select('id', 'access_type')->find($courseId);
 
-        if (!$courseExists) {
+        if (!$course) {
             return response()->json(['success' => false, 'message' => 'Course not found'], 404);
         }
 
@@ -127,7 +125,7 @@ class AdminSettingsController extends Controller
         $effectivePreviewTopicIds = $explicitPreviewTopicIds;
         $isUsingDefaultPreview = false;
 
-        if ($effectivePreviewTopicIds === []) {
+        if ($effectivePreviewTopicIds === [] && !$course->isPaidAccess()) {
             $isUsingDefaultPreview = true;
             $previewLimit = (int) config('free_course_survey.preview_topics_count', 5);
             $effectivePreviewTopicIds = $previewLimit > 0
