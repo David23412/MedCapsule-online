@@ -3012,13 +3012,13 @@
                     </div>
                 </div>
                 
-                <!-- Fake Enrolled Users Per Course Section -->
+                <!-- Course Enrollment Display Section -->
                 <div class="row g-4 mt-3">
                     <div class="col-12">
                         <div class="card">
                             <div class="card-header">
                                 <div>
-                                    <i class="fas fa-users-cog me-2"></i>Fake Enrolled Users Per Course
+                                    <i class="fas fa-users-cog me-2"></i>Course Enrollment Display
                                 </div>
                                 <span class="badge bg-primary">
                                     <i class="fas fa-id-card"></i> Profile Circles
@@ -3027,7 +3027,7 @@
                             <div class="card-body">
                                 <div class="alert alert-info">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Course Profile Circles:</strong> Control the fake enrolled user count displayed as profile circles on each course card. This shows social proof to encourage enrollment.
+                                    Set the total shown beside the enrollment circles on each course card, for example 200 students. Enable a custom count for a course and save. Turn it off to show real enrollment again. This only changes the public display; actual enrollments and revenue stay unchanged.
                                 </div>
                                 
                                 <div class="table-responsive">
@@ -3036,8 +3036,8 @@
                                             <tr>
                                                 <th style="width: 40%;">Course Name</th>
                                                 <th style="width: 15%;" class="text-center">Real Enrolled</th>
-                                                <th style="width: 15%;" class="text-center">Fake Mode</th>
-                                                <th style="width: 20%;">Fake Count</th>
+                                                <th style="width: 15%;" class="text-center">Custom Count</th>
+                                                <th style="width: 20%;">Display Total</th>
                                                 <th style="width: 10%;" class="text-center">Actions</th>
                                             </tr>
                                         </thead>
@@ -3053,7 +3053,8 @@
                                                         </td>
                                                         <td class="text-center">
                                                             <div class="form-check form-switch d-flex justify-content-center">
-                                                                <input class="form-check-input course-fake-toggle" 
+                                                                <input class="form-check-input course-fake-toggle"
+                                                                       aria-label="Use custom enrollment count for {{ $course->name }}"
                                                                        type="checkbox" 
                                                                        data-course-id="{{ $course->id }}"
                                                                        {{ $course->fake_enrolled_enabled ? 'checked' : '' }}>
@@ -3065,7 +3066,9 @@
                                                                     <i class="fas fa-minus"></i>
                                                                 </button>
                                                                 <input type="number" 
-                                                                       class="form-control text-center course-fake-count" 
+                                                                       class="form-control text-center course-fake-count"
+                                                                       aria-label="Displayed student total for {{ $course->name }}"
+                                                                       required
                                                                        data-course-id="{{ $course->id }}"
                                                                        min="0" 
                                                                        max="9999" 
@@ -3076,7 +3079,7 @@
                                                             </div>
                                                         </td>
                                                         <td class="text-center">
-                                                            <button class="btn btn-sm btn-success save-course-fake" data-course-id="{{ $course->id }}">
+                                                            <button class="btn btn-sm btn-success save-course-fake" aria-label="Save enrollment display for {{ $course->name }}" data-course-id="{{ $course->id }}">
                                                                 <i class="fas fa-save"></i>
                                                             </button>
                                                         </td>

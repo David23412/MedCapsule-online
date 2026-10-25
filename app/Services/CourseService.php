@@ -619,6 +619,14 @@ class CourseService
         $previewLimit = 3;
         $previewUsersByCourse = $this->loadEnrolledPreviewData($courses, $previewLimit);
 
+        foreach ($courses as $course) {
+            $course->displayed_enrollment_count = $course->fake_enrolled_enabled
+                ? max(0, (int) $course->fake_enrolled_count)
+                : (int) ($course->enrolled_users_count ?? 0);
+            $previewUsersByCourse->put($course->id, $previewUsersByCourse->get($course->id, collect())
+                ->take(min($previewLimit, $course->displayed_enrollment_count)));
+        }
+
         if (!$user) {
             // For guest users, set default values (PRESERVED)
             foreach ($courses as $course) {
@@ -642,7 +650,7 @@ class CourseService
                         'initial' => strtoupper(substr($previewUser['name'], 0, 1))
                     ];
                 });
-                $course->has_more = ($course->enrolled_users_count ?? 0) > $previewLimit;
+                $course->has_more = $course->displayed_enrollment_count > $course->enrolled_preview->count();
                 $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
             }
             return;
@@ -696,7 +704,7 @@ class CourseService
                     'initial' => strtoupper(substr($previewUser['name'], 0, 1))
                 ];
             });
-            $course->has_more = ($course->enrolled_users_count ?? 0) > $previewLimit;
+            $course->has_more = $course->displayed_enrollment_count > $course->enrolled_preview->count();
             $course->enrolled_users_count = $course->enrolled_users_count ?? 0;
         }
     }

@@ -449,9 +449,11 @@
                                         @endif
                                     </div>
                                 @endforeach
-                                @if($course->has_more)
+                                @if($course->fake_enrolled_enabled)
+                                    <span class="enrollment-display-count">{{ number_format($course->displayed_enrollment_count) }} {{ $course->displayed_enrollment_count === 1 ? 'student' : 'students' }}</span>
+                                @elseif($course->has_more)
                                     <div class="profile-circle-small more" title="More enrolled users">
-                                        +{{ $course->enrolled_users_count - 3 }}
+                                        +{{ $course->displayed_enrollment_count - $course->enrolled_preview->count() }}
                                     </div>
                                 @endif
                             </div>

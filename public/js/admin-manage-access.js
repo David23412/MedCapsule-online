@@ -1728,9 +1728,13 @@ $.ajaxSetup({timeout: 15000});
         
         // Save individual course fake settings
         $('.save-course-fake').on('click', function() {
+            const button = $(this);
             const courseId = $(this).data('course-id');
             const enabled = $(`.course-fake-toggle[data-course-id="${courseId}"]`).is(':checked');
-            const count = parseInt($(`.course-fake-count[data-course-id="${courseId}"]`).val()) || 0;
+            const input = document.querySelector(`.course-fake-count[data-course-id="${courseId}"]`);
+            if (!input.reportValidity()) return;
+            const count = Number(input.value);
+            button.prop('disabled', true);
             
             $.ajax({
                 url: '/admin/courses/' + courseId + '/fake-enrolled',
@@ -1742,7 +1746,7 @@ $.ajaxSetup({timeout: 15000});
                 },
                 success: function(response) {
                     if (response.success) {
-                        showNotification('success', 'Saved!', 'Course fake enrolled settings updated');
+                        showNotification('success', 'Saved!', 'Course enrollment display updated');
                     } else {
                         showNotification('error', 'Error', response.message || 'Failed to save');
                     }
@@ -1751,18 +1755,24 @@ $.ajaxSetup({timeout: 15000});
                     const errorMsg = xhr.responseJSON?.message || 'Failed to save course settings';
                     console.error('Save error:', xhr.responseJSON);
                     showNotification('error', 'Error', errorMsg);
+                },
+                complete: function() {
+                    button.prop('disabled', false);
                 }
             });
         });
         
         // Save all courses fake settings
         $('#saveAllCourseFakeSettings').on('click', function() {
+            const inputs = Array.from(document.querySelectorAll('.course-fake-count'));
+            if (inputs.some(input => !input.reportValidity())) return;
+            const button = $(this);
             const coursesData = [];
             
             $('.course-fake-toggle').each(function() {
                 const courseId = $(this).data('course-id');
                 const enabled = $(this).is(':checked');
-                const count = parseInt($(`.course-fake-count[data-course-id="${courseId}"]`).val()) || 0;
+                const count = Number($(`.course-fake-count[data-course-id="${courseId}"]`).val());
                 
                 coursesData.push({
                     id: courseId,
@@ -1771,6 +1781,7 @@ $.ajaxSetup({timeout: 15000});
                 });
             });
             
+            button.prop('disabled', true);
             $.ajax({
                 url: '/admin/courses/fake-enrolled/bulk',
                 method: 'POST',
@@ -1789,18 +1800,24 @@ $.ajaxSetup({timeout: 15000});
                     const errorMsg = xhr.responseJSON?.message || 'Failed to save all course settings';
                     console.error('Bulk save error:', xhr.responseJSON);
                     showNotification('error', 'Error', errorMsg);
+                },
+                complete: function() {
+                    button.prop('disabled', false);
                 }
             });
         });
         
         // Apply bulk count to all courses
         function applyBulkCourseCount() {
-            const count = prompt('Enter fake enrolled count to apply to all courses:', '250');
-            if (count !== null && !isNaN(count)) {
-                $('.course-fake-count').val(parseInt(count));
-                $('.course-fake-toggle').prop('checked', true);
-                showNotification('success', 'Applied!', `Set all courses to ${count} fake enrolled users. Click "Save All Courses" to apply.`);
+            const count = prompt('Enter the displayed student total for all courses (0–9999):', '250');
+            if (count === null) return;
+            if (!count.trim() || !Number.isInteger(Number(count)) || Number(count) < 0 || Number(count) > 9999) {
+                showNotification('error', 'Invalid count', 'Enter a whole number between 0 and 9999.');
+                return;
             }
+            $('.course-fake-count').val(Number(count));
+            $('.course-fake-toggle').prop('checked', true);
+            showNotification('success', 'Applied!', `Set all courses to ${count} displayed students. Click "Save All Courses" to apply.`);
         }
 
         let previewTopicsRequest = null;

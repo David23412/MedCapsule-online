@@ -76,12 +76,15 @@ class AdminSettingsController extends Controller
             'courses.*.fake_enrolled_count' => 'required|integer|min:0|max:9999'
         ]);
 
-        foreach ($validated['courses'] as $courseData) {
-            Course::where('id', $courseData['id'])->update([
-                'fake_enrolled_enabled' => $courseData['fake_enrolled_enabled'],
-                'fake_enrolled_count' => $courseData['fake_enrolled_count']
-            ]);
-        }
+        DB::transaction(function () use ($validated) {
+            $courses = Course::whereIn('id', array_column($validated['courses'], 'id'))->get()->keyBy('id');
+            foreach ($validated['courses'] as $courseData) {
+                $courses->get($courseData['id'])->update([
+                    'fake_enrolled_enabled' => $courseData['fake_enrolled_enabled'],
+                    'fake_enrolled_count' => $courseData['fake_enrolled_count'],
+                ]);
+            }
+        });
 
         return response()->json(['success' => true, 'message' => 'All courses updated successfully']);
     }

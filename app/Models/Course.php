@@ -47,7 +47,9 @@ class Course extends Model
         'currency',
         'color',
         'title_color',
-        'academic_year'
+        'academic_year',
+        'fake_enrolled_enabled',
+        'fake_enrolled_count',
     ];
 
     protected $appends = [
@@ -59,7 +61,9 @@ class Course extends Model
     protected $casts = [
         'type' => 'string',
         'access_type' => 'string',
-        'price' => 'decimal:2'
+        'price' => 'decimal:2',
+        'fake_enrolled_enabled' => 'boolean',
+        'fake_enrolled_count' => 'integer',
     ];
 
     const CACHE_TTL = 30; // 30 seconds for INSTANT updates
