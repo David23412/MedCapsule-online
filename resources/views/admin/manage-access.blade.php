@@ -2766,6 +2766,19 @@
             <!-- Settings Tab -->
             <div class="tab-pane fade {{ $activeTab === 'settings' ? 'show active' : '' }}" id="settings" role="tabpanel">
                 <div class="card mb-4">
+                    <div class="card-header">Course Survey</div>
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="courseSurveyRequiredToggle"
+                                aria-describedby="courseSurveyDescription"
+                                @checked(\App\Models\AdminSetting::requiresFreeCourseSurvey())>
+                            <label class="form-check-label" for="courseSurveyRequiredToggle">Require survey before course access</label>
+                        </div>
+                        <p id="courseSurveyDescription" class="text-muted small mt-2 mb-0">Turn off to let students start free courses and course previews without a survey. Paid access and preview topic limits stay the same. Saved survey responses are kept.</p>
+                        <div id="courseSurveyStatus" class="small mt-2" role="status" aria-live="polite"></div>
+                    </div>
+                </div>
+                <div class="card mb-4">
                     <div class="card-header"><i class="fas fa-eye-slash me-2"></i>Topic Visibility</div>
                     <div class="card-body">
                         <div class="form-check form-switch">

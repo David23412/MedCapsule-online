@@ -9,6 +9,11 @@ class AdminSetting extends Model
 {
     protected $fillable = ['key', 'value', 'type', 'description'];
 
+    public static function requiresFreeCourseSurvey(): bool
+    {
+        return (bool) self::get('free_course_survey_required', true);
+    }
+
     /**
      * Get a setting value by key
      */

@@ -1661,6 +1661,26 @@ $.ajaxSetup({timeout: 15000});
             });
         }
         
+        $('#courseSurveyRequiredToggle').on('change', async function () {
+            const toggle = this;
+            const required = toggle.checked;
+            const status = document.getElementById('courseSurveyStatus');
+            toggle.disabled = true;
+            status.textContent = 'Saving…';
+            try {
+                const response = await saveSetting('free_course_survey_required', required ? '1' : '0', 'boolean');
+                if (!response.success) throw new Error('Setting could not be saved.');
+                status.textContent = required
+                    ? 'Saved. Students must complete the survey before starting free courses or previews.'
+                    : 'Saved. Students can start free courses and previews without a survey.';
+            } catch (_error) {
+                toggle.checked = !required;
+                status.textContent = 'Could not save. Please try again.';
+            } finally {
+                toggle.disabled = false;
+            }
+        });
+
         $('#hideEmptyTopicsToggle').on('change', async function () {
             const toggle = this;
             const enabled = toggle.checked;

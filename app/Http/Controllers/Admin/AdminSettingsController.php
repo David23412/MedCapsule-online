@@ -26,6 +26,13 @@ class AdminSettingsController extends Controller
             'type' => 'required|in:string,boolean,integer,float,json'
         ]);
 
+        if ($validated['key'] === 'free_course_survey_required') {
+            $request->validate([
+                'value' => 'required|boolean',
+                'type' => 'required|in:boolean',
+            ]);
+        }
+
         AdminSetting::set($validated['key'], $validated['value'], $validated['type']);
 
         return response()->json(['success' => true, 'message' => 'Setting updated successfully']);
@@ -36,7 +43,9 @@ class AdminSettingsController extends Controller
      */
     public function get(string $key): JsonResponse
     {
-        $value = AdminSetting::get($key);
+        $value = $key === 'free_course_survey_required'
+            ? AdminSetting::requiresFreeCourseSurvey()
+            : AdminSetting::get($key);
         return response()->json(['value' => $value]);
     }
 

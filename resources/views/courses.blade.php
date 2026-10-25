@@ -590,7 +590,9 @@
     </div>
 
     @auth
-        @include('components.free-course-survey-lock')
+        @if (\App\Models\AdminSetting::requiresFreeCourseSurvey())
+            @include('components.free-course-survey-lock')
+        @endif
     @endauth
     <!-- Milestone Progress - BACKEND OPTIMIZED -->
     <div class="milestone-container">

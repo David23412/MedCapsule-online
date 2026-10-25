@@ -118,6 +118,8 @@ class User extends Authenticatable
      */
     protected array $courseAccessLevelCache = [];
 
+    protected ?bool $courseAccessSurveyRequired = null;
+
     /**
      * Define the relationship with courses (many-to-many).
      * Only returns enrolled courses (enrolled_at is not null).
@@ -395,6 +397,12 @@ class User extends Authenticatable
             ->values()
             ->all();
 
+        $surveyRequired = AdminSetting::requiresFreeCourseSurvey();
+        if ($this->courseAccessSurveyRequired !== $surveyRequired) {
+            $this->courseAccessLevelCache = [];
+            $this->courseAccessSurveyRequired = $surveyRequired;
+        }
+
         // Per-request memoization: only query IDs we haven't resolved yet
         $uncachedIds = array_diff($normalizedCourseIds, array_keys($this->courseAccessLevelCache));
 
@@ -638,6 +646,7 @@ class User extends Authenticatable
     public function hasUnlockedFreeCourses(): bool
     {
         return $this->isAdmin()
+            || !AdminSetting::requiresFreeCourseSurvey()
             || ((bool) $this->survey_completed && (bool) $this->free_courses_unlocked);
     }
 
@@ -672,6 +681,7 @@ class User extends Authenticatable
     {
         return implode(':', [
             'v2',
+            (int) AdminSetting::requiresFreeCourseSurvey(),
             (int) ($this->role ?? 0),
             (int) ((bool) $this->survey_completed),
             (int) ((bool) $this->free_courses_unlocked),
