@@ -1765,33 +1765,15 @@
         }
         .activity-status.online  { color: #0f5132; background: #d1e7dd; }
         .activity-status.online  .status-dot { background: #198754; animation: pulse-dot 1.5s infinite; }
-        .activity-status.recent  { color: #055160; background: #cff4fc; }
-        .activity-status.recent  .status-dot { background: #0dcaf0; }
-        .activity-status.today   { color: #664d03; background: #fff3cd; }
-        .activity-status.today   .status-dot { background: #ffc107; }
-        .activity-status.this_week { color: #41464b; background: #e2e3e5; }
-        .activity-status.this_week .status-dot { background: #6c757d; }
-        .activity-status.inactive { color: #842029; background: #f8d7da; }
-        .activity-status.inactive .status-dot { background: #dc3545; }
-        .activity-status.never   { color: #41464b; background: #e9ecef; }
-        .activity-status.never   .status-dot { background: #adb5bd; }
+        .activity-status.offline { color: #41464b; background: #e9ecef; }
+        .activity-status.offline .status-dot { background: #6c757d; }
 
         @keyframes pulse-dot {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(1.4); }
         }
 
-        .level-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 12px;
-        }
+
     </style>
 </head>
 <body>
@@ -2443,14 +2425,22 @@
                 <div class="row mt-4">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-header">
+                            <div class="card-header flex-wrap gap-2">
                                 <div>
                                     <i class="fas fa-user-clock me-2"></i>Last Active Users
                                 </div>
-                                <div class="d-flex gap-2 align-items-center">
+                                <div class="d-flex gap-2 align-items-center flex-wrap" style="max-width:100%;">
+                                    <label for="lastActiveCourse" class="small text-muted">Enrollment course</label>
+                                    <select id="lastActiveCourse" class="form-select form-select-sm w-auto" style="max-width:100%;" aria-label="Enrollment course">
+                                        @forelse($courses ?? [] as $course)
+                                            <option value="{{ $course->id }}">{{ $course->name }}</option>
+                                        @empty
+                                            <option value="">No courses available</option>
+                                        @endforelse
+                                    </select>
                                     <div class="input-group input-group-sm" style="width: 240px;">
                                         <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                        <input type="text" class="form-control" id="lastActiveSearch" placeholder="Search by name or email...">
+                                        <input type="text" class="form-control" id="lastActiveSearch" maxlength="255" placeholder="Search by name or email...">
                                     </div>
                                     <button class="btn btn-outline-secondary btn-sm" id="refreshLastActive" title="Refresh">
                                         <i class="fas fa-sync-alt"></i>
@@ -2458,13 +2448,14 @@
                                 </div>
                             </div>
                             <div class="card-body p-0">
+                                <p id="lastActiveUpdated" class="small text-muted px-3 pt-2 mb-2" role="status">Online means an authenticated session active in the last 5 minutes. Refreshes every 30 seconds.</p>
                                 <div class="table-responsive">
                                     <table class="table table-hover mb-0" id="lastActiveTable">
                                         <thead>
                                             <tr>
                                                 <th>User</th>
                                                 <th>Role</th>
-                                                <th>Level</th>
+                                                <th>Enrolled</th>
                                                 <th>Last Active</th>
                                                 <th>Last Quiz</th>
                                                 <th>Status</th>

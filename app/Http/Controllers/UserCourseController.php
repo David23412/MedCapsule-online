@@ -391,11 +391,18 @@ class UserCourseController extends Controller
      */
     public function getLastActiveUsers(Request $request)
     {
+        $request->validate([
+            'page' => 'sometimes|integer|min:1',
+            'per_page' => 'sometimes|integer|min:1|max:50',
+            'search' => 'nullable|string|max:255',
+            'course_id' => 'nullable|integer|exists:courses,id',
+        ]);
         $page    = max(1, (int) $request->input('page', 1));
         $perPage = min(50, max(1, (int) $request->input('per_page', 20)));
         $search  = $request->input('search');
 
-        $result = $this->userService->getLastActiveUsers($page, $perPage, $search);
+        $courseId = $request->filled('course_id') ? (int) $request->input('course_id') : null;
+        $result = $this->userService->getLastActiveUsers($page, $perPage, $search, $courseId);
 
         return response()->json($result, $result['success'] ? 200 : 500);
     }

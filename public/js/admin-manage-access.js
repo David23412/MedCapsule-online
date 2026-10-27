@@ -1173,17 +1173,10 @@ $.ajaxSetup({timeout: 15000});
             
     // ── Last Active Users ──────────────────────────────────────────────
     (function initLastActiveUsers() {
-        var laState = { page: 1, search: '', debounce: null };
+        var laState = { page: 1, search: '', debounce: null, request: null, generation: 0, saving: 0 };
         var studentProfileBaseUrl = MANAGE_ACCESS_CONFIG.studentProfileBaseUrl || '/student';
         var deleteUserBaseUrl = MANAGE_ACCESS_CONFIG.deleteUserBaseUrl || '/admin/delete/user';
-        var STATUS_LABELS = {
-            online:    'Online',
-            recent:    'Recently',
-            today:     'Today',
-            this_week: 'This Week',
-            inactive:  'Inactive',
-            never:     'Never'
-        };
+        var STATUS_LABELS = { online: 'Online', offline: 'Offline' };
         var MODE_LABELS = {
             quiz: 'Quiz',
             tutor: 'Tutor',
@@ -1192,23 +1185,27 @@ $.ajaxSetup({timeout: 15000});
             practice: 'Practice'
         };
 
-        function loadLastActive(page, search) {
+        function loadLastActive(page, search, quiet) {
             laState.page = page || 1;
             laState.search = search || '';
+            var generation = ++laState.generation;
+            if (laState.request) laState.request.abort();
 
             var tbody = $('#lastActiveBody');
-            tbody.html(
+            if (!quiet) tbody.html(
                 '<tr><td colspan="7" class="text-center py-4 text-muted">' +
                 '<i class="fas fa-spinner fa-spin fa-2x mb-2"></i>' +
                 '<div>Loading user activity...</div></td></tr>'
             );
 
-            $.ajax({
+            laState.request = $.ajax({
                 url: '/manage-access/last-active-users',
                 method: 'GET',
-                data: { page: laState.page, per_page: 20, search: laState.search },
+                data: { page: laState.page, per_page: 20, search: laState.search, course_id: $('#lastActiveCourse').val() || undefined },
                 headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
                 success: function(resp) {
+                    if (generation !== laState.generation) return;
+                    if (laState.saving) return;
                     if (!resp.success) {
                         tbody.html(
                             '<tr><td colspan="7" class="text-center py-4 text-muted">' +
@@ -1218,13 +1215,23 @@ $.ajaxSetup({timeout: 15000});
                         return;
                     }
                     renderLastActive(resp);
+                    $('#lastActiveUpdated').text('Updated just now. Online = authenticated session active in the last 5 minutes. Refreshes every 30 seconds.');
                 },
-                error: function() {
+                error: function(_xhr, status) {
+                    if (status === 'abort' || generation !== laState.generation) return;
+                    if (quiet) {
+                        tbody.find('.activity-status').removeClass('online').addClass('offline').text('Unknown');
+                        $('#lastActiveUpdated').text('Could not refresh activity. Please refresh to check current status.');
+                        return;
+                    }
                     tbody.html(
                         '<tr><td colspan="7" class="text-center py-4 text-muted">' +
                         '<i class="fas fa-exclamation-triangle fa-2x mb-2"></i>' +
                         '<div>Failed to load data</div></td></tr>'
                     );
+                },
+                complete: function() {
+                    if (generation === laState.generation) laState.request = null;
                 }
             });
         }
@@ -1257,6 +1264,17 @@ $.ajaxSetup({timeout: 15000});
 
                 var statusLabel = STATUS_LABELS[u.status] || 'Unknown';
                 var lastActiveText = escHtml(u.last_active_human || 'Never');
+                var enrollmentCell = '<span class="text-muted small">Staff access</span>';
+                if (u.role === 3 && data.course_id) {
+                    enrollmentCell = '<label class="form-check form-switch d-flex align-items-center gap-2 mb-0">' +
+                        '<input type="checkbox" role="switch" class="form-check-input last-active-enrollment-toggle" ' +
+                        'data-user-id="' + escHtml(String(u.id)) + '" data-course-id="' + escHtml(String(data.course_id)) + '" ' +
+                        'aria-label="Full enrollment for ' + safeName + ' in ' + escHtml($('#lastActiveCourse option:selected').text()) + '" ' +
+                        (u.is_enrolled ? 'checked' : '') + '>' +
+                        '<span class="small">' + escHtml(u.enrollment_label || 'Not enrolled') + '</span></label>';
+                } else if (u.role === 3) {
+                    enrollmentCell = '<span class="text-muted small">Choose a course</span>';
+                }
 
                 // Build last quiz cell
                 var quizCell = '<span class="text-muted" style="font-size:0.8rem;">No quizzes yet</span>';
@@ -1290,7 +1308,7 @@ $.ajaxSetup({timeout: 15000});
                         '</div>' +
                     '</td>' +
                     '<td>' + roleBadge + '</td>' +
-                    '<td><span class="level-badge"><i class="fas fa-star" style="font-size:0.65rem;"></i> ' + parseInt(u.level) + '</span></td>' +
+                    '<td>' + enrollmentCell + '</td>' +
                     '<td>' +
                         '<div>' + lastActiveText + '</div>' +
                     '</td>' +
@@ -1320,6 +1338,46 @@ $.ajaxSetup({timeout: 15000});
         }
 
         // Event handlers
+        $('#lastActiveCourse').on('change', function() { loadLastActive(1, laState.search); });
+        $('#lastActiveBody').on('change', '.last-active-enrollment-toggle', function() {
+            var toggle = this;
+            var desired = toggle.checked;
+            toggle.disabled = true;
+            laState.saving++;
+            $.ajax({
+                url: '/manage-access/revoke',
+                method: 'POST',
+                data: {
+                    user_id: toggle.dataset.userId, course_id: toggle.dataset.courseId,
+                    is_enrolled: desired ? 1 : 0, _token: MANAGE_ACCESS_CONFIG.csrfToken
+                },
+                success: function(resp) {
+                    if (!resp.success) {
+                        toggle.checked = !desired;
+                        showNotification('error', 'Could not save', resp.message || 'Please try again.');
+                        return;
+                    }
+                    toggle.checked = !!resp.is_enrolled;
+                    $(toggle).next('span').text(resp.is_enrolled ? 'Enrolled' : 'Not enrolled');
+                    if (typeof window.loadPayments === 'function') window.loadPayments();
+                },
+                error: function(xhr) {
+                    toggle.checked = !desired;
+                    showNotification('error', 'Could not save', xhr.responseJSON?.message || 'Enrollment was not changed. Please try again.');
+                },
+                complete: function() { toggle.disabled = false; laState.saving--; }
+            });
+        });
+
+        function refreshVisibleActivity() {
+            var pane = document.getElementById('access');
+            if (document.hidden || !pane?.classList.contains('show') || laState.request || laState.saving ||
+                document.activeElement?.closest('#lastActiveTable')) return;
+            loadLastActive(laState.page, laState.search, true);
+        }
+        setInterval(refreshVisibleActivity, 30000);
+        document.addEventListener('visibilitychange', refreshVisibleActivity);
+
         $('#refreshLastActive').on('click', function() {
             var btn = $(this);
             btn.find('i').addClass('fa-spin');

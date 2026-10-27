@@ -464,10 +464,10 @@ class UserService
      * @param string|null $search
      * @return array
      */
-    public function getLastActiveUsers(int $page = 1, int $perPage = 20, ?string $search = null): array
+    public function getLastActiveUsers(int $page = 1, int $perPage = 20, ?string $search = null, ?int $courseId = null): array
     {
         try {
-            $query = User::select('id', 'name', 'email', 'role', 'last_active_at', 'created_at', 'xp', 'level')
+            $query = User::select('id', 'name', 'email', 'role', 'last_active_at', 'created_at')
                 ->with(['latestQuizAttempt' => function ($q) {
                     $q->select('quiz_attempts.id', 'quiz_attempts.user_id', 'quiz_attempts.topic_id', 'quiz_attempts.study_mode', 'quiz_attempts.score', 'quiz_attempts.total_questions', 'quiz_attempts.percentage_grade', 'quiz_attempts.created_at')
                       ->with('topic:id,name');
@@ -486,26 +486,23 @@ class UserService
 
             $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
-            $users = $paginator->getCollection()->map(function (User $user) {
+            $userIds = $paginator->getCollection()->modelKeys();
+            $onlineUserIds = DB::table('sessions')->whereIn('user_id', $userIds)
+                ->whereBetween('last_activity', [now()->subMinutes(5)->timestamp, now()->timestamp])
+                ->distinct()->pluck('user_id')->flip()->all();
+            $enrollments = $courseId === null ? collect() : DB::table('course_user')
+                ->where('course_id', $courseId)->whereIn('user_id', $userIds)
+                ->get(['user_id', 'is_enrolled', 'access_level'])->keyBy('user_id');
+
+            $users = $paginator->getCollection()->map(function (User $user) use ($onlineUserIds, $enrollments) {
                 $lastActive = $user->last_active_at;
                 $now = now();
 
-                if ($lastActive) {
-                    $diffMinutes = $lastActive->diffInMinutes($now);
-                    if ($diffMinutes < 5) {
-                        $status = 'online';
-                    } elseif ($diffMinutes < 60) {
-                        $status = 'recent';
-                    } elseif ($lastActive->isToday()) {
-                        $status = 'today';
-                    } elseif ($lastActive->gte($now->copy()->subDays(7))) {
-                        $status = 'this_week';
-                    } else {
-                        $status = 'inactive';
-                    }
-                } else {
-                    $status = 'never';
-                }
+                $status = isset($onlineUserIds[$user->id]) ? 'online' : 'offline';
+                $enrollment = $enrollments->get($user->id);
+                $hasPreviewEnrollment = (bool) ($enrollment->is_enrolled ?? false)
+                    && ($enrollment->access_level ?? null) === User::COURSE_ACCESS_PREVIEW;
+                $isEnrolled = (bool) ($enrollment->is_enrolled ?? false) && !$hasPreviewEnrollment;
 
                 // Build specific last-active label
                 $lastActiveHuman = 'Never';
@@ -548,8 +545,8 @@ class UserService
                         User::ROLE_TUTOR  => 'Tutor',
                         default           => 'Student',
                     },
-                    'xp'               => $user->xp ?? 0,
-                    'level'            => $user->level ?? 1,
+                    'is_enrolled'      => $isEnrolled,
+                    'enrollment_label' => $isEnrolled ? 'Enrolled' : ($hasPreviewEnrollment ? 'Preview only' : 'Not enrolled'),
                     'last_active_at'   => $lastActive?->toIso8601String(),
                     'last_active_human'=> $lastActiveHuman,
                     'created_at'       => $user->created_at?->toIso8601String(),
@@ -565,6 +562,7 @@ class UserService
                 'last_page'    => $paginator->lastPage(),
                 'total'        => $paginator->total(),
                 'per_page'     => $paginator->perPage(),
+                'course_id'    => $courseId,
             ];
         } catch (\Exception $e) {
             Log::error('Failed to get last active users: ' . $e->getMessage());
