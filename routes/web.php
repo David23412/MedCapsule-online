@@ -138,6 +138,8 @@ Route::group([], function () {
     Route::middleware('admin')->group(function () {
 
         Route::get('/manage-access/question-quality', [\App\Http\Controllers\Admin\QuestionQualityController::class, 'index'])->name('admin.question-quality');
+        Route::get('/admin/courses/{course}/sources', [\App\Http\Controllers\Admin\CourseSourceController::class, 'index'])->name('admin.course-sources.index');
+        Route::post('/admin/courses/{course}/sources/rename', [\App\Http\Controllers\Admin\CourseSourceController::class, 'rename'])->name('admin.course-sources.rename');
 
         // Video Management Routes
         Route::get('/admin/videos', [App\Http\Controllers\VideoController::class, 'index'])->name('admin.videos.index');

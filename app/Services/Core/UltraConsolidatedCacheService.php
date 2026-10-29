@@ -253,7 +253,8 @@ class UltraConsolidatedCacheService
      */
     public function getOptimizedQuiz(int $userId, int $topicId, array $sources): array
     {
-        $cacheKey = "optimized_quiz_{$userId}_{$topicId}_" . md5(serialize($sources));
+        $version = (int) Cache::get("quiz_questions_version:topic_{$topicId}", 1);
+        $cacheKey = "optimized_quiz_{$userId}_{$topicId}_v{$version}_" . md5(serialize($sources));
         
         return $this->remember($cacheKey, function () use ($userId, $topicId, $sources) {
             $questionQuery = Question::query()

@@ -265,6 +265,7 @@ class UltraFastQuizService
     {
         // Force increment cache version specifically for this topic
         $versionKey = "quiz_questions_version:topic_{$topic->id}";
+        Cache::add($versionKey, 1, 86400);
         Cache::increment($versionKey);
 
         // Scan returns prefixed keys if phpredis is used, so we wildcard prefix too

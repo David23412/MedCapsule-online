@@ -1,6 +1,7 @@
 @php
     $activeTab = match (request()->query('tab')) {
         'question-quality' => 'question-quality',
+        'sources' => 'sources',
         'mentorship' => 'mentorship',
         'payments' => 'payment-history',
         'survey-results' => 'survey-results',
@@ -13,6 +14,7 @@
     };
     $tabDescriptions = [
         'question-quality' => 'Find invalid answers and explanations that only repeat the correct answer.',
+        'sources' => 'Rename a source across one course while keeping assignments and student progress.',
         'access' => 'Choose a user and course to review access. Account permissions are managed separately.',
         'preview-topics' => 'Choose which topics students can open with preview access.',
         'payment-history' => 'Find payments and review their status.',
@@ -1990,11 +1992,45 @@
                     <i class="fas fa-cog me-2"></i>Settings
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link {{ $activeTab === 'sources' ? 'active' : '' }}" id="sources-tab" data-bs-toggle="tab" data-bs-target="#sources" type="button" role="tab">Sources</button>
+            </li>
         </ul>
 
         <p class="text-muted mt-3 mb-3" id="manageSectionDescription" role="status" aria-live="polite">{{ $tabDescriptions[$activeTab] }}</p>
         <!-- Tab Content -->
         <div class="tab-content" id="manageTabContent">
+            <div class="tab-pane fade {{ $activeTab === 'sources' ? 'show active' : '' }}" id="sources" role="tabpanel" aria-labelledby="sources-tab">
+                <div class="card">
+                    <div class="card-header">Rename Course Source</div>
+                    <div class="card-body">
+                        <form id="courseSourceRenameForm" data-base-url="{{ url('/admin/courses') }}" style="max-width:640px;">
+                            <div class="mb-3">
+                                <label for="sourceRenameCourse" class="form-label">Course</label>
+                                <select id="sourceRenameCourse" class="form-select" required>
+                                    <option value="">Choose a course</option>
+                                    @foreach($courses ?? [] as $course)
+                                        <option value="{{ $course->id }}">{{ $course->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sourceRenameOriginal" class="form-label">Source</label>
+                                <select id="sourceRenameOriginal" class="form-select" required disabled><option value="">Choose a course first</option></select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="sourceRenameNewName" class="form-label">New name</label>
+                                <input id="sourceRenameNewName" class="form-control" type="text" maxlength="255" placeholder="e.g. Revision" required disabled>
+                            </div>
+                            <p class="text-muted small" id="sourceRenameScope">Only the selected course is updated. Assignments and saved progress follow the new name. Use a name that is not already used in this course.</p>
+                            <button type="submit" class="btn btn-primary" id="sourceRenameSave" disabled>Rename source</button>
+                            <button type="button" class="btn btn-outline-secondary" id="sourceRenameRetry" hidden>Reload sources</button>
+                            <div id="sourceRenameStatus" class="small mt-3" role="status" aria-live="polite"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <!-- User Access Tab -->
             <div class="tab-pane fade {{ $activeTab === 'access' ? 'show active' : '' }}" id="access" role="tabpanel">
                 <div class="row g-4">
@@ -3248,6 +3284,7 @@
     </script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-list.js') }}"></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-manage-access.js') }}"></script>
+    <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-course-sources.js') }}" defer></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-payment-actions.js') }}"></script>
     <script src="{{ app(\App\Services\BladeAssetService::class)->url('js/admin-question-quality.js') }}"></script>
 
