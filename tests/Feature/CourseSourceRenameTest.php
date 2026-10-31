@@ -74,26 +74,70 @@ class CourseSourceRenameTest extends TestCase
             ->assertExactJson(['sources' => [['name' => 'Revision', 'question_count' => 2]]]);
     }
 
-    public function test_duplicate_names_and_stale_sources_fail_without_partial_changes(): void
+    public function test_existing_source_names_are_combined_using_existing_spelling(): void
     {
         [$course, $topic] = $this->fixture();
-        Question::factory()->create(['topic_id' => $topic->id, 'source' => 'Revision']);
-        $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Downloaded CNS', 'new_name' => 'Revision'])
-            ->assertUnprocessable()->assertJsonValidationErrors('new_name');
-        $this->assertSame(3, Question::where('source', 'Downloaded CNS')->count());
-        $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Downloaded CNS', 'new_name' => 'revision'])->assertUnprocessable();
+        Question::factory()->create(['topic_id' => $topic->id, 'source' => 'MedCapsule']);
+        $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Downloaded CNS', 'new_name' => 'MEDCAPSULE'])
+            ->assertOk()->assertJsonPath('question_count', 2);
+        $this->assertSame(3, Question::where('source', 'MedCapsule')->count());
+        $this->assertSame(1, Question::where('source', 'Downloaded CNS')->count());
+        $this->getJson(route('admin.course-sources.index', $course))->assertExactJson([
+            'sources' => [['name' => 'MedCapsule', 'question_count' => 3]],
+        ]);
         $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Missing source', 'new_name' => 'New name'])
             ->assertUnprocessable();
         $this->assertSame(0, Question::where('source', 'New name')->count());
     }
 
-    public function test_saved_progress_collision_is_rejected_before_any_questions_change(): void
+    public function test_combining_sources_merges_progress_without_double_counting_and_preserves_history(): void
+    {
+        [$course, $topic, $other] = $this->fixture();
+        $student = User::factory()->student()->create();
+        $oldQuestion = $topic->questions()->first();
+        $newQuestion = Question::factory()->create(['topic_id' => $topic->id, 'source' => 'MedCapsule']);
+        $older = now()->subDay()->startOfSecond();
+        $newer = now()->startOfSecond();
+        foreach (['Downloaded CNS' => [$oldQuestion->id], 'MedCapsule' => [$oldQuestion->id, $newQuestion->id]] as $source => $ids) {
+            UserTopicSourceProgress::create([
+                'user_id' => $student->id, 'topic_id' => $topic->id, 'source' => $source,
+                'completed_question_ids' => $ids, 'correct_question_ids' => $ids,
+                'completed_count' => count($ids), 'correct_count' => count($ids), 'total_questions' => count($ids),
+                'last_attempt_date' => $source === 'MedCapsule' ? $older : $newer,
+                'last_activity_at' => $source === 'MedCapsule' ? $newer : $older,
+            ]);
+        }
+        $assignment = Assignment::factory()->create(['course_id' => $course->id, 'topic_id' => $topic->id, 'assigned_source' => 'Downloaded CNS']);
+        $attempt = QuizAttempt::factory()->create(['user_id' => $student->id, 'topic_id' => $topic->id, 'source' => 'Downloaded CNS']);
+        $task = ['sources' => ['Downloaded CNS', 'MedCapsule'], 'source' => 'Downloaded CNS', 'completed' => true];
+        $plan = StudyPlan::create(['user_id' => $student->id, 'plan_date' => today(), 'tasks' => ['courses' => [$course->id => [$task], $other->id => [$task]]]]);
+        $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Downloaded CNS', 'new_name' => 'MedCapsule'])->assertOk();
+        $records = UserTopicSourceProgress::where('user_id', $student->id)->where('topic_id', $topic->id)->get();
+        $this->assertCount(1, $records);
+        $progress = $records->first();
+        $this->assertSame('MedCapsule', $progress->source);
+        $this->assertSame([$oldQuestion->id, $newQuestion->id], $progress->completed_question_ids);
+        $this->assertSame(2, $progress->completed_count);
+        $this->assertSame(2, $progress->correct_count);
+        $this->assertSame(2, $progress->total_questions);
+        $this->assertEquals($newer, $progress->last_attempt_date);
+        $this->assertEquals($newer, $progress->last_activity_at);
+        $this->assertSame('MedCapsule', $assignment->fresh()->assigned_source);
+        $this->assertSame('MedCapsule', $attempt->fresh()->source);
+        $this->assertSame($attempt->score, $attempt->fresh()->score);
+        $this->assertSame(['MedCapsule'], $plan->fresh()->tasks['courses'][$course->id][0]['sources']);
+        $this->assertSame($task, $plan->fresh()->tasks['courses'][$other->id][0]);
+    }
+
+    public function test_existing_progress_only_destination_is_supported(): void
     {
         [$course, $topic] = $this->fixture();
-        UserTopicSourceProgress::create(['user_id' => User::factory()->student()->create()->id, 'topic_id' => $topic->id, 'source' => 'Revision']);
-        $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Downloaded CNS', 'new_name' => 'Revision'])->assertUnprocessable();
-        $this->assertSame(0, Question::where('source', 'Revision')->count());
-        $this->assertSame(3, Question::where('source', 'Downloaded CNS')->count());
+        $student = User::factory()->student()->create();
+        UserTopicSourceProgress::create(['user_id' => $student->id, 'topic_id' => $topic->id, 'source' => 'Revision']);
+        UserTopicSourceProgress::create(['user_id' => $student->id, 'topic_id' => $topic->id, 'source' => 'Downloaded CNS']);
+        $this->postJson(route('admin.course-sources.rename', $course), ['source' => 'Downloaded CNS', 'new_name' => 'Revision'])->assertOk();
+        $this->assertSame(1, UserTopicSourceProgress::where('user_id', $student->id)->count());
+        $this->assertSame(2, Question::where('source', 'Revision')->count());
     }
 
     public function test_names_are_exact_and_allow_punctuation_unicode_and_case_changes(): void

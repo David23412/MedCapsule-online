@@ -5,6 +5,7 @@
     const course = document.getElementById('sourceRenameCourse');
     const source = document.getElementById('sourceRenameOriginal');
     const name = document.getElementById('sourceRenameNewName');
+    const suggestions = document.getElementById('sourceRenameSuggestions');
     const save = document.getElementById('sourceRenameSave');
     const retry = document.getElementById('sourceRenameRetry');
     const status = document.getElementById('sourceRenameStatus');
@@ -19,7 +20,11 @@
         const selected = sources.find(item => item.name === source.value);
         const valid = !!selected && !!name.value.trim() && name.value.trim() !== selected.name;
         save.disabled = saving || !valid;
-        if (selected) scope.textContent = `Renames ${selected.question_count} questions in ${course.selectedOptions[0].textContent}. Assignments and saved progress follow the new name. Other courses stay unchanged.`;
+        const destination = sources.find(item => item.name !== selected?.name && item.name.toLowerCase() === name.value.trim().toLowerCase());
+        save.textContent = destination ? 'Combine sources' : 'Rename source';
+        if (selected) scope.textContent = destination
+            ? `Moves ${selected.question_count} questions into ${destination.name} (${destination.question_count} existing questions). Assignments and saved progress are combined. Other courses stay unchanged.`
+            : `Renames ${selected.question_count} questions in ${course.selectedOptions[0].textContent}. Assignments and saved progress follow the new name. Other courses stay unchanged.`;
         else scope.textContent = defaultScope;
     }
 
@@ -48,6 +53,7 @@
         controller?.abort();
         controller = new AbortController();
         sources = [];
+        suggestions.replaceChildren();
         source.replaceChildren(new Option(course.value ? 'Loading sources…' : 'Choose a course first', ''));
         source.disabled = true;
         name.disabled = true;
@@ -61,6 +67,7 @@
             const result = await request(`${form.dataset.baseUrl}/${encodeURIComponent(course.value)}/sources`, {signal: controller.signal});
             if (current !== generation) return;
             sources = result.sources;
+            suggestions.replaceChildren(...sources.map(item => new Option(item.name, item.name)));
             source.replaceChildren(new Option(sources.length ? 'Choose a source' : 'No named sources in this course', ''));
             sources.forEach(item => source.add(new Option(`${item.name} (${item.question_count} questions)`, item.name)));
             source.disabled = !sources.length;

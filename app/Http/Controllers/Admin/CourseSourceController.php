@@ -23,6 +23,6 @@ class CourseSourceController extends Controller
             }],
         ]);
         $count = $service->rename($course, $data['source'], $data['new_name']);
-        return response()->json(['success' => true, 'question_count' => $count, 'message' => "Renamed {$count} questions to {$data['new_name']}."]);
+        return response()->json(['success' => true, 'question_count' => $count, 'message' => "Updated source for {$count} questions."]);
     }
 }

@@ -2,7 +2,7 @@
 
 namespace App\Services\Admin;
 
-use App\Models\{Course, StudyPlan, Topic};
+use App\Models\{Course, StudyPlan, Topic, UserTopicSourceProgress};
 use App\Services\Core\UltraConsolidatedCacheService;
 use App\Services\UltraFastQuizService;
 use Illuminate\Database\Query\Builder;
@@ -24,7 +24,7 @@ class CourseSourceService
     public function rename(Course $course, string $old, string $new): int
     {
         $topicIds = $course->topics()->pluck('id')->all();
-        $count = DB::transaction(function () use ($course, $topicIds, $old, $new) {
+        $count = DB::transaction(function () use ($course, $topicIds, $old, &$new) {
             Course::whereKey($course->id)->lockForUpdate()->firstOrFail();
             $questions = $this->exact(DB::table('questions')->whereIn('topic_id', $topicIds), 'source', $old);
             $rows = (clone $questions)->lockForUpdate()->get(['id', 'extra_topic']);
@@ -39,26 +39,26 @@ class CourseSourceService
                 throw ValidationException::withMessages(['source' => 'These questions are shared with another course. A course-only rename cannot change their shared source.']);
             }
 
+            // Reuse the existing spelling so case differences do not create another source.
+            $destinationName = DB::table('questions')->whereIn('topic_id', $topicIds)
+                ->whereRaw('LOWER(source) = LOWER(?)', [$new]);
+            $destinationName = DB::getDriverName() === 'mysql'
+                ? $destinationName->whereRaw('BINARY source != ?', [$old])
+                : $destinationName->where('source', '!=', $old);
+            $new = $destinationName->orderBy('source')->value('source') ?? $new;
+
             $references = [
                 [DB::table('questions')->whereIn('topic_id', $topicIds), 'source'],
                 [DB::table('assignments')->where('course_id', $course->id), 'assigned_source'],
                 [DB::table('quiz_attempts')->whereIn('topic_id', $topicIds), 'source'],
-                [DB::table('user_topic_source_progress')->whereIn('topic_id', $topicIds), 'source'],
                 [DB::table('course_user')->where('course_id', $course->id), 'planner_preferred_source'],
                 [DB::table('planner_task_outcomes')->where('course_id', $course->id), 'source'],
             ];
             foreach ($references as [$query, $column]) {
-                $destination = (clone $query)->whereRaw('LOWER('.$column.') = LOWER(?)', [$new]);
-                $destination = DB::getDriverName() === 'mysql'
-                    ? $destination->whereRaw('BINARY '.$column.' != ?', [$old])
-                    : $destination->where($column, '!=', $old);
-                if ($destination->exists()) {
-                    throw ValidationException::withMessages(['new_name' => 'That source name is already used in this course or its saved progress. Choose a different name.']);
-                }
-            }
-            foreach ($references as [$query, $column]) {
                 $this->exact($query, $column, $old)->update([$column => $new]);
             }
+
+            $this->mergeProgress($topicIds, $old, $new);
 
             StudyPlan::whereNotNull('tasks->courses->'.$course->id)->lockForUpdate()->chunkById(100, function ($plans) use ($course, $old, $new) {
                 foreach ($plans as $plan) {
@@ -108,6 +108,42 @@ class CourseSourceService
         return $count;
     }
 
+    private function mergeProgress(array $topicIds, string $old, string $new): void
+    {
+        $records = UserTopicSourceProgress::whereIn('topic_id', $topicIds);
+        $records = DB::getDriverName() === 'mysql'
+            ? $records->whereRaw('BINARY source = ?', [$old])
+            : $records->where('source', $old);
+        foreach ($records->lockForUpdate()->get() as $record) {
+            $destinations = UserTopicSourceProgress::where('user_id', $record->user_id)
+                ->where('topic_id', $record->topic_id)->where('id', '!=', $record->id)
+                ->whereRaw('LOWER(source) = LOWER(?)', [$new])->lockForUpdate()->get();
+            $merged = collect([$record])->merge($destinations);
+            $ids = fn ($field) => $merged->flatMap(fn ($row) => $row->$field ?? [])
+                ->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->unique()->sort()->values()->all();
+            $completed = $ids('completed_question_ids');
+            $correct = $ids('correct_question_ids');
+            $completed = collect($completed)->merge($correct)->unique()->sort()->values()->all();
+            $total = DB::table('questions')->where('source', $new)->where(function ($query) use ($record) {
+                $query->where('topic_id', $record->topic_id)->orWhereRaw(DB::getDriverName() === 'mysql'
+                    ? 'FIND_IN_SET(?, REPLACE(extra_topic, " ", "")) > 0'
+                    : "INSTR(',' || REPLACE(extra_topic, ' ', '') || ',', ',' || ? || ',') > 0", [$record->topic_id]);
+            })->count();
+            // Delete colliding summary rows only after their coverage has been combined.
+            foreach ($destinations as $destination) {
+                $destination->delete();
+            }
+            $record->fill([
+                'source' => $new,
+                'completed_question_ids' => $completed, 'correct_question_ids' => $correct,
+                'completed_count' => count($completed), 'correct_count' => count($correct),
+                'total_questions' => $total,
+                'last_attempt_date' => $merged->max('last_attempt_date'),
+                'last_activity_at' => $merged->max('last_activity_at'),
+            ])->save();
+        }
+    }
+
     private function exact(Builder $query, string $column, string $value): Builder
     {
         return DB::getDriverName() === 'mysql'
@@ -120,7 +156,7 @@ class CourseSourceService
         foreach ($payload as $key => $value) {
             if (is_array($value)) {
                 $payload[$key] = $key === 'sources'
-                    ? array_map(fn ($source) => $source === $old ? $new : $source, $value)
+                    ? array_values(array_unique(array_map(fn ($source) => $source === $old ? $new : $source, $value)))
                     : $this->renamePayload($value, $old, $new);
             } elseif (in_array($key, ['source', 'resolved_source', 'preferred_source', 'planner_preferred_source', 'assigned_source'], true) && $value === $old) {
                 $payload[$key] = $new;

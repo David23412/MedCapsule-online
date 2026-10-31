@@ -2020,9 +2020,10 @@
                             </div>
                             <div class="mb-3">
                                 <label for="sourceRenameNewName" class="form-label">New name</label>
-                                <input id="sourceRenameNewName" class="form-control" type="text" maxlength="255" placeholder="e.g. Revision" required disabled>
+                                <input id="sourceRenameNewName" class="form-control" type="text" maxlength="255" list="sourceRenameSuggestions" placeholder="e.g. MedCapsule" required disabled>
                             </div>
-                            <p class="text-muted small" id="sourceRenameScope">Only the selected course is updated. Assignments and saved progress follow the new name. Use a name that is not already used in this course.</p>
+                            <datalist id="sourceRenameSuggestions"></datalist>
+                            <p class="text-muted small" id="sourceRenameScope">Only the selected course is updated. Assignments and saved progress follow the new name. Use an existing name to combine sources.</p>
                             <button type="submit" class="btn btn-primary" id="sourceRenameSave" disabled>Rename source</button>
                             <button type="button" class="btn btn-outline-secondary" id="sourceRenameRetry" hidden>Reload sources</button>
                             <div id="sourceRenameStatus" class="small mt-3" role="status" aria-live="polite"></div>
