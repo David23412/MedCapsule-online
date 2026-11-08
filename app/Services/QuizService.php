@@ -832,7 +832,13 @@ class QuizService
 
     private function sampleQuestionIds($query, int $limit): array
     {
+        // The candidate query already selects the question fields needed later.
+        // Clear those columns before adding aggregates; MySQL's ONLY_FULL_GROUP_BY
+        // rejects the previous query because it mixed both selections.
         $stats = (clone $query)
+            ->reorder()
+            ->getQuery()
+            ->cloneWithout(['columns', 'orders'])
             ->selectRaw('MIN(id) as min_id, MAX(id) as max_id, COUNT(*) as total')
             ->first();
 
